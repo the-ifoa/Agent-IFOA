@@ -15,9 +15,23 @@ const User                = require('../models/User');
 const Airlines            = require('../models/Airlines');
 const { sendAdminSupportMessageNotification } = require('./emailService');
 
-// Minutes to wait before emailing the team again about the same conversation.
-// A burst of messages therefore produces one alert, not one per message.
+// Minutes to wait before emailing the team again about the same conversation,
+// once an alert has actually been sent. Prevents an unattended inbox from being
+// paged every time the grace window below expires during a long conversation.
 const ADMIN_ALERT_THROTTLE_MIN = Number(process.env.SUPPORT_ALERT_THROTTLE_MINUTES || 10);
+
+// Seconds to wait after a user message before checking whether the admin has
+// already seen it. This is what makes the alert conditional on being seen rather
+// than firing unconditionally: if an admin has the conversation open, the
+// frontend marks it read (support:read) within a second or two of the message
+// arriving, so by the time this check runs adminUnread is back to 0 and no email
+// goes out. If nobody is watching, adminUnread is still > 0 and the email fires.
+const ADMIN_ALERT_GRACE_SEC = Number(process.env.SUPPORT_ALERT_GRACE_SECONDS || 60);
+
+// One pending check per conversation. A burst of messages resets the timer
+// (debounce) so a rapid back-and-forth produces one check after things go quiet,
+// not one per message.
+const pendingAdminAlerts = new Map();
 
 // ── Rooms ───────────────────────────────────────────────────────────────────
 const ADMIN_ROOM = 'support:admins';
@@ -213,29 +227,66 @@ async function createMessage({ conversation, senderRole, senderId, senderName, b
     io.to(ADMIN_ROOM).emit('support:conversation', summary);
   }
 
-  // Email the IFOA team when an airline/individual writes in, so a message is
-  // never missed while nobody has the support console open. Admin replies never
-  // trigger an alert. Fire-and-forget: a mail failure must not fail the message.
+  // Alert the IFOA team when an airline/individual writes in — but only if
+  // nobody notices. Scheduling (rather than sending immediately) is what lets us
+  // check "did the admin see this" instead of mailing unconditionally on every
+  // message. Admin replies never trigger an alert. Fire-and-forget by design: a
+  // mail failure must never fail the message itself.
   if (senderRole === 'user') {
-    notifyAdminOfUserMessage(conversation, message).catch((e) =>
-      console.warn('[support] Admin alert email failed:', e.message),
-    );
+    scheduleAdminAlert(conversation._id);
   }
 
   return { conversation, message };
 }
 
 /**
- * Send the "new support message" alert to the IFOA team, throttled per
- * conversation. The first message of a burst always sends; follow-ups within
- * ADMIN_ALERT_THROTTLE_MIN are suppressed so the inbox stays readable.
+ * Debounce a "check whether the admin has seen this conversation" pass.
+ *
+ * A burst of messages resets the timer, so only ONE check runs — after the
+ * conversation goes quiet for ADMIN_ALERT_GRACE_SEC — rather than one per message.
  */
-async function notifyAdminOfUserMessage(conversation, message) {
+function scheduleAdminAlert(conversationId) {
+  const key = String(conversationId);
+  const existing = pendingAdminAlerts.get(key);
+  if (existing) clearTimeout(existing);
+
+  const timer = setTimeout(() => {
+    pendingAdminAlerts.delete(key);
+    checkAndNotifyAdmin(conversationId).catch((e) =>
+      console.warn('[support] Admin alert check failed:', e.message),
+    );
+  }, ADMIN_ALERT_GRACE_SEC * 1000);
+  // unref: a pending alert timer must never keep the Node process alive on its own
+  // (e.g. during tests or a graceful shutdown).
+  timer.unref?.();
+  pendingAdminAlerts.set(key, timer);
+}
+
+/**
+ * Send the "new support message" alert to the IFOA team — but only if the admin
+ * has NOT already seen it, and only if the last alert wasn't too recent.
+ *
+ * "Seen" = conversation.adminUnread is back to 0. The admin frontend marks a
+ * conversation read the moment a message arrives for one it has open
+ * (support:read, emitted within ~1s), so if the admin was actually watching,
+ * adminUnread will already be 0 by the time this grace-period check runs and no
+ * email is sent. If nobody was watching, adminUnread is still > 0 and it fires.
+ *
+ * ADMIN_ALERT_THROTTLE_MIN then prevents a long-unseen conversation from paging
+ * the team again on every subsequent grace-period check.
+ */
+async function checkAndNotifyAdmin(conversationId) {
+  const conversation = await SupportConversation.findById(conversationId);
+  if (!conversation) return;
+
+  // Seen — the admin read it during the grace window. No mail needed.
+  if (conversation.adminUnread === 0) return;
+
   const last = conversation.lastAdminNotifiedAt ? new Date(conversation.lastAdminNotifiedAt).getTime() : 0;
   const throttleMs = ADMIN_ALERT_THROTTLE_MIN * 60 * 1000;
   if (last && Date.now() - last < throttleMs) return;
 
-  // Stamp first so two concurrent messages can't both pass the check above.
+  // Stamp first so two concurrent checks can't both pass the guard above.
   conversation.lastAdminNotifiedAt = new Date();
   await conversation.save();
 
@@ -243,10 +294,15 @@ async function notifyAdminOfUserMessage(conversation, message) {
     name:        conversation.name,
     email:       conversation.email,
     role:        conversation.role,
-    body:        message.body,
-    sentAt:      message.createdAt,
+    body:        conversation.lastMessageBody,
+    sentAt:      conversation.lastMessageAt,
     unreadCount: conversation.adminUnread,
   });
+}
+
+/** @deprecated kept for any external caller; delegates to the seen-aware check. */
+async function notifyAdminOfUserMessage(conversation) {
+  return checkAndNotifyAdmin(conversation._id);
 }
 
 /**
@@ -277,4 +333,6 @@ module.exports = {
   createMessage,
   markRead,
   notifyAdminOfUserMessage,
+  scheduleAdminAlert,
+  checkAndNotifyAdmin,
 };

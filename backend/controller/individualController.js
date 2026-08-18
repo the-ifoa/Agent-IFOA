@@ -12,7 +12,7 @@ const {
 const { createOrUpdateInvoice } = require('../services/invoiceService');
 const pricing = require('../shared/pricing');
 const invoiceStore = require('../services/invoiceStore');
-const { sendIndividualPaymentConfirmation } = require('../services/emailService');
+const { sendIndividualPaymentConfirmation, sendAdminPaymentNotification } = require('../services/emailService');
 
 function toBool(v, defaultValue = false) {
   if (v === undefined || v === null || v === '') return defaultValue;
@@ -1176,6 +1176,20 @@ exports.markIndividualPaid = async (req, res) => {
     sendIndividualPaymentConfirmation(updated).catch((e) =>
       console.warn('[markIndividualPaid] Email failed:', e.message)
     );
+
+    // Internal alert — same "payment received" email the Stripe path sends, so
+    // an admin marking a wire/manual payment paid is recorded exactly like a
+    // card payment. Without this, manually-confirmed payments left no trace in
+    // the team's inbox.
+    sendAdminPaymentNotification(updated, {
+      registrationModel: 'Individual',
+      purpose:            'payment',
+      amountDollars:      Number(individual.price || individual.totalServiceFees || 0),
+      invoiceNumber:      update.invoiceNumber,
+      paymentMethod:      'wire',
+      paidAt:             now,
+      registrationId:     individual._id,
+    }).catch((e) => console.warn('[markIndividualPaid] Admin notification failed:', e.message));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

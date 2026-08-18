@@ -11,7 +11,7 @@ const {
   normalizeInvoiceNumber,
 } = require('../services/invoiceNumberService');
 const { createOrUpdateInvoice }  = require('../services/invoiceService');
-const { sendAirlinePaymentConfirmation, sendWireRequestAdminNotification } = require('../services/emailService');
+const { sendAirlinePaymentConfirmation, sendWireRequestAdminNotification, sendAdminPaymentNotification } = require('../services/emailService');
 const { allHolderGroupSlots, isActiveHolderGroup } = require('../utils/holderGroups');
 const pricing = require('../shared/pricing');
 const invoiceStore = require('../services/invoiceStore');
@@ -1559,6 +1559,9 @@ exports.markAirlinesPaid = async (req, res) => {
     );
 
     // Create canonical Invoice document so admin and user see the same invoice.
+    // totalAmount is declared outside the try so the admin notification below can
+    // reuse the exact figure the invoice was built with.
+    let totalAmount = 0;
     try {
       const holderCount  = Number(doc.committedCount || doc.holderCountValue || doc.certificateHolders?.length || 0);
       const pricePerCert = Number(doc.pricePerCertificate || doc.pricePerCert || 0);
@@ -1567,7 +1570,7 @@ exports.markAirlinesPaid = async (req, res) => {
       const yearsMult = doc.subscriptionPlan === 'Multiple Years Subscription Plan' && Number(doc.multiYearCount) > 1
         ? Number(doc.multiYearCount)
         : 1;
-      const totalAmount  = pricePerCert > 0 && holderCount > 0
+      totalAmount = pricePerCert > 0 && holderCount > 0
         ? pricePerCert * holderCount * yearsMult
         : Number(doc.totalAmount || 0);
       await createOrUpdateInvoice({
@@ -1606,6 +1609,18 @@ exports.markAirlinesPaid = async (req, res) => {
     sendAirlinePaymentConfirmation(updated).catch((e) =>
       console.warn('[markAirlinesPaid] Email failed:', e.message)
     );
+
+    // Internal alert — mirrors the Stripe confirm path so a manually-marked
+    // wire/initial payment is recorded in the team's inbox just like a card payment.
+    sendAdminPaymentNotification(updated, {
+      registrationModel: 'Airlines',
+      purpose:            'payment',
+      amountDollars:      totalAmount,
+      invoiceNumber:      update.invoiceNumber,
+      paymentMethod:      'wire',
+      paidAt:             now,
+      registrationId:     doc._id,
+    }).catch((e) => console.warn('[markAirlinesPaid] Admin notification failed:', e.message));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -2359,6 +2374,16 @@ exports.activateWirePayment = async (req, res) => {
           console.warn('[activateWirePayment] Conversion invoice failed:', e.message);
         }
 
+        sendAdminPaymentNotification(updated, {
+          registrationModel: 'Airlines',
+          purpose:            'convert-unlimited',
+          amountDollars:      charge,
+          invoiceNumber:      convInvoiceNum,
+          paymentMethod:      'wire',
+          paidAt:              now,
+          registrationId:      doc._id,
+        }).catch((e) => console.warn('[activateWirePayment] Admin notification failed:', e.message));
+
         return res.json({ success: true, activated: true, data: updated });
       }
 
@@ -2454,6 +2479,16 @@ exports.activateWirePayment = async (req, res) => {
         console.warn('[activateWirePayment] Detail-based invoice failed:', e.message);
       }
 
+      sendAdminPaymentNotification(updated, {
+        registrationModel: 'Airlines',
+        purpose:            purpose === 'holder-upgrade' ? 'holder-upgrade' : 'renewal',
+        amountDollars:      amount,
+        invoiceNumber:      invoiceNum,
+        paymentMethod:      'wire',
+        paidAt:              now,
+        registrationId:      doc._id,
+      }).catch((e) => console.warn('[activateWirePayment] Admin notification failed:', e.message));
+
       const queued = purpose === 'renewal' && !!updated?.nextRenewal?.paidAt;
       return res.json({ success: true, activated: !queued, queued, data: updated });
     }
@@ -2524,6 +2559,15 @@ exports.activateWirePayment = async (req, res) => {
         try { await createOrUpdateInvoice(renewalInvoiceBase); } catch (e) {
           console.warn('[activateWirePayment] Renewal invoice failed:', e.message);
         }
+        sendAdminPaymentNotification(updated, {
+          registrationModel: 'Airlines',
+          purpose:            'renewal',
+          amountDollars:      Number(doc.amountPaid || 0),
+          invoiceNumber:      invoiceNum,
+          paymentMethod:      'wire',
+          paidAt:              now,
+          registrationId:      doc._id,
+        }).catch((e) => console.warn('[activateWirePayment] Admin notification failed:', e.message));
         return res.json({ success: true, activated: true, data: updated });
       } else {
         // Queue — activates when activationDate arrives; current plan still live
@@ -2535,6 +2579,17 @@ exports.activateWirePayment = async (req, res) => {
         try { await createOrUpdateInvoice(renewalInvoiceBase); } catch (e) {
           console.warn('[activateWirePayment] Queued renewal invoice failed:', e.message);
         }
+        // The renewal PAYMENT is confirmed even though activation is queued for
+        // later — the money has already arrived, so the alert fires now.
+        sendAdminPaymentNotification(updated, {
+          registrationModel: 'Airlines',
+          purpose:            'renewal',
+          amountDollars:      Number(doc.amountPaid || 0),
+          invoiceNumber:      invoiceNum,
+          paymentMethod:      'wire',
+          paidAt:              now,
+          registrationId:      doc._id,
+        }).catch((e) => console.warn('[activateWirePayment] Admin notification failed:', e.message));
         return res.json({ success: true, activated: false, queued: true, data: updated });
       }
 
@@ -2561,10 +2616,14 @@ exports.activateWirePayment = async (req, res) => {
         req.params.id, { $set: upgradeUpdate }, { new: true }
       );
 
-      // Create invoice scoped to the additional holders so user sees upgrade charge
+      // Create invoice scoped to the additional holders so user sees upgrade charge.
+      // The result is captured (not discarded) because it carries the freshly
+      // generated invoice number — needed below for the admin notification, since
+      // this path deliberately does NOT reuse doc.invoiceNumber (see comment).
+      const upgradeAmount = additional > 0 && newPpc > 0 ? additional * newPpc : Number(doc.amountPaid || 0);
+      let upgradeInvoice = null;
       try {
-        const upgradeAmount = additional > 0 && newPpc > 0 ? additional * newPpc : Number(doc.amountPaid || 0);
-        await createOrUpdateInvoice({
+        upgradeInvoice = await createOrUpdateInvoice({
           registrationId:    doc._id,
           registrationModel: 'Airlines',
           snapshot: {
@@ -2590,6 +2649,18 @@ exports.activateWirePayment = async (req, res) => {
       } catch (invErr) {
         console.warn('[activateWirePayment] Holder-upgrade invoice failed:', invErr.message);
       }
+
+      sendAdminPaymentNotification(updated, {
+        registrationModel: 'Airlines',
+        purpose:            'holder-upgrade',
+        amountDollars:      upgradeAmount,
+        invoiceNumber:      upgradeInvoice?.invoiceNumber || '',
+        paymentMethod:      'wire',
+        paidAt:              now,
+        registrationId:      doc._id,
+        additionalHolderCount:  additional,
+        newPricePerCertificate: newPpc,
+      }).catch((e) => console.warn('[activateWirePayment] Admin notification failed:', e.message));
 
       return res.json({ success: true, activated: true, data: updated });
 
@@ -2623,11 +2694,14 @@ exports.activateWirePayment = async (req, res) => {
       // of any later holder-upgrade/renewal invoices. Without this, wire-activated
       // airlines had NO Invoice doc until one was generated manually — and a later
       // upgrade could become the only invoice on record.
+      // amount is declared outside the try so the admin notification below can
+      // reuse the exact figure the invoice was built with.
+      let amount = 0;
       try {
         const isUnlimited = updated.subscriptionPlan === 'Unlimited Plan';
         const holders     = Number(updated.committedCount || updated.holderCountValue || 1);
         const ppc         = Number(updated.pricePerCertificate || updated.pricePerCert || 0);
-        const amount      = isUnlimited ? ppc : ppc * holders;
+        amount = isUnlimited ? ppc : ppc * holders;
         await createOrUpdateInvoice({
           registrationId:    updated._id,
           registrationModel: 'Airlines',
@@ -2654,6 +2728,16 @@ exports.activateWirePayment = async (req, res) => {
       } catch (e) {
         console.warn('[activateWirePayment] Initial invoice failed:', e.message);
       }
+
+      sendAdminPaymentNotification(updated, {
+        registrationModel: 'Airlines',
+        purpose:            'payment',
+        amountDollars:      amount,
+        invoiceNumber,
+        paymentMethod:      'wire',
+        paidAt:              subscriptionDate,
+        registrationId:      updated._id,
+      }).catch((e) => console.warn('[activateWirePayment] Admin notification failed:', e.message));
 
       return res.json({ success: true, activated: true, data: updated });
     }

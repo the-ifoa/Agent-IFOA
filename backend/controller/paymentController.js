@@ -2611,6 +2611,17 @@ exports.adminHolderUpgrade = async (req, res) => {
         group.paymentId     = paymentId;
         await doc.save();
       }
+      sendAdminPaymentNotification(doc, {
+        registrationModel: 'Airlines',
+        purpose:            'holder-upgrade',
+        amountDollars:      amount,
+        invoiceNumber,
+        paymentMethod:      'admin',
+        paidAt:             now,
+        registrationId:     doc._id,
+        additionalHolderCount:  addCount,
+        newPricePerCertificate: ppc,
+      }).catch((e) => console.warn('[adminHolderUpgrade] Admin notification failed:', e.message));
     }
     return res.json({ success: true, data: doc });
   } catch (err) {
@@ -2636,6 +2647,15 @@ exports.markHolderGroupPaid = async (req, res) => {
     if (group.invoiceNumber) {
       group.paymentStatus = 'paid';
       await doc.save();
+      sendAdminPaymentNotification(doc, {
+        registrationModel: 'Airlines',
+        purpose:            'holder-upgrade',
+        amountDollars:      Number(group.amount || 0),
+        invoiceNumber:      group.invoiceNumber,
+        paymentMethod:      'admin',
+        paidAt:             new Date(),
+        registrationId:     doc._id,
+      }).catch((e) => console.warn('[markHolderGroupPaid] Admin notification failed:', e.message));
       return res.json({ success: true, data: doc });
     }
 
@@ -2644,6 +2664,15 @@ exports.markHolderGroupPaid = async (req, res) => {
     group.invoiceNumber = invoiceNumber;
     group.paymentId     = paymentId;
     await doc.save();
+    sendAdminPaymentNotification(doc, {
+      registrationModel: 'Airlines',
+      purpose:            'holder-upgrade',
+      amountDollars:      Number(group.amount || 0),
+      invoiceNumber,
+      paymentMethod:      'admin',
+      paidAt:             new Date(),
+      registrationId:     doc._id,
+    }).catch((e) => console.warn('[markHolderGroupPaid] Admin notification failed:', e.message));
     return res.json({ success: true, data: doc });
   } catch (err) {
     console.error('[markHolderGroupPaid]', err.message);
@@ -2811,6 +2840,18 @@ exports.adminRenew = async (req, res) => {
     } catch (invErr) {
       console.warn('[adminRenew] Invoice creation failed:', invErr.message);
     }
+
+    // Internal alert — an admin-issued renewal is still money changing hands and
+    // belongs in the same paper trail as a Stripe-confirmed one.
+    sendAdminPaymentNotification(updatedReg, {
+      registrationModel,
+      purpose:        'renewal',
+      amountDollars,
+      invoiceNumber:  invoiceNum,
+      paymentMethod:  'manual',
+      paidAt:         now,
+      registrationId,
+    }).catch((e) => console.warn('[adminRenew] Admin notification failed:', e.message));
 
     return res.json({ success: true, data: updatedReg, invoiceNumber: invoiceNum, amount: amountDollars });
   } catch (err) {
@@ -3026,6 +3067,18 @@ exports.adminConvertToUnlimited = async (req, res) => {
     } catch (invErr) {
       console.warn('[adminConvertToUnlimited] Invoice creation failed:', invErr.message);
     }
+
+    // Internal alert — an admin-issued conversion is still money changing hands
+    // and belongs in the same paper trail as a Stripe-confirmed one.
+    sendAdminPaymentNotification(updatedReg, {
+      registrationModel,
+      purpose:        'convert-unlimited',
+      amountDollars:  charge,
+      invoiceNumber:  invoiceNum,
+      paymentMethod:  invoiceDraft?.paymentMethod || 'manual',
+      paidAt:         now,
+      registrationId,
+    }).catch((e) => console.warn('[adminConvertToUnlimited] Admin notification failed:', e.message));
 
     return res.json({ success: true, data: updatedReg, invoiceNumber: invoiceNum, amount: charge });
   } catch (err) {

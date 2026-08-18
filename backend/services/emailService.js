@@ -408,6 +408,7 @@ async function buildWireRequestAdminNotificationHtml(doc) {
 
   const purposeLabel = purpose === 'renewal' ? 'Subscription Renewal'
     : purpose === 'holder-upgrade'            ? 'Holder Upgrade'
+    : purpose === 'convert-unlimited'         ? 'Convert to Unlimited'
     : 'Initial Registration';
 
   let detailRows = '';
@@ -438,6 +439,23 @@ async function buildWireRequestAdminNotificationHtml(doc) {
       <strong>Current Holder Count:</strong> ${current}<br />
       <strong>Additional Holders Requested:</strong> +${additional}<br />
       <strong>New Total:</strong> ${current + additional}`;
+  } else if (purpose === 'convert-unlimited') {
+    // wireRequestDetails is stamped by requestAirlineInvoice() with the exact
+    // tier breakdown quoted to the airline (see computeConversionCharge).
+    const details = doc.wireRequestDetails || {};
+    const currentPlan = fmtPlan(doc.subscriptionPlan || '—', doc.multiYearCount);
+    const holders      = Number(details.baseCount || doc.committedCount || doc.holderCountValue || 0);
+    const ppc           = Number(details.unlimitedPpc || 0);
+    const unlimitedTotal = Number(details.unlimitedTotal || 0);
+    const netCharge      = Number(details.amount || 0);
+    const credit          = unlimitedTotal - netCharge;
+    detailRows = `
+      <strong>Converting From:</strong> ${escHtml(details.oldPlanLabel || currentPlan)}<br />
+      <strong>Certificate Holders:</strong> ${holders || '—'}<br />
+      <strong>Unlimited Price per Certificate:</strong> ${ppc ? `$${ppc.toFixed(2)}` : '—'}<br />
+      <strong>Unlimited Total:</strong> ${unlimitedTotal ? `$${unlimitedTotal.toFixed(2)}` : '—'}<br />
+      <strong>Unused-Time Credit:</strong> ${credit > 0 ? `−$${credit.toFixed(2)}` : '$0.00'}<br />
+      <strong>Net Amount Requested:</strong> ${netCharge ? `$${netCharge.toFixed(2)}` : '—'}`;
   }
 
   return wrap(`
