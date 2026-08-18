@@ -12,7 +12,10 @@
     "verify:notifications": "node scripts/verifyNotifications.js",
     "verify:race": "node scripts/verifyPaymentRace.js",
     "verify:email": "node scripts/verifyEmailLinks.js",
-    "verify:all": "node scripts/checkInvoiceBoundary.js && node scripts/verifyArchitecture.js && node scripts/verifyInvoices.js && node scripts/verifyNotifications.js && node scripts/verifyPaymentRace.js && node scripts/verifyEmailLinks.js"
+    "verify:all": "node scripts/checkInvoiceBoundary.js && node scripts/verifyArchitecture.js && node scripts/verifyInvoices.js && node scripts/verifyNotifications.js && node scripts/verifyAdminSurface.js && node scripts/verifyUserFlows.js && node scripts/verifyReminderCap.js && node scripts/verifyPaymentRace.js && node scripts/verifyEmailLinks.js",
+    "verify:admin": "node scripts/verifyAdminSurface.js",
+    "verify:userflows": "node scripts/verifyUserFlows.js",
+    "verify:remindercap": "node scripts/verifyReminderCap.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -214,6 +214,24 @@ const AirlinesSchema = new mongoose.Schema({
   invoiceRequested:    { type: Boolean, default: false, index: true },
   invoiceRequestedAt:  { type: Date, default: null },
 
+
+  // ── Expiry reminder bookkeeping ─────────────────────────────────────────────
+  // Stamped by cron/subscriptionReminder.js when a 60- or 30-day expiry reminder
+  // is sent, and read back by its cooldown guard.
+  //
+  // These MUST be declared here. Mongoose runs strict:true by default and silently
+  // drops $set on an undeclared path — so while these were missing the stamp never
+  // persisted, the cooldown never engaged, and every subscription sitting in a
+  // reminder window was emailed again on every daily run.
+  // No default: the cooldown query treats an ABSENT field as "never sent". A
+  // `default: null` would make the field exist-but-null, which matches neither
+  // $exists:false nor $lt:<date> in MongoDB — silently suppressing all reminders.
+  expiryReminder60SentAt: { type: Date },
+  expiryReminder30SentAt: { type: Date },
+  // Rolling log of expiry-reminder send times, used to enforce a hard cap of
+  // MAX_REMINDERS_PER_MONTH (see cron/subscriptionReminder.js). Entries older than
+  // the rolling window are pruned on each write, so this never grows unbounded.
+  expiryReminderLog: { type: [Date], default: undefined },
   agreedToTerms: { type: Boolean, required: true },
   submittedAt:   { type: Date, default: Date.now },
 }, { timestamps: true });

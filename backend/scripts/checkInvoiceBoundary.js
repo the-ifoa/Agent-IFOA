@@ -46,6 +46,8 @@ const EXEMPT = [
   path.join('scripts', 'verifyPaymentRace.js'),
   path.join('scripts', 'verifyEmailLinks.js'),
   path.join('scripts', 'verifyArchitecture.js'),
+  path.join('scripts', 'verifyAdminSurface.js'),
+  path.join('scripts', 'verifyUserFlows.js'),
   path.join('scripts', 'checkInvoiceBoundary.js'),
 ];
 

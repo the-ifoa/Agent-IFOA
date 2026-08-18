@@ -376,7 +376,20 @@ export default function AdminInvoicesPage() {
                     {r.wirePending && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Wire pending</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-700">
-                    <div className="font-medium">{r.recipientCompany || r.recipientName || '—'}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {r.recipientCompany || r.recipientName || '—'}
+                      {/* The customer record was deleted by an admin. The invoice is
+                          deliberately kept (and its number permanently retired), so
+                          label it rather than let it look like a live account. */}
+                      {r.orphaned && (
+                        <span
+                          title="This customer record was deleted. The invoice is retained for the record and its number is permanently retired."
+                          className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 whitespace-nowrap"
+                        >
+                          Customer deleted
+                        </span>
+                      )}
+                    </div>
                     {r.recipientCompany && r.recipientName && <div className="text-xs text-slate-400">{r.recipientName}</div>}
                   </td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{SOURCE_LABEL[r.source] || r.source}{r.registrationModel ? ` · ${r.registrationModel}` : ''}</td>

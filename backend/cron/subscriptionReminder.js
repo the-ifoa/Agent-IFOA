@@ -15,8 +15,71 @@ const WINDOWS = [
   { days: 30, field: 'expiryReminder30SentAt' },
 ];
 
+// ── Hard cap: how often a customer may be reminded ───────────────────────────
+// At most MAX_REMINDERS_PER_MONTH expiry reminders to the same subscription in any
+// rolling REMINDER_WINDOW_DAYS period, enforced from a per-record send log.
+//
+// The per-window stamps above stop the SAME window re-firing; this is the
+// independent ceiling that holds no matter how many windows exist, how often the
+// job runs, or whether someone triggers it by hand.
+const MAX_REMINDERS_PER_MONTH = Number(process.env.MAX_REMINDERS_PER_MONTH || 2);
+const REMINDER_WINDOW_DAYS    = Number(process.env.REMINDER_WINDOW_DAYS || 30);
+
+/**
+ * Send the reminder for one window to a set of records, respecting the cap.
+ *
+ * @param {object}  Model         Airlines | Individual
+ * @param {Array}   docs          candidate records for this window
+ * @param {boolean} isAirline
+ * @param {number}  days          the window (60 / 30)
+ * @param {string}  field         the per-window stamp field
+ * @param {Set}     sentThisRun   recipient emails already mailed in this pass
+ * @returns {Promise<number>}     how many were actually sent
+ */
+async function sendWindowReminders(Model, docs, isAirline, days, field, sentThisRun) {
+  const cutoff = Date.now() - REMINDER_WINDOW_DAYS * MS_PER_DAY;
+  let sent = 0;
+
+  for (const doc of docs) {
+    // One customer, one email per run — even if two records for the same person
+    // land in the same window.
+    const recipient = String(doc.email || doc.paymentEmail || '').toLowerCase().trim();
+    if (recipient && sentThisRun.has(recipient)) continue;
+
+    // Prune the log to the rolling window, then apply the cap.
+    const recent = (doc.expiryReminderLog || [])
+      .map(d => new Date(d))
+      .filter(d => d.getTime() >= cutoff);
+    if (recent.length >= MAX_REMINDERS_PER_MONTH) {
+      console.log(`[reminderCron] capped — ${Model.modelName} ${doc._id} already had ${recent.length} reminder(s) in ${REMINDER_WINDOW_DAYS} days`);
+      continue;
+    }
+
+    try {
+      const actualDays = doc.expirationDate
+        ? Math.ceil((new Date(doc.expirationDate) - Date.now()) / MS_PER_DAY)
+        : days;
+      await sendExpiryReminder(doc, isAirline, actualDays);
+
+      const now = new Date();
+      // Writing the pruned array + this send both records and trims in one update.
+      await Model.findByIdAndUpdate(doc._id, {
+        $set: { [field]: now, expiryReminderLog: [...recent, now] },
+      });
+      if (recipient) sentThisRun.add(recipient);
+      sent += 1;
+    } catch (e) {
+      console.error(`[reminderCron] ${Model.modelName} ${doc._id} ${days}d failed:`, e.message);
+    }
+  }
+  return sent;
+}
+
 async function runReminders() {
   const now = Date.now();
+  // Recipients already mailed in THIS pass — a customer never receives two
+  // reminders from a single run, even across different windows.
+  const sentThisRun = new Set();
 
   for (const { days, field } of WINDOWS) {
     const windowStart = new Date(now + (days - 3) * MS_PER_DAY);
@@ -33,7 +96,7 @@ async function runReminders() {
       expirationDate: { $gte: windowStart, $lte: windowEnd },
       status: 'Active',
       subscriptionPlan: { $ne: UNLIMITED },
-      $or: [{ [field]: { $exists: false } }, { [field]: { $lt: cooldown } }],
+      $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: { $lt: cooldown } }],
       // Skip records where the user has already paid for a renewal
       'nextRenewal.paidAt': { $in: [null, undefined] },
     };
@@ -43,32 +106,11 @@ async function runReminders() {
       Individual.find(baseQuery).lean(),
     ]);
 
-    for (const doc of airlines) {
-      try {
-        const actualDays = doc.expirationDate
-          ? Math.ceil((new Date(doc.expirationDate) - Date.now()) / MS_PER_DAY)
-          : days;
-        await sendExpiryReminder(doc, true, actualDays);
-        await Airlines.findByIdAndUpdate(doc._id, { $set: { [field]: new Date() } });
-      } catch (e) {
-        console.error(`[reminderCron] airline ${doc._id} ${days}d failed:`, e.message);
-      }
-    }
+    const sentAir = await sendWindowReminders(Airlines, airlines, true, days, field, sentThisRun);
+    const sentInd = await sendWindowReminders(Individual, individuals, false, days, field, sentThisRun);
 
-    for (const doc of individuals) {
-      try {
-        const actualDays = doc.expirationDate
-          ? Math.ceil((new Date(doc.expirationDate) - Date.now()) / MS_PER_DAY)
-          : days;
-        await sendExpiryReminder(doc, false, actualDays);
-        await Individual.findByIdAndUpdate(doc._id, { $set: { [field]: new Date() } });
-      } catch (e) {
-        console.error(`[reminderCron] individual ${doc._id} ${days}d failed:`, e.message);
-      }
-    }
-
-    if (airlines.length + individuals.length > 0) {
-      console.log(`[reminderCron] ${days}-day window: ${airlines.length} airlines, ${individuals.length} individuals notified`);
+    if (sentAir + sentInd > 0) {
+      console.log(`[reminderCron] ${days}-day window: ${sentAir} airlines, ${sentInd} individuals notified`);
     }
   }
 }
@@ -188,4 +230,12 @@ function startSubscriptionReminderCron() {
   console.log('[reminderCron] Scheduled — runs daily at 08:00 UTC');
 }
 
-module.exports = { startSubscriptionReminderCron, activateMaturedRenewals, activateMaturedGroupRenewals, reclaimInvoiceNumbers };
+// runReminders is exported so the reminder targeting (which windows fire, who is
+// skipped) can be verified directly rather than only via the daily schedule.
+module.exports = {
+  startSubscriptionReminderCron,
+  runReminders,
+  activateMaturedRenewals,
+  activateMaturedGroupRenewals,
+  reclaimInvoiceNumbers,
+};
