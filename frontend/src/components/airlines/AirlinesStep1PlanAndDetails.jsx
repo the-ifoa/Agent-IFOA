@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { airlinePricePerCertByRange } from '../../services/pricing'
 import LegalCheckboxes from '../legal/LegalModal'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -38,23 +39,11 @@ const COUNTRY_TO_ISO2 = {
   'Venezuela': 've', 'Vietnam': 'vn', 'Yemen': 'ye', 'Zambia': 'zm', 'Zimbabwe': 'zw',
 }
 
-const PRICE_MAP = {
-  '3 to 5':       { '1 Year Subscription Plan': 60,  'Unlimited Plan': 265 },
-  '5 to 10':      { '1 Year Subscription Plan': 55,  'Unlimited Plan': 255 },
-  'More than 10': { '1 Year Subscription Plan': 49,  'Unlimited Plan': 245 },
-}
-
-const PRICE_LABEL = {
-  '3 to 5':       '$60.00',
-  '5 to 10':      '$55.00',
-  'More than 10': '$49.00',
-}
-
-const UNLIMITED_PRICE_LABEL = {
-  '3 to 5':       '$265.00',
-  '5 to 10':      '$255.00',
-  'More than 10': '$245.00',
-}
+// Prices come from the server (services/pricing.js → GET /api/pricing/config).
+// Never reintroduce a local table here: the customer must be shown the same
+// per-certificate rate the backend uses to build the PaymentIntent.
+const ppcFor = (plan, rangeKey) => airlinePricePerCertByRange(plan, rangeKey)
+const priceLabel = (plan, rangeKey) => `$${ppcFor(plan, rangeKey).toFixed(2)}`
 
 const COUNT_OPTIONS = {
   '3 to 5':       [3, 4, 5],
@@ -247,7 +236,7 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
                 <input type="radio" name="holderCount" value={count} checked={active}
                   onChange={() => {
                     const plan = data.subscriptionPlan || '1 Year Subscription Plan'
-                    update({ holderCount: count, holderCountValue: '', pricePerCertificate: PRICE_MAP[count]?.[plan] || 49 })
+                    update({ holderCount: count, holderCountValue: '', pricePerCertificate: ppcFor(plan, count) })
                   }}
                   className="hidden" />
                 {count}
@@ -287,7 +276,7 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
             value={data.subscriptionPlan || ''}
             onChange={e => {
               const plan = e.target.value
-              const price = data.holderCount ? PRICE_MAP[data.holderCount]?.[plan] : null
+              const price = data.holderCount ? ppcFor(plan, data.holderCount) : null
               update({ subscriptionPlan: plan, pricePerCertificate: price || 0 })
             }}
             className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 bg-white outline-none cursor-pointer transition-all duration-150 focus:ring-2 focus:ring-blue-600/15 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M2.22%204.47a.75.75%200%20011.06%200L6%207.19l2.72-2.72a.75.75%200%20011.06%201.06l-3.25%203.25a.75.75%200%2001-1.06%200L2.22%205.53a.75.75%200%20010-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center] pr-10 ${errors.subscriptionPlan ? 'border-red-300' : 'border-gray-200 focus:border-blue-600 hover:border-gray-300'}`}
@@ -307,7 +296,7 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
             <p className="text-sm font-bold text-gray-900">
               Price:{' '}
               <span className="text-green-600 text-base">
-                {data.subscriptionPlan === '1 Year Subscription Plan' && data.holderCount ? PRICE_LABEL[data.holderCount] : data.subscriptionPlan === 'Unlimited Plan' && data.holderCount ? UNLIMITED_PRICE_LABEL[data.holderCount] : '—'}
+                {data.holderCount && data.subscriptionPlan ? priceLabel(data.subscriptionPlan, data.holderCount) : '—'}
               </span>
               {data.subscriptionPlan === '1 Year Subscription Plan' && <span className="text-xs text-gray-400 font-normal ml-1.5">per certificate / year</span>}
               {data.subscriptionPlan === 'Unlimited Plan' && <span className="text-xs text-gray-400 font-normal ml-1.5">per certificate / unlimited</span>}

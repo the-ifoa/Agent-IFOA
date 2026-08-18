@@ -43,8 +43,9 @@ const InvoiceSchema = new mongoose.Schema({
   paymentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Payment',
-    index: true,
     default: null,
+    // Indexed by the explicit unique partial index declared below — do not add
+    // `index: true` here as well, it creates a conflicting duplicate.
   },
   registrationId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -120,6 +121,33 @@ const InvoiceSchema = new mongoose.Schema({
   // false = visible to the airline.
   wirePending: { type: Boolean, default: false },
 
+  // ── Retired, but never erased ───────────────────────────────────────────────
+  // An invoice that had money against it is VOIDED rather than deleted, and its
+  // number is retired for good. Deleting a settled invoice to reclaim its number
+  // would destroy the record that a customer was charged.
+  voidedAt: { type: Date, default: null },
+
+  // The registration this invoice belonged to has been deleted by an admin. The
+  // invoice is kept — recipient details are denormalised above, so it still reads
+  // correctly without the customer record — and its number stays permanently
+  // retired. It was genuinely issued to someone, so it is never handed out again.
+  orphaned:   { type: Boolean, default: false, index: true },
+  orphanedAt: { type: Date, default: null },
+
 }, { timestamps: true });
+
+// One invoice per payment, enforced by the database rather than by application
+// timing. The confirm endpoint and the Stripe webhook deliberately race on the
+// same PaymentIntent; without this index a lucky interleaving produced two
+// invoices (and two numbers) for one payment. Partial so the many wire/manual
+// invoices with paymentId: null are unaffected.
+InvoiceSchema.index(
+  { paymentId: 1 },
+  {
+    name: 'paymentId_unique',
+    unique: true,
+    partialFilterExpression: { paymentId: { $type: 'objectId' } },
+  },
+);
 
 module.exports = mongoose.model('Invoice', InvoiceSchema);

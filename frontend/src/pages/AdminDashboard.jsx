@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
+import { airlinePricePerCert, individualPrice } from '../services/pricing'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
@@ -1784,8 +1785,9 @@ function AdminIndividualUpgradeModal({ record, onClose, onConfirm }) {
   const curLabel = record.subscriptionPlan === 'Multiple Years Subscription Plan' ? `Multi-Year · ${oldYears}y`
     : record.subscriptionPlan === 'Unlimited Plan' ? 'Unlimited' : '1 Year'
   const currentTotal = Number(record.price) > 0 ? Number(record.price)
-    : record.subscriptionPlan === '1 Year Subscription Plan' ? 69
-      : record.subscriptionPlan === 'Multiple Years Subscription Plan' ? 55 * oldYears : 0
+    : (record.subscriptionPlan === '1 Year Subscription Plan'
+       || record.subscriptionPlan === 'Multiple Years Subscription Plan')
+      ? individualPrice(record.subscriptionPlan, oldYears) : 0
   // Unused-time fraction credit — mirrors backend computeConversionCharge.
   let credit = 0
   if (exp && exp > now && currentTotal > 0) {
@@ -1794,7 +1796,10 @@ function AdminIndividualUpgradeModal({ record, onClose, onConfirm }) {
     credit = Math.round(currentTotal * Math.min(1, remMs / totalMs) * 100) / 100
   }
   const targetYearsVal = Math.max(2, Number(years) || 2)
-  const targetPrice = isMulti ? 55 * targetYearsVal : 299
+  const targetPrice = individualPrice(
+    isMulti ? 'Multiple Years Subscription Plan' : 'Unlimited Plan',
+    targetYearsVal,
+  )
   const targetLabel = isMulti ? `Multi-Year · ${targetYearsVal}y` : 'Unlimited'
   // Credit breakdown details (for display).
   const termDays = (start && exp && exp > start) ? Math.round((exp - start) / 86400000) : null
@@ -2431,12 +2436,9 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
 }
 
 // ─── Admin Holder Count Modal (manual upgrade / reduction) ──────────────────────
-const ADMIN_ONE_YEAR_PPC = { '3 to 5': 60, '5 to 10': 55, 'More than 10': 49 }
-const ADMIN_UNLIMITED_PPC = { '3 to 5': 265, '5 to 10': 255, 'More than 10': 245 }
-function adminTierPpc(plan, count) {
-  const range = count <= 5 ? '3 to 5' : count <= 10 ? '5 to 10' : 'More than 10'
-  return plan === 'Unlimited Plan' ? ADMIN_UNLIMITED_PPC[range] : ADMIN_ONE_YEAR_PPC[range]
-}
+// Tier pricing comes from the server (services/pricing.js) so the admin sees the
+// same rate the customer is quoted and the same rate the backend charges.
+const adminTierPpc = airlinePricePerCert
 
 // ── Set Base Plan ────────────────────────────────────────────────────────────
 // Popup shown for a signed-up account that has no plan yet (__noPlan). Lets the
@@ -2475,7 +2477,7 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
   // Auto (tiered) per-unit price. Airlines price per certificate; individuals a flat plan price.
   const autoPpc = isAirline
     ? adminTierPpc(plan, Math.max(3, Number(count) || 3))
-    : (isUnlimited ? 299 : isMulti ? 55 * Math.max(2, Number(years) || 2) : 69)
+    : individualPrice(plan, Number(years) || 2)
   const effPpc = priceOverride !== '' ? Number(priceOverride) : autoPpc
   const total = isAirline ? effPpc * (Number(count) || 0) : effPpc
 
@@ -3886,7 +3888,7 @@ function AdminRenewModal({ record, model, group = null, onClose, onSaved }) {
   const ppc = isAirline ? adminTierPpc(plan, Math.max(3, totalCount)) : 0
   const computed = isAirline
     ? ppc * Math.max(1, count) * (isMulti ? Math.max(2, years) : 1)
-    : (isUnlimited ? 299 : isMulti ? 55 * Math.max(2, years) : 69)
+    : individualPrice(plan, years)
   const finalPrice = priceOverride !== '' && Number(priceOverride) >= 0 ? Number(priceOverride) : computed
 
   const curExpiry = isGroup ? group.expirationDate : record.expirationDate

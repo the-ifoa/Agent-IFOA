@@ -14,6 +14,7 @@ const {
   refreshInvoice,
   sendRenewalReminders,
   adminConversionQuote,
+  conversionQuote,
   adminConvertToUnlimited,
   getPlanCredits,
 } = require('../controller/paymentController');
@@ -54,6 +55,11 @@ router.post('/admin/cancel-renewal', auth, adminOnly, cancelQueuedRenewal);
 
 // ── Admin: quote the net charge for converting base/group → Unlimited ─────────
 router.get('/admin/conversion-quote', auth, adminOnly, adminConversionQuote);
+
+// Owner-or-admin: the authoritative price of an upgrade. The subscription page
+// shows exactly what this returns, so the quoted figure and the charged figure
+// are produced by the same code.
+router.get('/upgrade-quote', auth, conversionQuote);
 
 // ── Admin: convert base/group → Unlimited and generate the invoice ────────────
 router.post('/admin/convert-unlimited', auth, adminOnly, adminConvertToUnlimited);

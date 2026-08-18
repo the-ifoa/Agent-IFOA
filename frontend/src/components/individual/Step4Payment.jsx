@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { effectiveMultiYears } from '../../services/pricing'
 import { Link } from 'react-router-dom'
 import PaymentModal from '../payment/PaymentModal'
 import { LegalModal } from '../legal/LegalModal'
@@ -115,9 +116,10 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
     if (!plan) return '—'
     if (plan === 'Multiple Years Subscription Plan') {
       const priceNum = Number(displayData.price ?? data.price ?? 0)
-      const yrs = priceNum >= 110
-        ? Math.round(priceNum / 55)   // price is always correct: 55 × chosen years
-        : (displayData.multiYearCount || data.multiYearCount || 2)
+      // price is always saved correctly (per-year rate × chosen years), so it is
+      // the more trustworthy signal. Rate comes from the server's tables.
+      const yrs = effectiveMultiYears(plan, priceNum)
+        || displayData.multiYearCount || data.multiYearCount || 2
       return `Multiple Years Subscription Plan (${yrs} yr${yrs !== 1 ? 's' : ''})`
     }
     return plan

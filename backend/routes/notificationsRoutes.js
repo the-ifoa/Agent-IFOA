@@ -6,6 +6,7 @@ const HolderEvent = require('../models/HolderEvent');
 const Individual  = require('../models/Individual');
 const User        = require('../models/User');
 const Airlines    = require('../models/Airlines');
+const pricing     = require('../shared/pricing');
 const adminOnly = (req, res, next) => {
   if (req.user?.role !== 'admin')
     return res.status(403).json({ success: false, message: 'Admin access required.' });
@@ -77,8 +78,12 @@ router.post('/holder-events/:id/convert', auth, adminOnly, async (req, res) => {
     const primaryAirmanCertificate = snapshot.certificateStatus === 'NEW' ? 'NEW' : 'EXISTING';
 
     const airlinePlan = (airline && airline.subscriptionPlan) || '1 Year Subscription Plan';
-    const INDIV_PRICE = { '1 Year Subscription Plan': 69, 'Unlimited Plan': 299, 'Multiple Years Subscription Plan': 55 };
-    const individualPrice = INDIV_PRICE[airlinePlan] || 69;
+    // A converted holder is billed at the standard INDIVIDUAL rate for the plan
+    // they inherit from the airline. Rates come from shared/pricing.js only.
+    const individualPrice = pricing.individualPrice(
+      airlinePlan,
+      (airline && airline.multiYearCount) || null,
+    );
 
     const individual = await Individual.create({
       firstName,

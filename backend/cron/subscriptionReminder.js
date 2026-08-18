@@ -153,6 +153,29 @@ async function activateMaturedGroupRenewals() {
   }
 }
 
+/**
+ * Reclaim invoice numbers that were claimed but never attached to a record.
+ *
+ * The payment paths hand a claim back the moment they know it is unused, so this
+ * is a safety net rather than the primary mechanism — it catches anything lost to
+ * a process crash between claiming a number and writing the row. Without it such a
+ * number stays a permanent hole in the sequence until the next restart.
+ *
+ * Cheap and idempotent: it recomputes the high-water mark and the free list from
+ * what the database actually references.
+ */
+async function reclaimInvoiceNumbers() {
+  const { reconcileInvoiceSequences } = require('../services/invoiceNumberService');
+  const invoiceStore = require('../services/invoiceStore');
+  const stale = await invoiceStore.clearStaleMirrors();
+  if (stale.cleared) console.log(`[invoiceSweep] cleared ${stale.cleared} stale invoice pointer(s)`);
+  const result = await reconcileInvoiceSequences();
+  if (result.released.length) {
+    console.log(`[invoiceSweep] ${result.released.length} number(s) available for reuse: ${result.released.join(', ')}`);
+  }
+  return result;
+}
+
 function startSubscriptionReminderCron() {
   // Run daily at 8:00 AM UTC
   cron.schedule('0 8 * * *', () => {
@@ -160,8 +183,9 @@ function startSubscriptionReminderCron() {
     runReminders().catch((e) => console.error('[reminderCron] Error:', e.message));
     activateMaturedRenewals().catch((e) => console.error('[renewalCron] Error:', e.message));
     activateMaturedGroupRenewals().catch((e) => console.error('[renewalCron][group] Error:', e.message));
+    reclaimInvoiceNumbers().catch((e) => console.error('[invoiceSweep] Error:', e.message));
   });
   console.log('[reminderCron] Scheduled — runs daily at 08:00 UTC');
 }
 
-module.exports = { startSubscriptionReminderCron, activateMaturedRenewals, activateMaturedGroupRenewals };
+module.exports = { startSubscriptionReminderCron, activateMaturedRenewals, activateMaturedGroupRenewals, reclaimInvoiceNumbers };

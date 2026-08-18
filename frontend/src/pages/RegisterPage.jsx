@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
+import { individualPrice, airlinePricePerCert, airlineMinHolders, effectiveMultiYears } from '../services/pricing'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion as Motion } from 'framer-motion'
 import axios from 'axios'
@@ -52,9 +53,11 @@ const AIRLINES_STEPS = [
   { label: 'Payment',              detail: 'Submit registration and receive your invoice.' },
 ]
 
-const INDIVIDUAL_INIT = {
+// Built lazily: pricing is fetched from the server, so the default price must be
+// read at render time (inside <PricingProvider>) rather than at module load.
+const makeIndividualInit = () => ({
   subscriptionPlan: '1 Year Subscription Plan',
-  price: 69.0,
+  price: individualPrice('1 Year Subscription Plan'),
   firstName: '', lastName: '', middleName: '', dateOfBirth: '',
   addressLine1: '', city: '', state: '', postalCode: '', country: '',
   phone: '', email: '',
@@ -63,11 +66,11 @@ const INDIVIDUAL_INIT = {
   hasSecondaryCertificate: false,
   secondaryCertificate: '', secondaryFaaCertificateNumber: '', secondaryIacraTrackingNumber: '',
   paymentEmail: '', agreedToTerms: false,
-}
+})
 
-const AIRLINES_INIT = {
+const makeAirlinesInit = () => ({
   subscriptionPlan: '1 Year Subscription Plan',
-  pricePerCertificate: 49,
+  pricePerCertificate: airlinePricePerCert('1 Year Subscription Plan', airlineMinHolders()),
   totalAmount: 0,
   airlineName: '',
   logoUrl: '',
@@ -76,14 +79,14 @@ const AIRLINES_INIT = {
   addressLine1: '', addressLine2: '', city: '', state: '', postalCode: '', country: '',
   holderCount: '', holderCountValue: '', certificateHolders: [],
   paymentEmail: '', paymentStatus: 'pending', agreedToTerms: false,
-}
+})
 
 function hydrateAirlineFormFromExisting(existing) {
   if (!existing) return null
   return {
-    subscriptionPlan: existing.subscriptionPlan || AIRLINES_INIT.subscriptionPlan,
-    pricePerCertificate: Number(existing.pricePerCertificate ?? existing.pricePerCert ?? AIRLINES_INIT.pricePerCertificate),
-    totalAmount: Number(existing.totalAmount ?? existing.totalServiceFees ?? AIRLINES_INIT.totalAmount),
+    subscriptionPlan: existing.subscriptionPlan || makeAirlinesInit().subscriptionPlan,
+    pricePerCertificate: Number(existing.pricePerCertificate ?? existing.pricePerCert ?? makeAirlinesInit().pricePerCertificate),
+    totalAmount: Number(existing.totalAmount ?? existing.totalServiceFees ?? makeAirlinesInit().totalAmount),
     airlineName: existing.airlineName || '',
     logoUrl: existing.logoUrl || '',
     firstName: existing.firstName || existing.contactFirstName || '',
@@ -115,8 +118,8 @@ function hydrateAirlineFormFromExisting(existing) {
 function hydrateIndividualFormFromExisting(existing) {
   if (!existing) return null
   return {
-    subscriptionPlan: existing.subscriptionPlan || INDIVIDUAL_INIT.subscriptionPlan,
-    price: Number(existing.price ?? existing.totalAmount ?? existing.totalServiceFees ?? INDIVIDUAL_INIT.price),
+    subscriptionPlan: existing.subscriptionPlan || makeIndividualInit().subscriptionPlan,
+    price: Number(existing.price ?? existing.totalAmount ?? existing.totalServiceFees ?? makeIndividualInit().price),
     multiYearCount: existing.multiYearCount || null,
     firstName: existing.firstName || '',
     lastName: existing.lastName || '',
@@ -416,7 +419,7 @@ function ExistingOrderSummary({ regType, data }) {
               ? (() => {
                   const yrs = Number(data.multiYearCount) > 1
                     ? Number(data.multiYearCount)
-                    : Math.max(2, Math.round(Number(data.price || 0) / 55))
+                    : (effectiveMultiYears(data.subscriptionPlan, data.price) || 2)
                   return `Multiple Years (${yrs} yrs)`
                 })()
               : (data.subscriptionPlan || '1 Year Subscription Plan')} />
@@ -523,13 +526,13 @@ export default function RegisterPage() {
   }, [user?.email])
 
   const [indStep, setIndStep] = useState(1)
-  const [indData, setIndData] = useState(INDIVIDUAL_INIT)
+  const [indData, setIndData] = useState(makeIndividualInit)
   const [indSubmitted, setIndSubmitted] = useState(false)
   const [indSubmitting, setIndSubmitting] = useState(false)
   const [indError, setIndError] = useState('')
 
   const [airStep, setAirStep] = useState(1)
-  const [airData, setAirData] = useState(AIRLINES_INIT)
+  const [airData, setAirData] = useState(makeAirlinesInit)
   const [airSubmitted, setAirSubmitted] = useState(false)
   const [airSubmitting, setAirSubmitting] = useState(false)
   const [airError, setAirError] = useState('')

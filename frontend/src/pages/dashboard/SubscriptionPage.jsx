@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react'
+import { holderRangeFromCount, airlinePricePerCert, individualPrice } from '../../services/pricing'
 
 import { useAuth } from '../../context/AuthContext'
 import { useDataCache } from '../../context/DataCacheContext'
@@ -1176,20 +1177,11 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
 /*  Lets an active airline add more certificate holders (count-based pricing).    */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-// Airline pricing tiers — mirrors ONE_YEAR_PRICES / UNLIMITED_PRICES in airlinesController.js
-const AIRLINE_ONE_YEAR_PPC = { '3 to 5': 60, '5 to 10': 55, 'More than 10': 49 }
-const AIRLINE_UNLIMITED_PPC = { '3 to 5': 265, '5 to 10': 255, 'More than 10': 245 }
-
-function airlineHolderRange(count) {
-  if (count <= 5) return '3 to 5'
-  if (count <= 10) return '5 to 10'
-  return 'More than 10'
-}
-
-function airlineTierPpc(plan, totalCount) {
-  const range = airlineHolderRange(totalCount)
-  return plan === 'Unlimited Plan' ? AIRLINE_UNLIMITED_PPC[range] : AIRLINE_ONE_YEAR_PPC[range]
-}
+// Airline tier pricing comes from the server (services/pricing.js). The local
+// helpers below only give instant feedback while the user drags the holder
+// count; the amount actually charged is re-quoted from the server before
+// payment, so the two can never disagree.
+const airlineTierPpc = airlinePricePerCert
 
 const HOLDER_PLAN_OPTIONS = [
   { value: '1 Year Subscription Plan', label: '1 Year', short: '1 Year' },
@@ -2869,40 +2861,41 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
   const unitExpiry = isGroup ? group.expirationDate : sub.expirationDate
   const expiryLabel = unitExpiry ? fmt(unitExpiry) : '—'
 
-  // ── Estimated price (display only — backend is authoritative) ───────────────
-  // Mirrors compute(Group)ConversionCharge(): Unlimited tier ppc stacked on active
-  // coverage (excluding the unit being converted), minus a prorated credit for the
-  // unused portion of the unit's current term.
-  const now = new Date()
-  const exp = unitExpiry ? new Date(unitExpiry) : null
-  const start = (isGroup ? group.subscriptionDate : sub.subscriptionDate)
-    ? new Date(isGroup ? group.subscriptionDate : sub.subscriptionDate) : null
-  const oldYears = (isGroup ? group.plan : sub.subscriptionPlan) === 'Multiple Years Subscription Plan'
-    ? Math.max(2, Number((isGroup ? group.multiYearCount : sub.multiYearCount) || 2)) : 1
-  const anchor = isGroup
-    ? activeCoverageAnchor(sub, { excludeGroupId: group._id })
-    : activeCoverageAnchor(sub, { excludeBase: true })
-  const unlimitedPpc = isAirline
-    ? getRenewPpc('Unlimited Plan', Math.max(3, anchor + baseCount))
-    : (effTarget === 'Unlimited Plan' ? 299 : effTarget === 'Multiple Years Subscription Plan' ? 55 : 69)
-  const unlimitedTotal = isAirline
-    ? unlimitedPpc * baseCount
-    : (effTarget === 'Multiple Years Subscription Plan' ? 55 * tYears : unlimitedPpc)
-  const currentBaseTotal = isGroup
-    ? Number(group.pricePerCert || 0) * baseCount * oldYears
-    : isAirline
-      ? Number(sub.pricePerCertificate || sub.pricePerCert || 0) * baseCount * oldYears
-      : (Number(sub.price) > 0 ? Number(sub.price)
-          : sub.subscriptionPlan === '1 Year Subscription Plan' ? 69
-          : sub.subscriptionPlan === 'Multiple Years Subscription Plan' ? 55 * oldYears
-          : 0)
-  let credit = 0
-  if (exp && exp > now && currentBaseTotal > 0) {
-    const totalMs = (start && exp > start) ? (exp - start) : oldYears * 365 * 86400000
-    const remMs = Math.max(0, exp - now)
-    credit = Math.round(currentBaseTotal * Math.min(1, remMs / totalMs) * 100) / 100
-  }
-  const estCharge = Math.max(0, Math.round((unlimitedTotal - credit) * 100) / 100)
+  // ── Price of this upgrade — quoted by the server ────────────────────────────
+  // This used to be recomputed here, duplicating compute(Group)ConversionCharge()
+  // and carrying its own copy of the plan prices. That is precisely how the figure
+  // shown to the customer drifted away from the figure they were charged. The
+  // modal now asks the backend, which prices it with the same function that later
+  // builds the PaymentIntent.
+  const [quote, setQuote] = useState(null)
+  const [quoteErr, setQuoteErr] = useState('')
+  const [quoteLoading, setQuoteLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setQuoteLoading(true)
+    setQuoteErr('')
+    API.get('/payments/upgrade-quote', {
+      params: {
+        registrationId:        sub._id,
+        registrationModel:     isAirline ? 'Airlines' : 'Individual',
+        ...(isGroup ? { holderGroupId: String(group._id) } : {}),
+        targetPlan:            effTarget,
+        targetMultiYearCount:  effTarget === 'Multiple Years Subscription Plan' ? tYears : undefined,
+      },
+    })
+      .then((res) => { if (!cancelled) setQuote(res.data?.quote || null) })
+      .catch((e) => {
+        if (!cancelled) setQuoteErr(e?.response?.data?.message || 'Could not load the upgrade price.')
+      })
+      .finally(() => { if (!cancelled) setQuoteLoading(false) })
+    return () => { cancelled = true }
+  }, [sub._id, isAirline, isGroup, group?._id, effTarget, tYears])
+
+  const unlimitedPpc   = Number(quote?.unlimitedPpc   || 0)
+  const unlimitedTotal = Number(quote?.unlimitedTotal || 0)
+  const credit         = Number(quote?.credit         || 0)
+  const estCharge      = Number(quote?.charge         || 0)
   const money = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const unitLabel = isGroup ? 'add-on plan' : 'base plan'
   const targetLabel = effTarget === 'Unlimited Plan' ? 'Unlimited'
@@ -2936,7 +2929,7 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
   if (showMethodStep) {
     return (
       <PaymentMethodStep
-        amountLabel={`~${money(estCharge)}`}
+        amountLabel={money(estCharge)}
         summary={`Convert to Unlimited${isAirline ? ` · ${baseCount} holder${baseCount !== 1 ? 's' : ''}` : ''}`}
         submitting={wireSubmitting}
         error={wireErr}
@@ -3018,15 +3011,27 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
             <div className="flex justify-between"><span className="text-slate-500">Expires</span><span className="font-semibold text-slate-800">{expiryLabel}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">After upgrade</span><span className="font-semibold text-blue-700">{effTarget === 'Unlimited Plan' ? 'Unlimited — no expiry' : `${targetLabel}`}</span></div>
           </div>
-          {/* Estimated price breakdown */}
-          <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-3 space-y-1.5 text-[11px]">
-            <div className="flex justify-between"><span className="text-slate-500">{targetLabel}{isAirline ? ` (${money(unlimitedPpc)} × ${baseCount})` : ''}</span><span className="font-semibold text-slate-800">{money(unlimitedTotal)}</span></div>
-            {credit > 0 && <div className="flex justify-between"><span className="text-slate-500">Credit — unused {currentPlanLabel}</span><span className="font-semibold text-emerald-600">−{money(credit)}</span></div>}
-            <div className="flex justify-between border-t border-blue-100 pt-1.5"><span className="font-bold text-slate-700">Estimated total</span><span className="font-extrabold text-blue-700">{money(estCharge)}</span></div>
-          </div>
-          <p className="text-[10px] text-slate-400">
-            Estimate only — the exact amount (recalculated at the moment of payment) is shown at checkout.
-          </p>
+          {/* Price breakdown — quoted by the server, not computed here */}
+          {quoteLoading ? (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-6 flex justify-center">
+              <div className="w-5 h-5 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin" />
+            </div>
+          ) : quoteErr ? (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-3.5 py-3 text-[11px] text-red-600">
+              {quoteErr}
+            </div>
+          ) : (
+            <>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-3 space-y-1.5 text-[11px]">
+                <div className="flex justify-between"><span className="text-slate-500">{targetLabel}{isAirline ? ` (${money(unlimitedPpc)} × ${baseCount})` : ''}</span><span className="font-semibold text-slate-800">{money(unlimitedTotal)}</span></div>
+                {credit > 0 && <div className="flex justify-between"><span className="text-slate-500">Credit — unused {currentPlanLabel}</span><span className="font-semibold text-emerald-600">−{money(credit)}</span></div>}
+                <div className="flex justify-between border-t border-blue-100 pt-1.5"><span className="font-bold text-slate-700">Total</span><span className="font-extrabold text-blue-700">{money(estCharge)}</span></div>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Priced by the server using the same calculation applied at checkout.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -3047,34 +3052,29 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  RenewModal                                                                   */
 /* ─────────────────────────────────────────────────────────────────────────── */
-const INDIVIDUAL_PLANS = [
-  { value: '1 Year Subscription Plan', label: '1 Year — $69', price: 69 },
-  { value: 'Multiple Years Subscription Plan', label: 'Multiple Years — $55/yr', price: null },
-  { value: 'Unlimited Plan', label: 'Unlimited — $299', price: 299 },
-]
+// Labels and prices are derived from the server's tables, so a price change
+// needs no frontend edit and can never leave this list stale.
+const makeIndividualPlans = () => {
+  const perYear = individualPrice('Multiple Years Subscription Plan', 2) / 2
+  const oneYear = individualPrice('1 Year Subscription Plan')
+  const unlimited = individualPrice('Unlimited Plan')
+  return [
+    { value: '1 Year Subscription Plan',         label: `1 Year — $${oneYear}`,            price: oneYear },
+    { value: 'Multiple Years Subscription Plan', label: `Multiple Years — $${perYear}/yr`, price: null },
+    { value: 'Unlimited Plan',                   label: `Unlimited — $${unlimited}`,       price: unlimited },
+  ]
+}
 const AIRLINE_PLANS = [
   { value: '1 Year Subscription Plan', label: '1 Year Plan' },
   { value: 'Unlimited Plan', label: 'Unlimited Plan' },
 ]
 
-// ── Airline tier pricing for renewals — identical to Form 1 (AirlinesStep1PlanAndDetails) ──
-// 1-Year:    3–5 → $60/cert, 5–10 → $55/cert, 10+ → $49/cert
-// Unlimited: 3–5 → $265/cert, 5–10 → $255/cert, 10+ → $245/cert
-const RENEW_PRICE_MAP = {
-  '3 to 5': { '1 Year Subscription Plan': 60, 'Unlimited Plan': 265 },
-  '5 to 10': { '1 Year Subscription Plan': 55, 'Unlimited Plan': 255 },
-  'More than 10': { '1 Year Subscription Plan': 49, 'Unlimited Plan': 245 },
-}
-
-function airlineRenewRange(count) {
-  if (count <= 5) return '3 to 5'
-  if (count <= 10) return '5 to 10'
-  return 'More than 10'
-}
+// Renewal tier pricing — the same server tables as the registration form, so a
+// renewal quote and a new-signup quote cannot drift apart.
+const airlineRenewRange = holderRangeFromCount
 
 function getRenewPpc(plan, count) {
-  const range = airlineRenewRange(Math.max(1, count))
-  return RENEW_PRICE_MAP[range]?.[plan] ?? 49
+  return airlinePricePerCert(plan, Math.max(1, count))
 }
 
 function RenewModal({ sub, role, group = null, onClose, onSaved }) {
@@ -3194,16 +3194,14 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
     if (isAirline) {
       return renewPpc * Math.max(1, exactCount) * airlineRenewYears
     }
-    // Individual plans — no certificate holders, fixed prices
-    if (plan === 'Unlimited Plan') return 299
-    if (plan === 'Multiple Years Subscription Plan') return 55 * Math.max(2, multiYearRenewCount)
-    return 69 // 1 Year
+    // Individual plans — no certificate holders; priced from the server's tables.
+    return individualPrice(plan, multiYearRenewCount)
   })()
 
   const renewalAmountCents = Math.round(renewalPrice * 100)
   const chargedCents = renewalAmountCents
 
-  const plans = isAirline ? AIRLINE_PLANS : INDIVIDUAL_PLANS
+  const plans = isAirline ? AIRLINE_PLANS : makeIndividualPlans()
   const unitExpiryDate = isGroup ? group.expirationDate : currentSub.expirationDate
   const currentExpiry = unitExpiryDate ? fmt(unitExpiryDate) : '—'
   const daysLeft = unitExpiryDate
@@ -3572,7 +3570,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
                 <div className="text-right">
                   {plan === 'Unlimited Plan' && !isAirline ? (
                     <>
-                      <p className="text-xl font-black text-emerald-600 tabular-nums">$299.00</p>
+                      <p className="text-xl font-black text-emerald-600 tabular-nums">${individualPrice('Unlimited Plan').toFixed(2)}</p>
                       <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider leading-none">Lifetime</p>
                     </>
                   ) : (
@@ -4090,7 +4088,7 @@ export default function SubscriptionPage() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-900 p-6 text-center">
               <p className="text-white font-black text-lg mb-2">Choose a Plan</p>
-              <p className="text-slate-300 text-sm mb-5">Starting from just $69/year for individuals.</p>
+              <p className="text-slate-300 text-sm mb-5">Starting from just ${individualPrice('1 Year Subscription Plan')}/year for individuals.</p>
               <Link to="/#pricing" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all">
                 View Plans
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>

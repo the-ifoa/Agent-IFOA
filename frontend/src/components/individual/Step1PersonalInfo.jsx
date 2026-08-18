@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { individualPrice } from '../../services/pricing'
 import LegalCheckboxes from '../legal/LegalModal'
 import PhoneInputLib from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
@@ -39,11 +40,8 @@ const COUNTRY_TO_ISO2 = {
   'Venezuela': 've', 'Vietnam': 'vn', 'Yemen': 'ye', 'Zambia': 'zm', 'Zimbabwe': 'zw',
 }
 
-const PRICES = {
-  '1 Year Subscription Plan': 69,
-  'Multiple Years Subscription Plan': 55, // base per year
-  'Unlimited Plan': 299,
-}
+// Individual plan prices come from the server (services/pricing.js). No local
+// table: the price shown here is the price the backend charges.
 
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'American Samoa', 'Andorra', 'Angola', 'Anguilla', 'Antarctica', 'Antigua and Barbuda', 'Argentina',
@@ -181,11 +179,7 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
             value={data.subscriptionPlan || ''}
             onChange={(e) => {
               const val = e.target.value
-              let p = PRICES[val] || 0
-              if (val === 'Multiple Years Subscription Plan') {
-                p = 55 * (data.multiYearCount || 2)
-              }
-              update({ subscriptionPlan: val, price: p })
+              update({ subscriptionPlan: val, price: individualPrice(val, data.multiYearCount) })
             }}
             className={`${inputCls('subscriptionPlan')} appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M2.22%204.47a.75.75%200%20011.06%200L6%207.19l2.72-2.72a.75.75%200%20011.06%201.06l-3.25%203.25a.75.75%200%2001-1.06%200L2.22%205.53a.75.75%200%20010-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center] pr-10 cursor-pointer text-sm font-semibold`}
           >
@@ -211,7 +205,7 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
                     value={data.multiYearCount || 2}
                     onChange={(e) => {
                       const yrs = parseInt(e.target.value)
-                      update({ multiYearCount: yrs, price: 55 * yrs })
+                      update({ multiYearCount: yrs, price: individualPrice('Multiple Years Subscription Plan', yrs) })
                     }}
                     className="cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white px-4 py-2 pr-10 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M2.22%204.47a.75.75%200%20011.06%200L6%207.19l2.72-2.72a.75.75%200%20011.06%201.06l-3.25%203.25a.75.75%200%2001-1.06%200L2.22%205.53a.75.75%200%20010-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center]"
                   >
@@ -230,16 +224,14 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
               <div>
                 <span className="block text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Total Price</span>
                 {data.subscriptionPlan === 'Multiple Years Subscription Plan' && (
-                  <span className="text-xs font-semibold text-blue-600 mt-1 block">($55.00 / year)</span>
+                  <span className="text-xs font-semibold text-blue-600 mt-1 block">
+                    (${individualPrice('Multiple Years Subscription Plan', 2) / 2}.00 / year)
+                  </span>
                 )}
               </div>
               <span className="text-3xl font-black text-slate-900">
-                {data.subscriptionPlan === 'Multiple Years Subscription Plan'
-                  ? `$${(55 * (data.multiYearCount || 2)).toFixed(2)}`
-                  : data.subscriptionPlan === '1 Year Subscription Plan'
-                  ? '$69.00'
-                  : data.subscriptionPlan === 'Unlimited Plan'
-                  ? '$299.00'
+                {data.subscriptionPlan
+                  ? `$${individualPrice(data.subscriptionPlan, data.multiYearCount).toFixed(2)}`
                   : '$0.00'}
               </span>
             </div>

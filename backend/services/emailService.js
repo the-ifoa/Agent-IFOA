@@ -3,6 +3,7 @@
 const nodemailer = require('nodemailer');
 const mjml2html  = require('mjml');
 const path       = require('path');
+const pricing    = require('../shared/pricing');
 
 // ── Transporter ───────────────────────────────────────────────────────────────
 function createTransporter() {
@@ -114,8 +115,8 @@ function escHtml(str) {
 function fmtPlan(plan, priceOrYears) {
   if (plan !== 'Multiple Years Subscription Plan') return plan;
   const n = Number(priceOrYears);
-  const years = n >= 110
-    ? Math.round(n / 55)
+  const years = n >= (pricing.INDIVIDUAL.multiYearPerYear * pricing.INDIVIDUAL.multiYearMinYears)
+    ? Math.round(n / pricing.INDIVIDUAL.multiYearPerYear)
     : (n >= 2 ? n : null);
   return years ? `Multiple Years Subscription Plan (${years} Years)` : plan;
 }

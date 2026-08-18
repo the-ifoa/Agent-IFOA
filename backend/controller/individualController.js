@@ -10,6 +10,8 @@ const {
   normalizeInvoiceNumber,
 } = require('../services/invoiceNumberService');
 const { createOrUpdateInvoice } = require('../services/invoiceService');
+const pricing = require('../shared/pricing');
+const invoiceStore = require('../services/invoiceStore');
 const { sendIndividualPaymentConfirmation } = require('../services/emailService');
 
 function toBool(v, defaultValue = false) {
@@ -125,17 +127,9 @@ function toNumberOrUndefined(v) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function normalizePlanPrice(plan, multiYearCount, explicitPrice) {
-  if (explicitPrice !== undefined && explicitPrice !== null && explicitPrice !== '') {
-    return Number(explicitPrice);
-  }
-  if (plan === 'Unlimited Plan') return 299;
-  if (plan === 'Multiple Years Subscription Plan') {
-    const years = Number(multiYearCount) > 1 ? Number(multiYearCount) : 2;
-    return 55 * years;
-  }
-  return 69;
-}
+// Individual plan prices come from shared/pricing.js — the ONE definition in the
+// repo. An admin-supplied explicitPrice still wins (handled inside).
+const normalizePlanPrice = pricing.individualPrice;
 
 function computeExpiration(plan, subscriptionDate, multiYearCount) {
   if (!subscriptionDate) return null;
@@ -201,8 +195,9 @@ function buildIndividualPayload(raw) {
       // Fallback: derive years from total multi-year fee when possible (e.g. 275 -> 5 years).
       const totalFee = toNumberOrUndefined(pick(src, ['totalServiceFees', 'Total Service Fees', 'price', 'Price', 'TOTAL']));
       if (subscriptionPlan === 'Multiple Years Subscription Plan' && Number.isFinite(totalFee)) {
-        const inferred = Math.round(Number(totalFee) / 55);
-        if (Number.isFinite(inferred) && inferred >= 2 && inferred <= 20 && Math.abs((inferred * 55) - Number(totalFee)) < 0.01) {
+        const perYear = pricing.INDIVIDUAL.multiYearPerYear;
+        const inferred = Math.round(Number(totalFee) / perYear);
+        if (Number.isFinite(inferred) && inferred >= 2 && inferred <= 20 && Math.abs((inferred * perYear) - Number(totalFee)) < 0.01) {
           multiYearCount = inferred;
         }
       }
@@ -699,7 +694,7 @@ exports.updateIndividual = async (req, res) => {
         let years = Number(payload.multiYearCount || existingForExpiry.multiYearCount || 0);
         if (!years && plan === 'Multiple Years Subscription Plan') {
           const recordPrice = Number(existingForExpiry.price || 0);
-          if (recordPrice > 0) years = Math.max(2, Math.round(recordPrice / 55));
+          if (recordPrice > 0) years = Math.max(pricing.INDIVIDUAL.multiYearMinYears, Math.round(recordPrice / pricing.INDIVIDUAL.multiYearPerYear));
         }
         // Seed subscriptionDate to now if the record never had one
         if (!existingForExpiry.subscriptionDate && !payload.subscriptionDate) {
@@ -782,13 +777,13 @@ exports.updateIndividual = async (req, res) => {
     // field matches. Plan state (isPaid) is untouched.
     if (isAdmin && (payload.paymentStatus === 'paid' || payload.paymentStatus === 'pending' || payload.paymentStatus === 'failed')) {
       try {
-        const Invoice = require('../models/Invoice');
+        // Delegate to the store rather than writing Invoice.status by hand: it also
+        // clears wirePending and handles the holder-group case, which this inline
+        // copy silently skipped.
+        const invoiceStore = require('../services/invoiceStore');
         const baseNum = normalizeInvoiceNumber(individual.invoiceNumber);
         if (baseNum) {
-          const newStatus = payload.paymentStatus === 'paid' ? 'paid' : 'issued';
-          const set = { status: newStatus };
-          if (newStatus === 'paid') set.paidAt = new Date();
-          await Invoice.updateOne({ registrationId: req.params.id, invoiceNumber: baseNum }, { $set: set });
+          await invoiceStore.setStatus(baseNum, payload.paymentStatus === 'paid' ? 'paid' : 'pending');
         }
       } catch (statusSyncErr) {
         console.warn('[updateIndividual] Invoice status sync failed:', statusSyncErr.message);
@@ -812,6 +807,12 @@ exports.deleteIndividual = async (req, res) => {
     const individual = await Individual.findByIdAndDelete(req.params.id);
     if (!individual)
       return res.status(404).json({ success: false, message: 'Not found' });
+
+    // Keep the invoices; retire their numbers permanently.
+    // They were genuinely issued to this customer, so they remain the record of
+    // what was charged (recipient details are stored on the invoice itself) and
+    // their numbers are never handed out to anyone else.
+    await invoiceStore.markRegistrationDeleted(individual._id);
 
     // Unlink deleted subscription from any linked user account.
     await User.updateMany(
@@ -870,6 +871,8 @@ exports.bulkDeleteIndividuals = async (req, res) => {
     await Individual.deleteMany({ _id: { $in: ids } });
 
     for (const ind of deleted) {
+      // Invoices are retained and their numbers retired — see deleteIndividual.
+      await invoiceStore.markRegistrationDeleted(ind._id);
       await User.updateMany(
         { subscriptionIds: ind._id },
         { $pull: { subscriptionIds: ind._id } },
@@ -887,6 +890,52 @@ exports.bulkDeleteIndividuals = async (req, res) => {
 };
 
 // ── Set nextRenewal.invoiceNumber (admin only) ─────────────────────────────────
+/**
+ * Rename the queued renewal's invoice number EVERYWHERE, through the store.
+ *
+ * This used to update only `nextRenewal.invoiceNumber` and the Renewal row, leaving
+ * the canonical Invoice document on the old number. The admin invoices page reads
+ * Invoice documents and the subscription page reads the registration mirror, so the
+ * two surfaces showed different numbers for the same renewal — and the old number
+ * was never released, permanently consuming a sequence slot.
+ *
+ * Renaming through invoiceStore.saveAdminDraft() keeps the document, the mirrors and
+ * the Payment row in step and hands the old number back to the allocator.
+ */
+async function renameQueuedRenewalInvoice({ Model, registrationId, oldNumber, newNumber, renewalId }) {
+  const Invoice = require('../models/Invoice');
+  const invoiceStore = require('../services/invoiceStore');
+
+  const existingInvoice = oldNumber
+    ? await Invoice.findOne({ registrationId, invoiceNumber: oldNumber }).select('_id').lean()
+    : null;
+
+  if (existingInvoice) {
+    // Renames, re-syncs every mirror, and releases the previous number.
+    await invoiceStore.saveAdminDraft({ invoiceId: existingInvoice._id, invoiceNumber: newNumber });
+  }
+
+  // The mirror is authoritative for a queued renewal that has no invoice document yet.
+  const doc = await Model.findByIdAndUpdate(
+    registrationId,
+    { $set: { 'nextRenewal.invoiceNumber': newNumber } },
+    { new: true },
+  );
+
+  if (renewalId) {
+    const Renewal = require('../models/Renewal');
+    await Renewal.findByIdAndUpdate(renewalId, { $set: { invoiceNumber: newNumber } });
+  }
+
+  // If no invoice document backed the old number, nothing else references it now.
+  if (!existingInvoice && oldNumber && oldNumber !== newNumber) {
+    const { releaseInvoiceNumber } = require('../services/invoiceNumberService');
+    await releaseInvoiceNumber(oldNumber).catch(() => {});
+  }
+
+  return doc;
+}
+
 exports.setRenewalInvoiceNumber = async (req, res) => {
   try {
     const { invoiceNumber } = req.body;
@@ -908,17 +957,13 @@ exports.setRenewalInvoiceNumber = async (req, res) => {
       }
     }
 
-    const doc = await Individual.findByIdAndUpdate(
-      req.params.id,
-      { $set: { 'nextRenewal.invoiceNumber': requestedInvoiceNumber } },
-      { new: true },
-    );
-
-    if (current.nextRenewalId) {
-      await Renewal.findByIdAndUpdate(current.nextRenewalId, {
-        $set: { invoiceNumber: requestedInvoiceNumber },
-      });
-    }
+    const doc = await renameQueuedRenewalInvoice({
+      Model:          Individual,
+      registrationId: req.params.id,
+      oldNumber:      currentQueuedInvoiceNumber,
+      newNumber:      requestedInvoiceNumber,
+      renewalId:      current.nextRenewalId,
+    });
 
     res.json({ success: true, data: doc });
   } catch (err) {
@@ -1074,11 +1119,11 @@ exports.markIndividualPaid = async (req, res) => {
       // a wrong DB-default multiYearCount of 3) > explicit field > documented minimum 2.
       // Mirrors effectiveMultiYears() in paymentController.
       const recordPrice = Number(individual.price || 0);
-      const years = (recordPrice >= 110 ? Math.round(recordPrice / 55) : 0)
+      const years = pricing.effectiveMultiYears(individual.subscriptionPlan, recordPrice)
         || Number(individual.multiYearCount)
-        || 2;
+        || pricing.INDIVIDUAL.multiYearMinYears;
       const exp = new Date(now);
-      exp.setFullYear(exp.getFullYear() + Math.max(2, years));
+      exp.setFullYear(exp.getFullYear() + Math.max(pricing.INDIVIDUAL.multiYearMinYears, years));
       update.expirationDate = exp;
     }
     // Unlimited Plan — no expiry date set
@@ -1194,9 +1239,9 @@ exports.exportToExcel = async (req, res) => {
         subscriptionDate:              fmt(d.subscriptionDate || d.createdAt),
         expirationDate:                d.expirationDate ? fmt(d.expirationDate) : (isUnlimited ? 'Never' : ''),
         subscriptionPlan:              d.subscriptionPlan || '',
-        oneYearPlan:                   isOneYear   ? `${d.price?.toFixed(2) || '69.00'}` : '',
+        oneYearPlan:                   isOneYear   ? `${d.price?.toFixed(2) || pricing.INDIVIDUAL.oneYear.toFixed(2)}` : '',
         multiYearPlan:                 isMulti     ? `${d.price?.toFixed(2) || ''}` : '',
-        unlimitedPlan:                 isUnlimited ? `${d.price?.toFixed(2) || '299.00'}` : '',
+        unlimitedPlan:                 isUnlimited ? `${d.price?.toFixed(2) || pricing.INDIVIDUAL.unlimited.toFixed(2)}` : '',
         firstName:                     d.firstName  || '',
         lastName:                      d.lastName   || '',
         middleName:                    d.middleName || '',

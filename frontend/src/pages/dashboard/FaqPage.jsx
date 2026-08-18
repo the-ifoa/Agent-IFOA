@@ -1,20 +1,36 @@
 import { useState } from 'react'
+import { holderRangeFromCount, airlinePricePerCert, airlineTiers, individualPrice } from '../../services/pricing'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-// ── Static reference data (mirrors the live pricing in SubscriptionPage) ───────
-const AIRLINE_TIERS = [
-  { range: '3 – 5 holders', oneYear: '$60 / cert', unlimited: '$265 / cert' },
-  { range: '5 – 10 holders', oneYear: '$55 / cert', unlimited: '$255 / cert' },
-  { range: 'More than 10', oneYear: '$49 / cert', unlimited: '$245 / cert' },
-]
-const INDIVIDUAL_PLANS = [
-  { plan: '1 Year', price: '$69', note: 'Renews every year.' },
-  { plan: 'Multiple Years', price: '$55 / year', note: 'Pay upfront for several years.' },
-  { plan: 'Unlimited (Lifetime)', price: '$299', note: 'One-time — never expires.' },
-]
+// ── Reference tables, built from the server's live prices ─────────────────────
+// These used to be hand-written strings that silently went stale whenever a
+// price changed. They are now derived, so the FAQ cannot advertise a rate the
+// checkout does not honour.
+const usd = (n) => `$${Number(n).toLocaleString('en-US')}`
+const perYearRate = () => individualPrice('Multiple Years Subscription Plan', 2) / 2
 
-const FAQS = [
+const buildAirlineTierRows = () => airlineTiers().map(t => ({
+  range:     t.label,
+  oneYear:   `${usd(t.oneYear)} / cert`,
+  unlimited: `${usd(t.unlimited)} / cert`,
+}))
+
+const buildIndividualPlanRows = () => {
+  const oneYear   = individualPrice('1 Year Subscription Plan')
+  const perYear   = individualPrice('Multiple Years Subscription Plan', 1 + 1) / 2
+  const unlimited = individualPrice('Unlimited Plan')
+  return [
+    { plan: '1 Year',              price: usd(oneYear),            note: 'Renews every year.' },
+    { plan: 'Multiple Years',      price: `${usd(perYear)} / year`, note: 'Pay upfront for several years.' },
+    { plan: 'Unlimited (Lifetime)', price: usd(unlimited),          note: 'One-time — never expires.' },
+  ]
+}
+
+// A factory, not a constant: the answers quote real rates, and those are fetched
+// from the server. Building at render time keeps published guidance in step with
+// what the checkout actually charges.
+const makeFaqs = () => [
   {
     for: 'airline',
     q: 'What is the difference between the Base plan and an Upgrade plan?',
@@ -48,12 +64,12 @@ const FAQS = [
   {
     for: 'individual',
     q: 'What does the Multiple Years plan cost?',
-    a: 'It is billed at $55 per year, paid upfront for the number of years you choose. For example, 3 years = $165, locked in for the full term.',
+    a: `It is billed at ${usd(perYearRate())} per year, paid upfront for the number of years you choose. For example, 3 years = ${usd(individualPrice('Multiple Years Subscription Plan', 3))}, locked in for the full term.`,
   },
   {
     for: 'individual',
     q: 'Is the Unlimited (Lifetime) plan really one-time?',
-    a: 'Yes. Unlimited is a single $299 payment that never expires — there is nothing to renew.',
+    a: `Yes. Unlimited is a single ${usd(individualPrice('Unlimited Plan'))} payment that never expires — there is nothing to renew.`,
   },
   {
     for: 'both',
@@ -73,7 +89,7 @@ const FAQS = [
   {
     for: 'both',
     q: 'How is the upgrade price calculated?',
-    a: 'You pay the new plan’s price MINUS a credit for the time you have not yet used on the current term. Individuals: Unlimited is $299, Multiple Years is $55 × the number of years. Airlines: the Unlimited per-cert rate × holders, at your volume tier. The unused-time credit is then subtracted, so you only pay the difference.',
+    a: `You pay the new plan’s price MINUS a credit for the time you have not yet used on the current term. Individuals: Unlimited is ${usd(individualPrice('Unlimited Plan'))}, Multiple Years is ${usd(perYearRate())} × the number of years. Airlines: the Unlimited per-cert rate × holders, at your volume tier. The unused-time credit is then subtracted, so you only pay the difference.`,
   },
   {
     for: 'both',
@@ -164,11 +180,9 @@ function FaqItem({ q, a, open, onToggle }) {
 }
 
 // ── Interactive holder-count + pricing playground ──────────────────────────────
-const PPC_MAP = {
-  '1 Year Subscription Plan': { '3 to 5': 60, '5 to 10': 55, 'More than 10': 49 },
-  'Unlimited Plan': { '3 to 5': 265, '5 to 10': 255, 'More than 10': 245 },
-}
-const tierLabel = (c) => (c <= 5 ? '3 to 5' : c <= 10 ? '5 to 10' : 'More than 10')
+// Prices in the FAQ playground come from the server, so published guidance can
+// never quote a rate the checkout does not honour.
+const tierLabel = holderRangeFromCount
 const money = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
 const cadence = (plan) => (plan === 'Unlimited Plan' ? 'one-time' : '/yr')
@@ -213,11 +227,11 @@ function HolderFlowPlayground() {
   const total = base + upgrade
   const mixed = upgrade > 0 && basePlan !== upPlan
 
-  const basePpc = PPC_MAP[basePlan][tierLabel(Math.max(3, base))]
+  const basePpc = airlinePricePerCert(basePlan, Math.max(3, base))
   const baseCost = base * basePpc
   // Upgrade stacks on the base (count-wise) — tier read at the cumulative top
   // position — but it is priced from ITS OWN plan's rate table.
-  const upPpc = PPC_MAP[upPlan][tierLabel(Math.max(3, base + upgrade))]
+  const upPpc = airlinePricePerCert(upPlan, Math.max(3, base + upgrade))
   const upCost = upgrade * upPpc
   const grandTotal = baseCost + upCost
 
@@ -319,7 +333,7 @@ export default function FaqPage() {
   const [view, setView] = useState(isAirline ? 'airline' : 'individual')
   const [openFaq, setOpenFaq] = useState(null)
 
-  const visibleFaqs = FAQS.filter(f => f.for === 'both' || f.for === view)
+  const visibleFaqs = makeFaqs().filter(f => f.for === 'both' || f.for === view)
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-8 space-y-6">
@@ -356,7 +370,7 @@ export default function FaqPage() {
             {user && !isAirline && <YourAccountBadge />}
             <p>Individuals choose one fixed plan — no per-holder pricing, no tiers, no upgrades:</p>
             <div className="mt-3 grid sm:grid-cols-3 gap-2">
-              {INDIVIDUAL_PLANS.map(p => (
+              {buildIndividualPlanRows().map(p => (
                 <div key={p.plan} className="rounded-xl border border-slate-200 p-3">
                   <p className="text-sm font-bold text-slate-800">{p.plan}</p>
                   <p className="text-lg font-black text-slate-900 mt-0.5">{p.price}</p>
@@ -385,7 +399,7 @@ export default function FaqPage() {
             </div>
             <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-[13px] text-slate-600">
               <p className="font-bold text-slate-800 mb-1">Credit example</p>
-              <p>A Multiple-Years plan billed <strong>$165</strong> (3 years @ $55) with about <strong>two-thirds</strong> of the term left → credit ≈ <strong>$110</strong>. Upgrading to Unlimited (<strong>$299</strong>) you pay <strong>$299 − $110 = $189</strong>. The invoice shows both lines so the math is transparent.</p>
+<p>A Multiple-Years plan billed <strong>{usd(individualPrice('Multiple Years Subscription Plan', 3))}</strong> (3 years @ {usd(perYearRate())}) with about <strong>two-thirds</strong> of the term left → credit ≈ <strong>{usd(perYearRate() * 2)}</strong>. Upgrading to Unlimited (<strong>{usd(individualPrice('Unlimited Plan'))}</strong>) you pay <strong>{usd(individualPrice('Unlimited Plan'))} − {usd(perYearRate() * 2)} = {usd(individualPrice('Unlimited Plan') - perYearRate() * 2)}</strong>. The invoice shows both lines so the math is transparent.</p>
             </div>
             <p className="mt-3 text-[13px] text-slate-500"><strong className="text-slate-700">Credit is based on your plan’s price and dates</strong> — it’s the price you paid prorated by the time remaining (days left ÷ full term). A just-started plan credits almost the full price; one near expiry credits little. A failed or cancelled payment changes nothing — the plan upgrades and the invoice is created only after the upgrade is confirmed.</p>
           </Section>
@@ -408,7 +422,7 @@ export default function FaqPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {AIRLINE_TIERS.map(t => (
+                  {buildAirlineTierRows().map(t => (
                     <tr key={t.range}>
                       <td className="px-3 py-2 font-semibold text-slate-700">{t.range}</td>
                       <td className="px-3 py-2 text-slate-600">{t.oneYear}</td>
@@ -450,7 +464,7 @@ export default function FaqPage() {
             </div>
             <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-[13px] text-slate-600">
               <p className="font-bold text-slate-800 mb-1">Example (4 holders, 1-Year @ $60)</p>
-              <p>Unlimited tier = $265/cert × 4 = <strong>$1,060</strong>. Half the year left on a $240 term → credit ≈ <strong>$120</strong>. You pay <strong>$940</strong>. The invoice itemises the Unlimited line and the credit line.</p>
+<p>Unlimited tier = {usd(airlinePricePerCert('Unlimited Plan', 4))}/cert × 4 = <strong>{usd(airlinePricePerCert('Unlimited Plan', 4) * 4)}</strong>. Half the year left on a {usd(airlinePricePerCert('1 Year Subscription Plan', 4) * 4)} term → credit ≈ <strong>{usd(airlinePricePerCert('1 Year Subscription Plan', 4) * 4 / 2)}</strong>. You pay <strong>{usd(airlinePricePerCert('Unlimited Plan', 4) * 4 - airlinePricePerCert('1 Year Subscription Plan', 4) * 4 / 2)}</strong>. The invoice itemises the Unlimited line and the credit line.</p>
             </div>
             <p className="mt-3 text-[13px] text-slate-500">A failed or cancelled payment converts nothing and generates no invoice — your plans stay as they were.</p>
           </Section>

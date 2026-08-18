@@ -35,11 +35,14 @@ const AirlinesSubscription = require('../models/AirlinesSubscription');
 const Renewal              = require('../models/Renewal');
 const {
   generateInvoiceNumber,
+  releaseInvoiceNumber,
   isInvoiceNumberTaken,
   normalizeInvoiceNumber,
 } = require('../services/invoiceNumberService');
 const { createOrUpdateInvoice } = require('../services/invoiceService');
+const invoiceStore = require('../services/invoiceStore');
 const { activeHolderGroupSlots, allHolderGroupSlots, currentBaseSlots, renewTierAnchor, activeCoverageAnchor } = require('../utils/holderGroups');
+const pricing = require('../shared/pricing');
 const {
   sendIndividualPaymentConfirmation,
   sendAirlinePaymentConfirmation,
@@ -73,20 +76,12 @@ async function findRegistration(registrationId, registrationModel) {
   }
 }
 
-// ─── Airline pricing tiers (mirrors airlinesController.js constants) ─────────
-const ONE_YEAR_PRICES  = { '3 to 5': 60, '5 to 10': 55, 'More than 10': 49 };
-const UNLIMITED_PRICES = { '3 to 5': 265, '5 to 10': 255, 'More than 10': 245 };
-
-function holderRangeFromCount(count) {
-  if (count <= 5)  return '3 to 5';
-  if (count <= 10) return '5 to 10';
-  return 'More than 10';
-}
-
-function tierPpcForPlan(plan, count) {
-  const range = holderRangeFromCount(count);
-  return plan === 'Unlimited Plan' ? UNLIMITED_PRICES[range] : ONE_YEAR_PRICES[range];
-}
+// ─── Airline pricing tiers ───────────────────────────────────────────────────
+// Sourced from shared/pricing.js — the ONE place any price is defined. Do not
+// reintroduce local tables here; the frontend reads the same numbers over
+// GET /api/pricing/config, which is what keeps displayed == charged.
+const holderRangeFromCount = pricing.holderRangeFromCount;
+const tierPpcForPlan       = pricing.airlinePricePerCert;
 
 function computeExpiry(subscriptionPlan, fromDate, multiYearCount) {
   const d = new Date(fromDate);
@@ -111,11 +106,8 @@ function computeExpiry(subscriptionPlan, fromDate, multiYearCount) {
 // Derives year count from the stored price for Individual Multi-Year plans.
 // price is always saved correctly ($55 × years); multiYearCount DB-defaults to 3.
 // Returns null when price is insufficient, so callers can fall back to multiYearCount.
-function effectiveMultiYears(plan, price) {
-  if (plan !== 'Multiple Years Subscription Plan') return null;
-  const dollars = Number(price);
-  return dollars >= 110 ? Math.round(dollars / 55) : null;
-}
+// Lives in shared/pricing.js so the per-year rate is defined exactly once.
+const effectiveMultiYears = pricing.effectiveMultiYears;
 
 /**
  * updateOriginalInvoiceAfterHolderUpgrade
@@ -417,10 +409,10 @@ async function applyRenewalToRegistration(registrationId, registrationModel, pay
       }
     }
     if (registrationModel === 'Individual') {
-      const PLAN_PRICES = { '1 Year Subscription Plan': 69, 'Unlimited Plan': 299 };
-      if (PLAN_PRICES[activePlan] !== undefined) update.price = PLAN_PRICES[activePlan];
-      else if (activePlan === 'Multiple Years Subscription Plan' && renewalMultiYearCount) {
-        update.price = 55 * renewalMultiYearCount;
+      if (activePlan === pricing.PLANS.ONE_YEAR || activePlan === pricing.PLANS.UNLIMITED) {
+        update.price = pricing.individualPrice(activePlan);
+      } else if (activePlan === pricing.PLANS.MULTI_YEAR && renewalMultiYearCount) {
+        update.price = pricing.individualPrice(activePlan, renewalMultiYearCount);
       }
     }
   }
@@ -731,17 +723,17 @@ function computeConversionCharge(doc, registrationModel, asOf = new Date(), targ
     currentBaseTotal = currentPpc * baseCount * oldYears;
   } else {
     baseCount      = 1;
-    unlimitedPpc   = targetPlan === 'Unlimited Plan' ? 299
-      : targetPlan === 'Multiple Years Subscription Plan' ? 55
-      : 69;
-    unlimitedTotal = targetPlan === 'Multiple Years Subscription Plan' ? 55 * tYears : unlimitedPpc;
+    unlimitedPpc   = targetPlan === pricing.PLANS.MULTI_YEAR
+      ? pricing.INDIVIDUAL.multiYearPerYear
+      : pricing.individualPrice(targetPlan, tYears);
+    unlimitedTotal = pricing.individualPrice(targetPlan, tYears);
     // Credit basis = the actual price the admin set on the plan (so editing Price feeds
     // the credit), falling back to standard plan pricing for legacy records.
     currentBaseTotal = Number(doc.price) > 0
       ? Number(doc.price)
-      : oldPlan === '1 Year Subscription Plan' ? 69
-        : oldPlan === 'Multiple Years Subscription Plan' ? 55 * oldYears
-          : 0;
+      : (oldPlan === pricing.PLANS.ONE_YEAR || oldPlan === pricing.PLANS.MULTI_YEAR)
+        ? pricing.individualPrice(oldPlan, oldYears)
+        : 0;
   }
 
   // ── Prorated credit for the unused portion of the current base term ──────────
@@ -948,9 +940,7 @@ async function applyConversionToUnlimited(registrationId, registrationModel, pay
     update.wirePaymentRequested   = false;
     update.wirePaymentRequestedAt = null;
   } else {
-    update.price = targetPlan === 'Unlimited Plan' ? 299
-      : targetPlan === 'Multiple Years Subscription Plan' ? 55 * (targetYears || 2)
-      : 69;
+    update.price = pricing.individualPrice(targetPlan, targetYears);
   }
 
   return Model.findByIdAndUpdate(registrationId, {
@@ -1277,16 +1267,9 @@ exports.createPaymentIntent = async (req, res) => {
         // user-supplied (already in computedYears) > price-derived > multiYearCount > default 3
         computedYears = computedYears || effectiveMultiYears(activePlan, doc.price) || doc.multiYearCount || 3;
       }
-      const INDIVIDUAL_PLAN_PRICES = {
-        '1 Year Subscription Plan':        69,
-        'Multiple Years Subscription Plan': 55 * Math.max(2, computedYears || 3),
-        'Unlimited Plan':                  299,
-      };
-      if (INDIVIDUAL_PLAN_PRICES[activePlan] !== undefined) {
-        amountDollars = INDIVIDUAL_PLAN_PRICES[activePlan];
-      } else {
-        amountDollars = Number(doc.price || doc.totalAmount || 0);
-      }
+      amountDollars = Object.values(pricing.PLANS).includes(activePlan)
+        ? pricing.individualPrice(activePlan, Math.max(2, computedYears || 3))
+        : Number(doc.price || doc.totalAmount || 0);
     }
 
     const amountCents = Math.round(amountDollars * 100);
@@ -1386,6 +1369,9 @@ exports.createPaymentIntent = async (req, res) => {
 
 // ─── POST /api/payments/confirm ───────────────────────────────────────────────
 exports.confirmPayment = async (req, res) => {
+  // Declared outside the try so the catch below can hand back an invoice number
+  // that was claimed but never attached to a record (see releaseIfUnattached).
+  let claimedNum = null;
   try {
     const {
       paymentIntentId,
@@ -1461,9 +1447,18 @@ exports.confirmPayment = async (req, res) => {
     // Renewals and conversions always get a fresh invoice number.
     // Other flows may reuse an existing invoice number only if it is not
     // already used elsewhere in DB.
+    //
+    // `claimedNum` records a number we newly CLAIMED (as opposed to reusing one the
+    // registration already had). Everything between here and the Payment write can
+    // fail — a Stripe call, or losing the upsert race to a concurrent confirm or to
+    // the webhook — and in that case the claim never lands on a record. Unless it is
+    // handed back it becomes a permanent hole in the invoice sequence, which is
+    // exactly how "US-24 is missing and the customer got US-25" happens.
     let invoiceNum;
+    const claim = async () => { claimedNum = await generateInvoiceNumber(); return claimedNum; };
+
     if (isPurposeRenewal || isPurposeConversion) {
-      invoiceNum = await generateInvoiceNumber();
+      invoiceNum = await claim();
     } else {
       const preferredInvoice = normalizeInvoiceNumber(doc.invoiceNumber);
       if (preferredInvoice) {
@@ -1471,11 +1466,24 @@ exports.confirmPayment = async (req, res) => {
           excludeRegistrationId: doc._id,
           excludeRegistrationModel: registrationModel,
         });
-        invoiceNum = preferredTaken ? await generateInvoiceNumber() : preferredInvoice;
+        invoiceNum = preferredTaken ? await claim() : preferredInvoice;
       } else {
-        invoiceNum = await generateInvoiceNumber();
+        invoiceNum = await claim();
       }
     }
+
+    /**
+     * Give the claim back unless it ended up on `attachedNumber`.
+     * Safe to call more than once, and releaseInvoiceNumber() itself refuses to
+     * free a number that is still referenced anywhere.
+     */
+    const releaseIfUnattached = async (attachedNumber) => {
+      if (!claimedNum) return;
+      if (normalizeInvoiceNumber(attachedNumber) === normalizeInvoiceNumber(claimedNum)) return;
+      const freed = claimedNum;
+      claimedNum = null;
+      await releaseInvoiceNumber(freed).catch(() => {});
+    };
 
     let last4 = '', cardBrand = '', paymentMethodType = '', stripeChargeId = '', stripeCustomerId = '';
     try {
@@ -1582,7 +1590,7 @@ exports.confirmPayment = async (req, res) => {
         pricePerCertificate: convPpc,
         pricePerCert:        convPpc,
         price:              registrationModel === 'Individual'
-          ? (convTargetPlan === 'Unlimited Plan' ? 299 : convTargetPlan === 'Multiple Years Subscription Plan' ? 55 * (convYears || 2) : 69)
+          ? pricing.individualPrice(convTargetPlan, convYears)
           : undefined,
       };
       invoiceSnapshot = buildInvoiceSnapshot(convDocObj, registrationModel, amountDollars, now);
@@ -1641,6 +1649,8 @@ exports.confirmPayment = async (req, res) => {
         // Duplicate key — another request already created it; return existing
         paymentDoc = await Payment.findOne({ stripePaymentIntentId: paymentIntentId });
         if (paymentDoc && paymentDoc.isPaid) {
+          // We lost the race; our claim was never used.
+          await releaseIfUnattached(paymentDoc.invoiceNumber);
           return res.json({ success: true, payment: paymentDoc, alreadyRecorded: true });
         }
       } else {
@@ -1653,6 +1663,11 @@ exports.confirmPayment = async (req, res) => {
       Object.assign(paymentDoc, paymentData);
       paymentDoc = await paymentDoc.save();
     }
+
+    // The upsert used $setOnInsert, so when the Payment already existed our
+    // paymentData — including the number we just claimed — was silently ignored.
+    // Hand the claim back rather than stranding it.
+    await releaseIfUnattached(paymentDoc?.invoiceNumber);
 
     let updatedReg;
     if (isPurposeRenewal) {
@@ -1778,6 +1793,9 @@ exports.confirmPayment = async (req, res) => {
     }
   } catch (err) {
     console.error('[confirmPayment]', err.message);
+    // Anything that threw after the claim leaves it unattached — hand it back so
+    // the sequence does not develop a permanent hole.
+    if (claimedNum) await releaseInvoiceNumber(claimedNum).catch(() => {});
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -1794,133 +1812,32 @@ exports.saveInvoiceDraft = async (req, res) => {
   try {
     const { invoiceDraft, invoiceNumber } = req.body;
 
+    // Delegate wholesale to the invoice store. This endpoint used to edit the
+    // Payment doc, the registration mirror and the Invoice doc by hand, in a
+    // slightly different way from every other admin edit path — which is how an
+    // admin's change could land in one store while the customer's page read
+    // another. Now there is one document and one writer.
+    const invoice = await invoiceStore.ensureInvoiceForPayment(req.params.id, {
+      draftOverrides: invoiceDraft || null,
+    });
+
+    const saved = await invoiceStore.saveAdminDraft({
+      invoiceId:     invoice._id,
+      draft:         invoiceDraft,
+      invoiceNumber,
+    });
+
+    // Callers expect the Payment document back; the store has just mirrored the
+    // canonical number and draft onto it.
     const paymentDoc = await Payment.findById(req.params.id);
-
-    if (!paymentDoc)
-      return res.status(404).json({ success: false, message: 'Payment record not found.' });
-
-    const requestedInvoiceNumber = normalizeInvoiceNumber(invoiceNumber);
-
-    const changingInvoiceNumber =
-      requestedInvoiceNumber &&
-      paymentDoc.invoiceNumber &&
-      requestedInvoiceNumber !== paymentDoc.invoiceNumber;
-
-    // Exclude THIS payment AND its own registration mirror (registration.invoiceNumber
-    // / nextRenewal + the linked Invoice doc) from the uniqueness check — those carry
-    // the same number for the same logical invoice, so they must not count as a
-    // collision when (re)assigning it. Otherwise re-saving the same invoice fails with
-    // a false "already exists".
-    const ownExclusions = {
-      excludePaymentId:         paymentDoc._id,
-      excludeRegistrationId:    paymentDoc.registrationId || null,
-      excludeRegistrationModel: paymentDoc.registrationModel || null,
-    };
-
-    // Admin may change invoice number, but it must remain globally unique.
-    if (changingInvoiceNumber) {
-      const alreadyUsed = await isInvoiceNumberTaken(requestedInvoiceNumber, ownExclusions);
-      if (alreadyUsed) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invoice number already exists. Please use a different value.',
-        });
-      }
-      paymentDoc.invoiceNumber = requestedInvoiceNumber;
-    }
-
-    // If this legacy payment has no invoice number yet, assign one only after DB uniqueness check.
-    if (requestedInvoiceNumber && !paymentDoc.invoiceNumber) {
-      const alreadyUsed = await isInvoiceNumberTaken(requestedInvoiceNumber, ownExclusions);
-      if (alreadyUsed) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invoice number already exists. Please use a different value.',
-        });
-      }
-      paymentDoc.invoiceNumber = requestedInvoiceNumber;
-    }
-
-    if (invoiceDraft !== undefined) paymentDoc.invoiceDraft = invoiceDraft;
-    await paymentDoc.save();
-
-    // Sync invoiceNumber + invoiceDraft back to the registration record.
-    if (paymentDoc.registrationId && paymentDoc.registrationModel) {
-      try {
-        const { doc, Model } = await findRegistration(
-          paymentDoc.registrationId,
-          paymentDoc.registrationModel,
-        );
-        if (doc && Model) {
-          // Queued renewal: payment belongs to the next plan; update only nextRenewal.invoiceNumber.
-          const isQueuedRenewal = paymentDoc.purpose === 'renewal' && doc.nextRenewal?.paidAt;
-          const registrationSet = {
-            invoiceGenerated: true,
-          };
-
-          if (isQueuedRenewal) {
-            if (paymentDoc.invoiceNumber) {
-              registrationSet['nextRenewal.invoiceNumber'] = paymentDoc.invoiceNumber;
-              // Keep Renewal collection doc in sync with the canonical invoice number.
-              Renewal.findOneAndUpdate(
-                { paymentId: paymentDoc._id },
-                { $set: { invoiceNumber: paymentDoc.invoiceNumber } },
-              ).catch(() => {});
-            }
-          } else {
-            // Admin-initiated invoice edits should sync to the active registration.
-            if (paymentDoc.invoiceNumber) {
-              registrationSet.invoiceNumber = paymentDoc.invoiceNumber;
-            }
-            registrationSet.invoiceDraft = invoiceDraft || doc.invoiceDraft || null;
-          }
-
-          await Model.findByIdAndUpdate(paymentDoc.registrationId, {
-            $set: registrationSet,
-          });
-        }
-      } catch (_) { /* Non-critical */ }
-    }
-
-    // Also update (or create) the canonical Invoice document so the user
-    // SubscriptionPage always sees the same invoice the admin just saved.
-    try {
-      const Invoice = require('../models/Invoice');
-      const existingInvoice = await Invoice.findOne({ paymentId: paymentDoc._id });
-      if (existingInvoice) {
-        if (paymentDoc.invoiceNumber) existingInvoice.invoiceNumber = paymentDoc.invoiceNumber;
-        if (invoiceDraft) existingInvoice.draft = invoiceDraft;
-        existingInvoice.adminGenerated = true;
-        await existingInvoice.save();
-      } else if (paymentDoc.registrationId && paymentDoc.registrationModel) {
-        // No Invoice doc yet (e.g. wire payment); create one now.
-        await createOrUpdateInvoice({
-          registrationId:        paymentDoc.registrationId,
-          registrationModel:     paymentDoc.registrationModel,
-          paymentId:             paymentDoc._id,
-          snapshot:              paymentDoc.invoiceSnapshot || {},
-          amountDollars:         paymentDoc.amountDollars || 0,
-          paidAt:                paymentDoc.paidAt || new Date(),
-          paymentMethod:         paymentDoc.paymentMethodType || '',
-          draftOverrides:        invoiceDraft || null,
-          adminGenerated:        true,
-          existingInvoiceNumber: paymentDoc.invoiceNumber,
-        });
-      }
-    } catch (invErr) {
-      console.warn('[saveInvoiceDraft] Invoice doc sync failed:', invErr.message);
-    }
-
-    res.json({ success: true, data: paymentDoc });
+    res.json({ success: true, data: paymentDoc, invoice: saved });
   } catch (err) {
     console.error('[saveInvoiceDraft]', err.message);
-    if (err?.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invoice number already exists. Please use a different value.',
-      });
-    }
-    res.status(500).json({ success: false, message: err.message });
+    const status = err?.status || (err?.code === 11000 ? 400 : 500);
+    const message = err?.code === 11000
+      ? 'Invoice number already exists. Please use a different value.'
+      : err.message;
+    res.status(status).json({ success: false, message });
   }
 };
 
@@ -1930,6 +1847,8 @@ exports.saveInvoiceDraft = async (req, res) => {
 exports.stripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
+  // An invoice number claimed by this delivery but not yet attached to a record.
+  let webhookClaimedNum = null;
 
   try {
     event = stripe.webhooks.constructEvent(
@@ -1974,9 +1893,15 @@ exports.stripeWebhook = async (req, res) => {
 
       // Renewals and conversions always get a fresh invoice number.
       // Reuse existing numbers only when they are already tied to this same record.
+      //
+      // Same claim-tracking as confirmPayment: the webhook and the confirm endpoint
+      // race on the same PaymentIntent by design, so the loser must hand its claim
+      // back instead of leaving a hole in the sequence.
       let invoiceNum;
+      const claim = async () => { webhookClaimedNum = await generateInvoiceNumber(); return webhookClaimedNum; };
+
       if (isPurposeRenewal || isPurposeConversionWebhook) {
-        invoiceNum = existing?.invoiceNumber || await generateInvoiceNumber();
+        invoiceNum = existing?.invoiceNumber || await claim();
       } else {
         const preferredInvoice = normalizeInvoiceNumber(existing?.invoiceNumber || doc.invoiceNumber);
         if (preferredInvoice) {
@@ -1985,9 +1910,9 @@ exports.stripeWebhook = async (req, res) => {
             excludeRegistrationId: doc._id,
             excludeRegistrationModel: registrationModel,
           });
-          invoiceNum = preferredTaken ? await generateInvoiceNumber() : preferredInvoice;
+          invoiceNum = preferredTaken ? await claim() : preferredInvoice;
         } else {
-          invoiceNum = await generateInvoiceNumber();
+          invoiceNum = await claim();
         }
       }
 
@@ -2085,7 +2010,7 @@ exports.stripeWebhook = async (req, res) => {
           pricePerCertificate: convPpc,
           pricePerCert:        convPpc,
           price:              registrationModel === 'Individual'
-            ? (convTargetPlan === 'Unlimited Plan' ? 299 : convTargetPlan === 'Multiple Years Subscription Plan' ? 55 * (convYears || 2) : 69)
+            ? pricing.individualPrice(convTargetPlan, convYears)
             : undefined,
         };
         invoiceSnapshot = buildInvoiceSnapshot(convDocObj, registrationModel, amountDollars, now);
@@ -2130,6 +2055,15 @@ exports.stripeWebhook = async (req, res) => {
         paymentDoc = await existing.save();
       } else {
         paymentDoc = await Payment.create(paymentData);
+      }
+
+      // If the number we claimed did not end up on the Payment (the confirm
+      // endpoint got there first), hand it back so it stays available.
+      if (webhookClaimedNum
+        && normalizeInvoiceNumber(paymentDoc?.invoiceNumber) !== normalizeInvoiceNumber(webhookClaimedNum)) {
+        const freed = webhookClaimedNum;
+        webhookClaimedNum = null;
+        await releaseInvoiceNumber(freed).catch(() => {});
       }
 
       let updatedRegWebhook;
@@ -2245,6 +2179,9 @@ exports.stripeWebhook = async (req, res) => {
       console.log(`[stripeWebhook] Payment ${paymentDoc._id} recorded for ${registrationModel} ${registrationId}`);
     } catch (err) {
       console.error('[stripeWebhook] Processing error:', err.message);
+      // Stripe will retry, and the retry claims its own number — so release this
+      // delivery's unattached claim rather than leaking one per retry.
+      if (webhookClaimedNum) await releaseInvoiceNumber(webhookClaimedNum).catch(() => {});
       // Return 500 so Stripe retries — do NOT return 200 on DB errors
       return res.status(500).send('Internal error processing payment. Will retry.');
     }
@@ -2787,11 +2724,7 @@ exports.adminRenew = async (req, res) => {
         const ppc = tierPpcForPlan(activePlan, tierCount);
         amountDollars = ppc * count * (yearsVal || 1);
       } else {
-        amountDollars = activePlan === 'Unlimited Plan'
-          ? 299
-          : activePlan === 'Multiple Years Subscription Plan'
-            ? 55 * (yearsVal || 2)
-            : 69; // 1 Year
+        amountDollars = pricing.individualPrice(activePlan, yearsVal);
       }
     }
     amountDollars = Math.round(amountDollars * 100) / 100;
@@ -2891,11 +2824,19 @@ exports.adminRenew = async (req, res) => {
 // Admin-only: returns the net charge + breakdown for converting the base plan (or a
 // holder group) → Unlimited, WITHOUT mutating anything. Drives the "net amount to be
 // paid" confirmation the admin sees before generating the invoice.
-exports.adminConversionQuote = async (req, res) => {
+/**
+ * Authoritative price for upgrading a plan (base or one add-on group).
+ *
+ * Returns the SAME figures computeConversionCharge()/computeGroupConversionCharge()
+ * produce when the PaymentIntent is built, so the amount a customer is shown in
+ * the upgrade modal is by construction the amount they are charged. The frontend
+ * must never recompute this locally.
+ *
+ * Open to the registration's owner as well as admins — a customer needs to see
+ * the price of their own upgrade before committing to it.
+ */
+exports.conversionQuote = async (req, res) => {
   try {
-    if (req.user.role !== 'admin')
-      return res.status(403).json({ success: false, message: 'Admin only.' });
-
     const registrationId    = req.query.registrationId || req.body?.registrationId;
     const registrationModel = req.query.registrationModel || req.body?.registrationModel || 'Airlines';
     const holderGroupId     = req.query.holderGroupId || req.body?.holderGroupId || null;
@@ -2904,6 +2845,20 @@ exports.adminConversionQuote = async (req, res) => {
 
     const { doc } = await findRegistration(registrationId, registrationModel);
     if (!doc) return res.status(404).json({ success: false, message: 'Registration not found.' });
+
+    // Ownership: admin passes; otherwise the caller must own this registration.
+    if (req.user.role !== 'admin') {
+      const ids = [
+        ...(req.user.subscriptionIds || []).map(String),
+        req.user.registrationId ? String(req.user.registrationId) : null,
+      ].filter(Boolean);
+      const userEmail = (req.user.email || '').toLowerCase();
+      const docEmails = [doc.email, doc.pointOfContactEmail, doc.paymentEmail]
+        .filter(Boolean).map(e => String(e).toLowerCase());
+      if (!ids.includes(String(registrationId)) && !(userEmail && docEmails.includes(userEmail))) {
+        return res.status(403).json({ success: false, message: 'Access denied.' });
+      }
+    }
 
     let quote;
     if (holderGroupId) {
@@ -2933,10 +2888,13 @@ exports.adminConversionQuote = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[adminConversionQuote]', err.message);
+    console.error('[conversionQuote]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// Back-compat alias for the existing admin-only route.
+exports.adminConversionQuote = exports.conversionQuote;
 
 
 // ─── POST /api/payments/admin/convert-unlimited ───────────────────────────────
@@ -3202,14 +3160,21 @@ exports.cancelQueuedRenewal = async (req, res) => {
 
     const queuedInvoice = doc.nextRenewal?.invoiceNumber;
 
-    // Remove the standalone Renewal doc(s) backing this queued renewal.
+    // Remove the standalone Renewal doc backing this queued renewal.
     if (doc.nextRenewalId) await Renewal.findByIdAndDelete(doc.nextRenewalId);
-    if (queuedInvoice) await Renewal.deleteMany({ registrationId, invoiceNumber: queuedInvoice });
 
-    // Remove the queued renewal's invoice and hide its number so it never resurfaces.
+    // VOID the invoice — do not delete it.
+    //
+    // The customer paid for this renewal, so the invoice is a record of money that
+    // changed hands. Deleting it to reclaim the number would erase that evidence,
+    // which is precisely what voiding exists to avoid. The Payment row is kept and
+    // the number is retired permanently.
+    //
+    // (The original code deleted the Invoice by hand, hid the number, and left the
+    // Payment row behind — so the number was neither usable nor visible: burned and
+    // invisible at the same time.)
     if (queuedInvoice) {
-      const Invoice = require('../models/Invoice');
-      await Invoice.deleteMany({ registrationId, invoiceNumber: queuedInvoice });
+      await invoiceStore.voidByNumber(queuedInvoice, { reason: 'Queued renewal cancelled by admin' });
     }
 
     const update = {
@@ -3226,8 +3191,9 @@ exports.cancelQueuedRenewal = async (req, res) => {
         'nextRenewal.holdersToRemove': null,
       },
     };
-    if (queuedInvoice)
-      update.$addToSet = { hiddenInvoiceNumbers: normalizeInvoiceNumber(queuedInvoice) };
+    // Deliberately NOT added to hiddenInvoiceNumbers: the invoice still exists,
+    // marked void, and both the admin and the customer should be able to see that
+    // it was cancelled rather than have it silently vanish.
 
     const updated = await Model.findByIdAndUpdate(registrationId, update, { new: true });
     return res.json({ success: true, data: updated });

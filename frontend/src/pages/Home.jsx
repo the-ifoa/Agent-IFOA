@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom'
+import { individualPrice } from '../services/pricing'
+
+const usd = (n) => `$${Number(n).toFixed(2)}`
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -31,11 +34,14 @@ const C = {
   gray900:   '#0f172a',
 }
 
-const PLANS = [
+// Plan cards. Prices are read from the server's tables at render time
+// (see services/pricing.js) so the marketing page cannot advertise a rate the
+// checkout does not honour.
+const makePlans = () => [
   {
     name: 'Turboprop Plan',
     subtitle: '1 Year Subscription',
-    price: '$69.00',
+    price: usd(individualPrice('1 Year Subscription Plan')),
     features: ['Dedicated U.S. Mailing Address', 'FAA Compliance Guaranteed', 'Real-Time Notification', 'Document Scanning & Forwarding', 'Yearly Payment', 'Unlimited Certificates'],
     cta: 'Subscribe Now',
     to: '/register',
@@ -44,7 +50,7 @@ const PLANS = [
   {
     name: 'Jet Plan',
     subtitle: 'Up to 5 Years Subscription',
-    price: '$55.00',
+    price: usd(individualPrice('Multiple Years Subscription Plan', 2) / 2),
     features: ['20% Discount Yearly', 'Dedicated U.S. Mailing Address', 'FAA Compliance Guaranteed', 'Real-Time Notification', 'Document Scanning & Forwarding', 'One Payment for the Period', 'Unlimited Certificates'],
     cta: 'Subscribe Now',
     to: '/register',
@@ -54,7 +60,7 @@ const PLANS = [
   {
     name: 'VIP Plan',
     subtitle: 'Unlimited Subscription',
-    price: '$299.00',
+    price: usd(individualPrice('Unlimited Plan')),
     bestValue: true,
     features: ['The Most Economic Flat Rate', 'Dedicated U.S. Mailing Address', 'FAA Compliance Guaranteed', 'Real-Time Notification', 'Document Scanning & Forwarding', 'One Time Lifetime Payment', 'Unlimited Certificates'],
     cta: 'Subscribe Now',
@@ -308,7 +314,7 @@ export default function Home() {
                 style={{ background: C.blue }}
                 onMouseEnter={e => e.currentTarget.style.background = C.blueDark}
                 onMouseLeave={e => e.currentTarget.style.background = C.blue}>
-                Get Started - $69/yr
+                {`Get Started - ${usd(individualPrice('1 Year Subscription Plan'))}/yr`}
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0-5 5m5-5H6" /></svg>
               </Link>
               {!user && (
@@ -446,7 +452,7 @@ export default function Home() {
             <p className="mt-3 text-sm" style={{ color: C.gray400 }}>Simple, transparent pricing — no hidden fees</p>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {PLANS.map((plan, i) => <PlanCard key={plan.name} plan={plan} index={i} />)}
+            {makePlans().map((plan, i) => <PlanCard key={plan.name} plan={plan} index={i} />)}
           </div>
         </div>
       </section>

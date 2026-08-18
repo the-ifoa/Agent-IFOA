@@ -13,16 +13,15 @@ const {
 const { createOrUpdateInvoice }  = require('../services/invoiceService');
 const { sendAirlinePaymentConfirmation, sendWireRequestAdminNotification } = require('../services/emailService');
 const { allHolderGroupSlots, isActiveHolderGroup } = require('../utils/holderGroups');
+const pricing = require('../shared/pricing');
+const invoiceStore = require('../services/invoiceStore');
 
-// Server-side pricing tables (used to validate / recompute price on create)
-const UNLIMITED_PRICES = { '3 to 5': 265, '5 to 10': 255, 'More than 10': 245 };
-const ONE_YEAR_PRICES  = { '3 to 5': 60,  '5 to 10': 55,  'More than 10': 49  };
-
+// Server-side price validation. Every number comes from shared/pricing.js — the
+// ONE definition in the repo — so a tier edit there propagates here, to
+// paymentController, and (via GET /api/pricing/config) to the browser at once.
 function resolvePricePerCertificate(body) {
   const { subscriptionPlan, holderCount } = body;
-  if (subscriptionPlan === 'Unlimited Plan')             return UNLIMITED_PRICES[holderCount] ?? 265;
-  if (subscriptionPlan === '1 Year Subscription Plan')   return ONE_YEAR_PRICES[holderCount]  ?? 49;
-  return 55; // Multiple Years fallback
+  return pricing.airlinePricePerCertByRange(subscriptionPlan, holderCount);
 }
 
 function inferRowKind(row) {
@@ -110,11 +109,8 @@ function splitFullName(fullName) {
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
 }
 
-function holderRangeFromCount(count) {
-  if (count <= 5) return '3 to 5';
-  if (count <= 10) return '5 to 10';
-  return 'More than 10';
-}
+// Tier boundaries live in shared/pricing.js only.
+const holderRangeFromCount = pricing.holderRangeFromCount;
 
 function buildHolderFromExportRow(row, fallbackEmail, fallbackCertType) {
   const holderName = String(pick(row, ['holderFullName', 'fullName', 'Team Members_1', 'Holder Name'], '')).trim();
@@ -856,7 +852,7 @@ exports.updateAirlinesSubscription = async (req, res) => {
             const ppc       = Number(existingForExpiry.pricePerCertificate || 0);
             const holders   = Number(existingForExpiry.committedCount || existingForExpiry.holderCountValue || 1);
             const pricePerHolder = ppc > 0 && holders > 0 ? ppc : (total / Math.max(holders, 1));
-            if (pricePerHolder > 0) years = Math.max(2, Math.round(pricePerHolder / 55));
+            if (pricePerHolder > 0) years = Math.max(pricing.INDIVIDUAL.multiYearMinYears, Math.round(pricePerHolder / pricing.AIRLINE_MULTI_YEAR_PER_CERT));
           }
           const d = new Date(fromDate);
           d.setFullYear(d.getFullYear() + Math.max(2, years));
@@ -935,13 +931,13 @@ exports.updateAirlinesSubscription = async (req, res) => {
     // BASE invoice. Does NOT affect the plan (isPaid/status handled separately).
     if (isAdmin && (payload.paymentStatus === 'paid' || payload.paymentStatus === 'pending' || payload.paymentStatus === 'failed')) {
       try {
-        const Invoice = require('../models/Invoice');
+        // Delegate to the store rather than writing Invoice.status by hand: it also
+        // clears wirePending and handles the holder-group case, which this inline
+        // copy silently skipped.
+        const invoiceStore = require('../services/invoiceStore');
         const baseNum = normalizeInvoiceNumber(doc.invoiceNumber);
         if (baseNum) {
-          const newStatus = payload.paymentStatus === 'paid' ? 'paid' : 'issued';
-          const set = { status: newStatus };
-          if (newStatus === 'paid') set.paidAt = new Date();
-          await Invoice.updateOne({ registrationId: req.params.id, invoiceNumber: baseNum }, { $set: set });
+          await invoiceStore.setStatus(baseNum, payload.paymentStatus === 'paid' ? 'paid' : 'pending');
         }
       } catch (statusSyncErr) {
         console.warn('[updateAirlines] Invoice status sync failed:', statusSyncErr.message);
@@ -966,6 +962,12 @@ exports.deleteAirlinesSubscription = async (req, res) => {
     if (!doc) doc = await AirlinesSubscription.findByIdAndDelete(req.params.id);
     if (!doc)
       return res.status(404).json({ success: false, message: 'Not found' });
+
+    // Keep the invoices; retire their numbers permanently.
+    // They were genuinely issued to this airline, so they remain the record of
+    // what was charged (recipient details are stored on the invoice itself) and
+    // their numbers are never handed out to anyone else.
+    await invoiceStore.markRegistrationDeleted(doc._id);
 
     // Unlink deleted subscription from any linked user account.
     await User.updateMany(
@@ -1227,6 +1229,8 @@ exports.bulkDeleteAirlines = async (req, res) => {
     await AirlinesSubscription.deleteMany({ _id: { $in: ids } });
 
     for (const doc of deleted) {
+      // Invoices are retained and their numbers retired — see deleteAirlinesSubscription.
+      await invoiceStore.markRegistrationDeleted(doc._id);
       await User.updateMany(
         { subscriptionIds: doc._id },
         { $pull: { subscriptionIds: doc._id } },
@@ -1244,6 +1248,52 @@ exports.bulkDeleteAirlines = async (req, res) => {
 };
 
 // ── Set nextRenewal.invoiceNumber (admin only) ─────────────────────────────────
+/**
+ * Rename the queued renewal's invoice number EVERYWHERE, through the store.
+ *
+ * This used to update only `nextRenewal.invoiceNumber` and the Renewal row, leaving
+ * the canonical Invoice document on the old number. The admin invoices page reads
+ * Invoice documents and the subscription page reads the registration mirror, so the
+ * two surfaces showed different numbers for the same renewal — and the old number
+ * was never released, permanently consuming a sequence slot.
+ *
+ * Renaming through invoiceStore.saveAdminDraft() keeps the document, the mirrors and
+ * the Payment row in step and hands the old number back to the allocator.
+ */
+async function renameQueuedRenewalInvoice({ Model, registrationId, oldNumber, newNumber, renewalId }) {
+  const Invoice = require('../models/Invoice');
+  const invoiceStore = require('../services/invoiceStore');
+
+  const existingInvoice = oldNumber
+    ? await Invoice.findOne({ registrationId, invoiceNumber: oldNumber }).select('_id').lean()
+    : null;
+
+  if (existingInvoice) {
+    // Renames, re-syncs every mirror, and releases the previous number.
+    await invoiceStore.saveAdminDraft({ invoiceId: existingInvoice._id, invoiceNumber: newNumber });
+  }
+
+  // The mirror is authoritative for a queued renewal that has no invoice document yet.
+  const doc = await Model.findByIdAndUpdate(
+    registrationId,
+    { $set: { 'nextRenewal.invoiceNumber': newNumber } },
+    { new: true },
+  );
+
+  if (renewalId) {
+    const Renewal = require('../models/Renewal');
+    await Renewal.findByIdAndUpdate(renewalId, { $set: { invoiceNumber: newNumber } });
+  }
+
+  // If no invoice document backed the old number, nothing else references it now.
+  if (!existingInvoice && oldNumber && oldNumber !== newNumber) {
+    const { releaseInvoiceNumber } = require('../services/invoiceNumberService');
+    await releaseInvoiceNumber(oldNumber).catch(() => {});
+  }
+
+  return doc;
+}
+
 exports.setRenewalInvoiceNumber = async (req, res) => {
   try {
     const { invoiceNumber } = req.body;
@@ -1265,17 +1315,13 @@ exports.setRenewalInvoiceNumber = async (req, res) => {
       }
     }
 
-    const doc = await Airlines.findByIdAndUpdate(
-      req.params.id,
-      { $set: { 'nextRenewal.invoiceNumber': requestedInvoiceNumber } },
-      { new: true },
-    );
-
-    if (current.nextRenewalId) {
-      await Renewal.findByIdAndUpdate(current.nextRenewalId, {
-        $set: { invoiceNumber: requestedInvoiceNumber },
-      });
-    }
+    const doc = await renameQueuedRenewalInvoice({
+      Model:          Airlines,
+      registrationId: req.params.id,
+      oldNumber:      currentQueuedInvoiceNumber,
+      newNumber:      requestedInvoiceNumber,
+      renewalId:      current.nextRenewalId,
+    });
 
     res.json({ success: true, data: doc });
   } catch (err) {
@@ -2304,10 +2350,11 @@ exports.activateWirePayment = async (req, res) => {
             purpose:               'convert-unlimited',
             lineItems:             _buildConversionLineItems(meta, charge, 'Airlines'),
           });
-          await Invoice.updateMany(
-            { registrationId: doc._id, purpose: 'convert-unlimited', wirePending: true },
-            { $set: { wirePending: false, status: 'paid', paidAt: new Date() } },
-          );
+          // Reveal THIS invoice to the airline. Targeted by number — the old filter
+          // matched every wire-pending invoice of the same purpose, so approving one
+          // silently marked any other outstanding wire invoice paid as well.
+          await invoiceStore.setStatus(convInvoiceNum, 'paid').catch((e) =>
+            console.warn('[activateWirePayment] status update failed:', e.message));
         } catch (e) {
           console.warn('[activateWirePayment] Conversion invoice failed:', e.message);
         }
@@ -2398,11 +2445,11 @@ exports.activateWirePayment = async (req, res) => {
           existingInvoiceNumber: invoiceNum,
           purpose:               isUpgrade ? 'holder-upgrade' : 'renewal',
         });
-        // Approval confirmed — reveal the wire invoice to the airline.
-        await Invoice.updateMany(
-          { registrationId: doc._id, purpose: invPurpose, wirePending: true },
-          { $set: { wirePending: false, status: 'paid', paidAt: new Date() } },
-        );
+        // Approval confirmed — reveal THIS wire invoice to the airline. Matching by
+        // purpose alone also flipped any other outstanding wire invoice of the same
+        // kind, marking work paid that nobody had approved.
+        await invoiceStore.setStatus(invoiceNum, 'paid').catch((e) =>
+          console.warn('[activateWirePayment] status update failed:', e.message));
       } catch (e) {
         console.warn('[activateWirePayment] Detail-based invoice failed:', e.message);
       }
@@ -2498,8 +2545,7 @@ exports.activateWirePayment = async (req, res) => {
       const newRange        = holderRangeFromCount(newCount);
       const plan            = doc.subscriptionPlan || '1 Year Subscription Plan';
       let   newPpc          = Number(doc.pricePerCertificate || doc.pricePerCert || 0);
-      if (plan === 'Unlimited Plan')           newPpc = UNLIMITED_PRICES[newRange] ?? newPpc;
-      else if (plan === '1 Year Subscription Plan') newPpc = ONE_YEAR_PRICES[newRange] ?? newPpc;
+      newPpc = pricing.airlinePricePerCertByRange(plan, newRange) ?? newPpc;
 
       const upgradeUpdate = {
         committedCount:          newCount,
@@ -2628,6 +2674,29 @@ exports.declineWirePayment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No pending wire request on this record.' });
 
     const wasPaid = !!doc.isPaid;
+
+    // Remove any pro-forma invoice raised for this wire request and free its number.
+    //
+    // A declined request was never paid, so nothing of value is lost — whereas
+    // leaving the invoice behind produced a ghost: hidden from the airline by
+    // wirePending, shown to the admin as permanently unpaid, and holding its
+    // invoice number for good.
+    try {
+      const invoiceStore = require('../services/invoiceStore');
+      const Invoice = require('../models/Invoice');
+      const pending = await Invoice.find({ registrationId: doc._id, wirePending: true })
+        .select('invoiceNumber').lean();
+      for (const inv of pending) {
+        // eslint-disable-next-line no-await-in-loop
+        await invoiceStore.deleteByNumber(inv.invoiceNumber);
+      }
+      if (pending.length) {
+        console.log(`[declineWirePayment] removed ${pending.length} pro-forma invoice(s) and freed their numbers`);
+      }
+    } catch (e) {
+      console.warn('[declineWirePayment] pro-forma cleanup failed:', e.message);
+    }
+
     const updated = await Airlines.findByIdAndUpdate(req.params.id, {
       $set: {
         wirePaymentRequested: false,

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { individualPrice } from '../services/pricing'
 import { useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ifoaLogo from '../assets/IFOA_USA_white.png'
@@ -15,10 +16,13 @@ const SUGGESTIONS = [
   'What is an IACRA FTN tracking number?',
 ]
 
-const PLAN_INFO = `
+// Prices are interpolated from the server's tables so the assistant can never
+// quote a rate the checkout does not honour. Built lazily (inside
+// <PricingProvider>) because the tables are fetched.
+const makePlanInfo = () => `
 IFOA (International Flight Operational Academy) — Subscription Plans:
 
-1. TURBOPROP PLAN — $69.00/year (1 Year Subscription)
+1. TURBOPROP PLAN — $${individualPrice('1 Year Subscription Plan').toFixed(2)}/year (1 Year Subscription)
    • Dedicated U.S. Mailing Address
    • FAA Compliance Guaranteed
    • Real-Time Notification
@@ -26,7 +30,7 @@ IFOA (International Flight Operational Academy) — Subscription Plans:
    • Yearly Payment
    • Unlimited Certificates
 
-2. JET PLAN — $55.00/year (Up to 5 Years Subscription)
+2. JET PLAN — $${(individualPrice('Multiple Years Subscription Plan', 2) / 2).toFixed(2)}/year (Up to 5 Years Subscription)
    • 20% Discount Yearly
    • Dedicated U.S. Mailing Address
    • FAA Compliance Guaranteed
@@ -35,7 +39,7 @@ IFOA (International Flight Operational Academy) — Subscription Plans:
    • One Payment for the Period
    • Unlimited Certificates
 
-3. VIP PLAN — $299.00 ONE-TIME (Unlimited / Lifetime Subscription) ⭐ BEST VALUE
+3. VIP PLAN — $${individualPrice('Unlimited Plan').toFixed(2)} ONE-TIME (Unlimited / Lifetime Subscription) ⭐ BEST VALUE
    • The Most Economic Flat Rate — Pay once, covered forever
    • Dedicated U.S. Mailing Address
    • FAA Compliance Guaranteed
@@ -266,7 +270,7 @@ function ChatView({ messages, setMessages, loading, setLoading, initialQuestion,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: history.map(m => ({ role: m.role, content: m.content })),
-          systemContext: systemContext || PLAN_INFO,
+          systemContext: systemContext || makePlanInfo(),
         }),
       })
 
@@ -435,7 +439,7 @@ export default function ChatBot() {
   // admin pages. accountType lets the bot tailor renewal/upgrade/credit answers.
   const isDashboard = pathname.startsWith('/dashboard')
   const accountType = user?.role === 'airline' ? 'airline' : user?.role === 'individual' ? 'individual' : null
-  const systemContext = PLAN_INFO + (accountType ? `\n\nLOGGED-IN ACCOUNT TYPE: ${accountType}.\n` + (accountType === 'individual'
+  const systemContext = makePlanInfo() + (accountType ? `\n\nLOGGED-IN ACCOUNT TYPE: ${accountType}.\n` + (accountType === 'individual'
     ? 'This is an INDIVIDUAL account: one single plan, no certificate holders, no add-ons, no volume tiers. They can upgrade a 1-Year plan to Multiple Years or Unlimited (unused-time credit applies). Tailor answers accordingly.'
     : 'This is an AIRLINE account: a base plan plus optional add-on (holder upgrade) plans, volume-tier per-certificate pricing, card or wire payment. They can upgrade the base or any add-on to Unlimited (unused-time credit applies). Tailor answers accordingly.') : '')
 

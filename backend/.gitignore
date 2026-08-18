@@ -1,3 +1,5 @@
 node_modules
 .env
 .env.example
+# Database dumps — contain customer PII. Never commit.
+backups/

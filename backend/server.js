@@ -76,6 +76,7 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '2mb' }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+app.use('/api/pricing',       require('./routes/pricingRoutes'));
 app.use('/api/auth',          require('./routes/authRoutes'));
 app.use('/api/individuals',   require('./routes/individualRoutes'));
 app.use('/api/airlines',      require('./routes/airlinesRoutes'));
@@ -121,6 +122,37 @@ require('./socket/supportSocket').initSupportSocket(io);
 mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 })
   .then(() => {
     console.log('MongoDB connected');
+
+    // ── Invoice store: one-time repair on boot ────────────────────────────────
+    // 1. Materialise any invoice number that still exists only as a legacy
+    //    Payment/Renewal/registration reference into a real Invoice document, so
+    //    every reader can query one collection and see identical data.
+    // 2. Rebuild the per-year sequence allocator from what the database actually
+    //    holds, recovering gaps (deleted invoices) for reuse.
+    // Both are idempotent and cheap; failure is logged but never blocks startup.
+    (async () => {
+      try {
+        const invoiceStore = require('./services/invoiceStore');
+        const { reconcileInvoiceSequences } = require('./services/invoiceNumberService');
+        // dedupe: false — the boot path is additive only. Collapsing duplicate
+        // invoices deletes documents, so it stays an explicit operator action:
+        //   node scripts/reconcileInvoices.js
+        const backfill = await invoiceStore.backfillLegacyInvoices({ dedupe: false });
+        // Clears mirror pointers left dangling by an interrupted flow, which would
+        // otherwise keep their invoice numbers permanently out of circulation.
+        const stale    = await invoiceStore.clearStaleMirrors();
+        const counter  = await reconcileInvoiceSequences();
+        console.log(
+          `[invoices] backfilled ${backfill.created} legacy invoice(s), ` +
+          `left ${backfill.skippedHidden} previously-deleted alone, ` +
+          `cleared ${stale.cleared} stale pointer(s); ` +
+          `sequence high-water ${counter.sequence}, ${counter.released.length} number(s) free for reuse`,
+        );
+      } catch (e) {
+        console.error('[invoices] boot reconcile failed:', e.message);
+      }
+    })();
+
     const { startSubscriptionReminderCron } = require('./cron/subscriptionReminder');
     startSubscriptionReminderCron();
     const PORT = process.env.PORT || 5000;

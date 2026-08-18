@@ -4,6 +4,7 @@ import './App.css'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContext'
 import { DataCacheProvider } from './context/DataCacheContext'
+import { PricingProvider } from './context/PricingContext'
 import ChatBot from './components/ChatBot'
 import HeaderNav from './components/layout/HeaderNav'
 import Navbar from './components/Navbar'
@@ -187,6 +188,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <PricingProvider>
       <DataCacheProvider>
         <ScrollToTop />
         <ChatBot />
@@ -237,6 +239,7 @@ function App() {
         </Suspense>
         </MustChangePasswordGate>
       </DataCacheProvider>
+      </PricingProvider>
     </AuthProvider>
   )
 }

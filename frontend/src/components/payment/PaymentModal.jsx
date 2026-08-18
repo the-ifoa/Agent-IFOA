@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { effectiveMultiYears } from '../../services/pricing'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { loadStripe } from '@stripe/stripe-js'
@@ -411,8 +412,11 @@ export function buildInvoice(sub, registrationModel, amountCents, paymentIntent,
       return d.toISOString()
     }
     if (sub.subscriptionPlan === 'Multiple Years Subscription Plan') {
-      const fromAmount = registrationModel !== 'Individual' ? null
-        : amountCents >= 11000 ? Math.round(amountCents / 5500) : null
+      // Recover the term from the amount charged, using the server's per-year
+      // rate rather than a copy of it.
+      const fromAmount = registrationModel !== 'Individual'
+        ? null
+        : effectiveMultiYears(sub.subscriptionPlan, amountCents / 100)
       const years = fromAmount || sub.multiYearCount || 3
       d.setFullYear(d.getFullYear() + years)
       return d.toISOString()
