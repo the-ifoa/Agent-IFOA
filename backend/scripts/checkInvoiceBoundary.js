@@ -36,9 +36,16 @@ const OWNER = path.join('services', 'invoiceStore.js');
 
 // Files exempt because they legitimately operate below the store: the destructive
 // reset tool, and the test suite which fabricates legacy states on purpose.
+// Exempt because they legitimately operate below the store: the destructive reset
+// tool, and the verification harnesses, which fabricate legacy states and reset
+// collections between scenarios on purpose.
 const EXEMPT = [
   path.join('scripts', 'resetInvoices.js'),
   path.join('scripts', 'verifyInvoices.js'),
+  path.join('scripts', 'verifyNotifications.js'),
+  path.join('scripts', 'verifyPaymentRace.js'),
+  path.join('scripts', 'verifyEmailLinks.js'),
+  path.join('scripts', 'verifyArchitecture.js'),
   path.join('scripts', 'checkInvoiceBoundary.js'),
 ];
 

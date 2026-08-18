@@ -551,6 +551,56 @@ The invoice refactor changes how invoice data is stored, so the first boot again
 
 **Rollback:** reverting the code is safe. The `Invoice` documents created by the backfill are additive, and the pre-refactor read path unions and de-duplicates by invoice number, so it picks them up correctly. The extra `InvoiceCounter.released` field is simply ignored by the old allocator.
 
+### Admin notifications ("self-mail")
+
+Every event that moves money, and every request for money, alerts the IFOA team.
+Recipients come from `adminNotifyRecipients()` — `ADMIN_NOTIFY_EMAIL` plus the SMTP
+user and the `MAIL_FROM` address — so all alerts reach the same inbox list.
+
+| Event | Function | Fires from |
+|---|---|---|
+| Payment received | `sendAdminPaymentNotification` | `confirmPayment`, `stripeWebhook`, `markIndividualPaid`, `markAirlinesPaid`, `activateWirePayment` (×6 completion points), `adminHolderUpgrade`, `markHolderGroupPaid`, `adminRenew`, `adminConvertToUnlimited` |
+| Wire payment requested | `sendWireRequestAdminNotification` | `requestAirlineInvoice` (all four purposes) |
+| Support message | `sendAdminSupportMessageNotification` | `supportService.createMessage`, **only if unseen** |
+
+Two properties this design depends on:
+
+**Exactly once, never twice.** The confirm endpoint and the Stripe webhook both
+process the same PaymentIntent by design. Each early-returns on an already-paid
+payment *before* reaching the alert, and `markIndividualPaid` / `markAirlinesPaid` /
+`markHolderGroupPaid` do the same via their `alreadyPaid` guards. Verified under
+genuine concurrency by `scripts/verifyPaymentRace.js`.
+
+**Support alerts are conditional on being seen.** A user message does not email
+immediately — it schedules a check `SUPPORT_ALERT_GRACE_SECONDS` later (default 60).
+The admin console marks a conversation read within ~1s of a message arriving in an
+open conversation, so if somebody was watching, `adminUnread` is back to 0 by the
+time the check runs and no mail is sent. If nobody was watching it fires.
+A burst of messages debounces to a single check, and
+`SUPPORT_ALERT_THROTTLE_MINUTES` (default 10) prevents a long-unseen conversation
+from paging the team repeatedly. Admin replies never alert.
+
+**Links are environment-driven.** Every dashboard button in every template is built
+from `process.env.FRONTEND_URL`. There are no hardcoded hosts anywhere in
+`emailService.js` — set `FRONTEND_URL` per environment or the emails will point at
+whatever the deployment's `.env` says.
+
+### Verification suite
+
+`npm run verify:all` runs everything below; each is also runnable on its own. They
+use dedicated scratch databases and refuse to run against `MONGO_URI`.
+
+| Script | Checks | Assertions |
+|---|---|---|
+| `checkInvoiceBoundary.js` | nothing outside `invoiceStore.js` writes to the Invoice collection | grep-based, fails loudly |
+| `verifyArchitecture.js` | pricing single-source, store boundary, notification coverage, duplicate-alert guards, email links, support gating, module wiring | 37 |
+| `verifyInvoices.js` | allocator + store: concurrency, gap reuse, issuance guards, void/orphan semantics | 79 |
+| `verifyNotifications.js` | drives real controllers: invoice + exactly one alert per money path, idempotency | 40 |
+| `verifyPaymentRace.js` | confirm-vs-webhook race yields one invoice, one payment, one alert | 14 |
+| `verifyEmailLinks.js` | renders real MJML templates; links honour `FRONTEND_URL`, subjects match bodies | 18 |
+
+Total: **188 assertions.**
+
 ### Operational scripts (`backend/scripts/`)
 
 | Script | Effect |

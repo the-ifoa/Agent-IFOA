@@ -174,6 +174,19 @@ const PURPOSE_LABELS = {
   'convert-unlimited':  'Upgrade to Unlimited',
 };
 
+// Wire-request purpose labels — ONE definition, used by both the subject line and
+// the email body. These were previously computed separately in two places, and the
+// subject's copy was missing 'convert-unlimited', so a conversion request arrived
+// titled "[Initial]" while its body correctly said "Convert to Unlimited".
+const WIRE_PURPOSE_LABELS = {
+  'initial':           'Initial Registration',
+  'renewal':           'Subscription Renewal',
+  'holder-upgrade':    'Holder Upgrade',
+  'convert-unlimited': 'Convert to Unlimited',
+};
+const wirePurposeLabel = (purpose) =>
+  WIRE_PURPOSE_LABELS[purpose] || WIRE_PURPOSE_LABELS.initial;
+
 // ── Payment confirmation — Individual ─────────────────────────────────────────
 async function buildIndividualConfirmationHtml(doc) {
   const name    = [doc.firstName, doc.lastName].filter(Boolean).join(' ') || 'Valued Member';
@@ -406,10 +419,7 @@ async function buildWireRequestAdminNotificationHtml(doc) {
     ? new Date(doc.wirePaymentRequestedAt).toLocaleString('en-US', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })
     : new Date().toLocaleString('en-US', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
 
-  const purposeLabel = purpose === 'renewal' ? 'Subscription Renewal'
-    : purpose === 'holder-upgrade'            ? 'Holder Upgrade'
-    : purpose === 'convert-unlimited'         ? 'Convert to Unlimited'
-    : 'Initial Registration';
+  const purposeLabel = wirePurposeLabel(purpose);
 
   let detailRows = '';
   if (purpose === 'initial') {
@@ -800,15 +810,19 @@ async function sendExpiryReminder(doc, isAirline, daysLeft) {
 }
 
 async function sendWireRequestAdminNotification(doc) {
-  const adminEmail = process.env.SMTP_USER;
-  if (!adminEmail) return;
+  // Use the SAME recipient list as every other admin alert. This previously read
+  // process.env.SMTP_USER alone, so a team that configured ADMIN_NOTIFY_EMAIL got
+  // payment alerts there but never wire requests — and if SMTP_USER was unset the
+  // wire alert was silently dropped entirely.
+  const recipients = adminNotifyRecipients();
+  if (!recipients.length) {
+    console.warn('[email] No admin notification recipient configured — skipping wire request alert.');
+    return;
+  }
   const airline = doc.airlineName || [doc.firstName, doc.lastName].filter(Boolean).join(' ') || 'Airline';
-  const purposeLabel = doc.wireRequestPurpose === 'renewal'        ? 'Renewal'
-    : doc.wireRequestPurpose === 'holder-upgrade' ? 'Holder Upgrade'
-    : 'Initial';
   await sendMail({
-    to:      adminEmail,
-    subject: `Wire Payment Request — ${airline} [${purposeLabel}]`,
+    to:      recipients.join(', '),
+    subject: `Wire Payment Request — ${airline} [${wirePurposeLabel(doc.wireRequestPurpose)}]`,
     html:    await buildWireRequestAdminNotificationHtml(doc),
   });
 }

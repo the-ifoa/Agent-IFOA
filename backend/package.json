@@ -7,7 +7,12 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "check:invoices": "node scripts/checkInvoiceBoundary.js",
-    "verify:invoices": "node scripts/checkInvoiceBoundary.js && node scripts/verifyInvoices.js"
+    "verify:invoices": "node scripts/checkInvoiceBoundary.js && node scripts/verifyInvoices.js",
+    "verify:architecture": "node scripts/verifyArchitecture.js",
+    "verify:notifications": "node scripts/verifyNotifications.js",
+    "verify:race": "node scripts/verifyPaymentRace.js",
+    "verify:email": "node scripts/verifyEmailLinks.js",
+    "verify:all": "node scripts/checkInvoiceBoundary.js && node scripts/verifyArchitecture.js && node scripts/verifyInvoices.js && node scripts/verifyNotifications.js && node scripts/verifyPaymentRace.js && node scripts/verifyEmailLinks.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
