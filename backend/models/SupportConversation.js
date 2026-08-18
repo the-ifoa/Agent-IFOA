@@ -27,6 +27,11 @@ const SupportConversationSchema = new mongoose.Schema({
   // userUnread = messages the user hasn't seen.
   adminUnread: { type: Number, default: 0 },
   userUnread:  { type: Number, default: 0 },
+
+  // Last time an email alert about a user message was sent to the IFOA team.
+  // Used to throttle alerts so a rapid burst of messages sends one email,
+  // not one per message. See supportService.createMessage().
+  lastAdminNotifiedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('SupportConversation', SupportConversationSchema);

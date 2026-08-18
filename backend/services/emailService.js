@@ -133,6 +133,46 @@ function collectRecipients(...addresses) {
   return valid;
 }
 
+// ── Admin notification recipients ─────────────────────────────────────────────
+// Who receives internal "someone paid" / "someone messaged support" alerts.
+// ADMIN_NOTIFY_EMAIL may hold a comma-separated list; falls back to the mailbox
+// the app authenticates as (SMTP_USER) or the address inside MAIL_FROM.
+function adminNotifyRecipients() {
+  const fromAddr = (String(FROM).match(/<([^>]+)>/) || [null, FROM])[1];
+  const listed   = String(process.env.ADMIN_NOTIFY_EMAIL || '').split(',');
+  return collectRecipients(...listed, process.env.SMTP_USER, fromAddr);
+}
+
+// ── Shared small formatters for admin notifications ───────────────────────────
+function fmtMoney(n) {
+  const v = Number(n);
+  return Number.isFinite(v) ? `$${v.toFixed(2)}` : '—';
+}
+
+function fmtDateTime(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toLocaleString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short',
+  });
+}
+
+function fmtDateOnly(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+}
+
+const PURPOSE_LABELS = {
+  'payment':            'New Subscription',
+  'renewal':            'Subscription Renewal',
+  'holder-upgrade':     'Certificate Holder Upgrade',
+  'convert-unlimited':  'Upgrade to Unlimited',
+};
+
 // ── Payment confirmation — Individual ─────────────────────────────────────────
 async function buildIndividualConfirmationHtml(doc) {
   const name    = [doc.firstName, doc.lastName].filter(Boolean).join(' ') || 'Valued Member';
@@ -424,6 +464,186 @@ async function buildWireRequestAdminNotificationHtml(doc) {
   `);
 }
 
+// ── Payment received — admin notification (sent to self) ──────────────────────
+/**
+ * Internal alert so the team sees who paid, for what, and with which invoice,
+ * without opening the dashboard. `ctx` carries the freshest payment/invoice data
+ * available at the call site; every field is optional and degrades to the
+ * registration document.
+ */
+async function buildAdminPaymentNotificationHtml(doc, ctx = {}) {
+  const {
+    registrationModel = 'Individual',
+    purpose           = 'payment',
+    amountDollars,
+    invoiceNumber,
+    paymentMethod,
+    paidAt,
+    stripePaymentIntentId,
+    paymentId,
+    registrationId,
+    additionalHolderCount,
+    newPricePerCertificate,
+    lineItems = [],
+  } = ctx;
+
+  const isAirline = registrationModel !== 'Individual';
+  const contact   = [doc.firstName, doc.lastName].filter(Boolean).join(' ').trim();
+  const company   = doc.airlineName || '';
+  const who       = isAirline ? (company || contact || 'Airline') : (contact || 'Individual');
+  const email     = doc.paymentEmail || doc.email || '';
+  const phone     = doc.phone || doc.contactNumber || '';
+  const country   = doc.country || doc.address || '';
+  const plan      = fmtPlan(doc.subscriptionPlan || '—', doc.price || doc.multiYearCount);
+  const purposeLabel = PURPOSE_LABELS[purpose] || 'Payment';
+  const expiry    = doc.expirationDate ? fmtDateOnly(doc.expirationDate) : 'N/A (Unlimited)';
+  const started   = doc.subscriptionDate ? fmtDateOnly(doc.subscriptionDate) : '—';
+
+  // Customer-type specific rows
+  let profileRows = '';
+  if (isAirline) {
+    const holders = Number(doc.committedCount || doc.holderCountValue || doc.certificateHolders?.length || 0);
+    const ppc     = Number(doc.pricePerCertificate || doc.pricePerCert || 0);
+    profileRows = `
+      <strong>Company:</strong> ${escHtml(company || '—')}<br />
+      <strong>Contact Person:</strong> ${escHtml(contact || '—')}<br />
+      <strong>Certificate Holders:</strong> ${holders || '—'}<br />
+      <strong>Price per Certificate:</strong> ${ppc ? fmtMoney(ppc) : '—'}`;
+  } else {
+    profileRows = `
+      <strong>Name:</strong> ${escHtml(contact || '—')}<br />
+      <strong>Certificate:</strong> ${escHtml(doc.primaryCertificate || doc.primaryAirmanCertificate || '—')}<br />
+      <strong>FAA Certificate No.:</strong> ${escHtml(doc.faaCertificateNumber || '—')}<br />
+      <strong>IACRA FTN:</strong> ${escHtml(doc.iacraTrackingNumber || '—')}`;
+  }
+
+  // Upgrade-specific extras
+  let upgradeRows = '';
+  if (purpose === 'holder-upgrade') {
+    upgradeRows = `
+      <strong>Additional Holders Purchased:</strong> +${Number(additionalHolderCount || 0)}<br />
+      <strong>New Price per Certificate:</strong> ${newPricePerCertificate ? fmtMoney(newPricePerCertificate) : '—'}`;
+  }
+
+  // Invoice line items table (falls back to a single total row)
+  const itemRows = (Array.isArray(lineItems) && lineItems.length ? lineItems : [])
+    .map(li => `
+      <tr>
+        <td style="padding:8px 16px;border-top:1px solid #e0e0e0;">${escHtml(li.description || '—')}</td>
+        <td style="padding:8px 16px;border-top:1px solid #e0e0e0;text-align:center;">${Number(li.quantity || 1)}</td>
+        <td style="padding:8px 16px;border-top:1px solid #e0e0e0;text-align:right;">${fmtMoney(li.unitPrice)}</td>
+        <td style="padding:8px 16px;border-top:1px solid #e0e0e0;text-align:right;">${fmtMoney(li.totalPrice)}</td>
+      </tr>`)
+    .join('');
+
+  const itemsTable = itemRows ? `
+    <mj-table border="1px solid #e0e0e0" cellpadding="0" cellspacing="0">
+      <tr style="background:#f7f7f7;border-bottom:1px solid #e0e0e0;">
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;letter-spacing:0.05em;">DESCRIPTION</td>
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;text-align:center;">QTY</td>
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;text-align:right;">UNIT</td>
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;text-align:right;">TOTAL</td>
+      </tr>
+      ${itemRows}
+      <tr>
+        <td colspan="3" style="padding:10px 16px;border-top:2px solid #0f172a;font-weight:bold;text-align:right;">Total Paid</td>
+        <td style="padding:10px 16px;border-top:2px solid #0f172a;font-weight:bold;text-align:right;">${fmtMoney(amountDollars)}</td>
+      </tr>
+    </mj-table>` : '';
+
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'https://agent.theifoa.com'}/admin`;
+
+  return wrap(`
+    <mj-text font-size="17px" font-weight="bold" color="#0f172a" padding="0 0 12px 0">Payment Received — ${escHtml(fmtMoney(amountDollars))}</mj-text>
+    <mj-text><strong>${escHtml(who)}</strong> completed a payment for <strong>${escHtml(purposeLabel)}</strong>.</mj-text>
+
+    <mj-table border="1px solid #e0e0e0" cellpadding="0" cellspacing="0">
+      <tr style="background:#f7f7f7;border-bottom:1px solid #e0e0e0;">
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;letter-spacing:0.05em;">CUSTOMER — ${isAirline ? 'AIRLINE' : 'INDIVIDUAL'}</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;font-size:13px;line-height:2.2;">
+          ${profileRows}<br />
+          <strong>Email:</strong> ${escHtml(email || '—')}<br />
+          <strong>Phone:</strong> ${escHtml(phone || '—')}<br />
+          <strong>Location:</strong> ${escHtml(country || '—')}
+        </td>
+      </tr>
+    </mj-table>
+
+    <mj-table border="1px solid #e0e0e0" cellpadding="0" cellspacing="0">
+      <tr style="background:#f7f7f7;border-bottom:1px solid #e0e0e0;">
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;letter-spacing:0.05em;">PAYMENT &amp; INVOICE</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;font-size:13px;line-height:2.2;">
+          <strong>Invoice Number:</strong> ${escHtml(invoiceNumber || '—')}<br />
+          <strong>Amount Paid:</strong> ${escHtml(fmtMoney(amountDollars))}<br />
+          <strong>Payment Type:</strong> ${escHtml(purposeLabel)}<br />
+          <strong>Payment Method:</strong> ${escHtml(paymentMethod || 'card')}<br />
+          <strong>Paid At:</strong> ${escHtml(fmtDateTime(paidAt || Date.now()))}<br />
+          <strong>Plan:</strong> ${escHtml(plan)}<br />
+          <strong>Subscription Start:</strong> ${escHtml(started)}<br />
+          <strong>Subscription Expires:</strong> ${escHtml(expiry)}${upgradeRows}<br />
+          <strong>Stripe Intent:</strong> ${escHtml(stripePaymentIntentId || '—')}<br />
+          <strong>Payment Record ID:</strong> ${escHtml(String(paymentId || '—'))}<br />
+          <strong>Registration ID:</strong> ${escHtml(String(registrationId || doc._id || '—'))}
+        </td>
+      </tr>
+    </mj-table>
+
+    ${itemsTable}
+
+    <mj-button background-color="#0000ff" color="#ffffff" border-radius="8px" font-size="14px" font-weight="bold" inner-padding="12px 28px" href="${dashboardUrl}">
+      Open Admin Dashboard
+    </mj-button>
+    <mj-text padding="0">— IFOA USA Automated Notification</mj-text>
+  `);
+}
+
+// ── Support message — admin notification (sent to self) ───────────────────────
+async function buildAdminSupportMessageHtml({ name, email, role, body, sentAt, unreadCount }) {
+  const roleLabel = role === 'airline' ? 'Airline' : 'Individual';
+  const dashboardUrl = `${process.env.FRONTEND_URL || 'https://agent.theifoa.com'}/admin/support`;
+  const messageHtml = escHtml(body).replace(/\n/g, '<br />');
+
+  return wrap(`
+    <mj-text font-size="17px" font-weight="bold" color="#0f172a" padding="0 0 12px 0">New Support Message</mj-text>
+    <mj-text><strong>${escHtml(name || 'A user')}</strong> (${escHtml(roleLabel)}) sent a message to support.</mj-text>
+
+    <mj-table border="1px solid #e0e0e0" cellpadding="0" cellspacing="0">
+      <tr style="background:#f7f7f7;border-bottom:1px solid #e0e0e0;">
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;letter-spacing:0.05em;">SENDER</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;font-size:13px;line-height:2.2;">
+          <strong>Name:</strong> ${escHtml(name || '—')}<br />
+          <strong>Account Type:</strong> ${escHtml(roleLabel)}<br />
+          <strong>Email:</strong> ${escHtml(email || '—')}<br />
+          <strong>Received:</strong> ${escHtml(fmtDateTime(sentAt || Date.now()))}${
+            unreadCount > 1 ? `<br /><strong>Unread in this conversation:</strong> ${unreadCount}` : ''
+          }
+        </td>
+      </tr>
+    </mj-table>
+
+    <mj-table border="1px solid #e0e0e0" cellpadding="0" cellspacing="0">
+      <tr style="background:#f7f7f7;border-bottom:1px solid #e0e0e0;">
+        <td style="padding:10px 16px;font-size:12px;font-weight:bold;color:#555555;letter-spacing:0.05em;">MESSAGE</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;font-size:14px;line-height:1.8;">${messageHtml}</td>
+      </tr>
+    </mj-table>
+
+    <mj-text>Reply from the support console — the user sees your reply in their live chat.</mj-text>
+    <mj-button background-color="#0000ff" color="#ffffff" border-radius="8px" font-size="14px" font-weight="bold" inner-padding="12px 28px" href="${dashboardUrl}">
+      Open Support Console
+    </mj-button>
+    <mj-text padding="0">— IFOA USA Automated Notification</mj-text>
+  `);
+}
+
 // ── OTP email ────────────────────────────────────────────────────────────────
 const OTP_LABELS = {
   'signup':            { subject: 'IFOA USA — Verify Your Email to Create Account', heading: 'Verify Your Email', action: 'You recently requested to create a new IFOA USA account.' },
@@ -574,6 +794,49 @@ async function sendWireRequestAdminNotification(doc) {
   });
 }
 
+/**
+ * Internal alert to the IFOA team whenever a customer payment succeeds.
+ * Never throws — a failed internal alert must not break a payment flow.
+ */
+async function sendAdminPaymentNotification(doc, ctx = {}) {
+  const recipients = adminNotifyRecipients();
+  if (!recipients.length) {
+    console.warn('[email] No admin notification recipient configured — skipping payment alert.');
+    return;
+  }
+  const isAirline = (ctx.registrationModel || 'Individual') !== 'Individual';
+  const who = isAirline
+    ? (doc.airlineName || [doc.firstName, doc.lastName].filter(Boolean).join(' ') || 'Airline')
+    : ([doc.firstName, doc.lastName].filter(Boolean).join(' ') || 'Individual');
+  const purposeLabel = PURPOSE_LABELS[ctx.purpose || 'payment'] || 'Payment';
+  const amount = fmtMoney(ctx.amountDollars);
+  const invoicePart = ctx.invoiceNumber ? ` — ${ctx.invoiceNumber}` : '';
+
+  await sendMail({
+    to:      recipients.join(', '),
+    subject: `Payment Received ${amount} — ${who} [${purposeLabel}]${invoicePart}`,
+    html:    await buildAdminPaymentNotificationHtml(doc, ctx),
+  });
+}
+
+/**
+ * Internal alert to the IFOA team whenever an airline/individual sends a
+ * support chat message. Never throws.
+ */
+async function sendAdminSupportMessageNotification({ name, email, role, body, sentAt, unreadCount }) {
+  const recipients = adminNotifyRecipients();
+  if (!recipients.length) {
+    console.warn('[email] No admin notification recipient configured — skipping support alert.');
+    return;
+  }
+  const roleLabel = role === 'airline' ? 'Airline' : 'Individual';
+  await sendMail({
+    to:      recipients.join(', '),
+    subject: `New Support Message — ${name || 'User'} [${roleLabel}]`,
+    html:    await buildAdminSupportMessageHtml({ name, email, role, body, sentAt, unreadCount }),
+  });
+}
+
 async function sendOtpEmail(email, code, purpose) {
   const label = OTP_LABELS[purpose] || OTP_LABELS['signup'];
   await sendMail({
@@ -605,6 +868,8 @@ module.exports = {
   sendAirlineHolderUpgradeConfirmation,
   sendExpiryReminder,
   sendWireRequestAdminNotification,
+  sendAdminPaymentNotification,
+  sendAdminSupportMessageNotification,
   sendOtpEmail,
   sendCustomMessageEmail,
 };

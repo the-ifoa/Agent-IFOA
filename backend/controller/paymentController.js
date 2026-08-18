@@ -46,6 +46,7 @@ const {
   sendIndividualRenewalConfirmation,
   sendAirlineRenewalConfirmation,
   sendAirlineHolderUpgradeConfirmation,
+  sendAdminPaymentNotification,
 } = require('../services/emailService');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1680,6 +1681,8 @@ exports.confirmPayment = async (req, res) => {
     // Create the canonical Invoice document for this payment.
     // Holder-upgrades get their OWN new Invoice doc (not replacing the original).
     // The original subscription invoice is left untouched so both are preserved.
+    // Hoisted so the admin notification email below can quote the real invoice.
+    let confirmInvoiceDoc = null;
     try {
       let upgradeSnapshot = paymentDoc.invoiceSnapshot || {};
       if (isPurposeHolderUpgrade) {
@@ -1693,7 +1696,7 @@ exports.confirmPayment = async (req, res) => {
           pricePerCert: newPpc || upgradeSnapshot.pricePerCert,
         };
       }
-      const invoiceDoc = await createOrUpdateInvoice({
+      const invoiceDoc = confirmInvoiceDoc = await createOrUpdateInvoice({
         registrationId,
         registrationModel,
         paymentId:      paymentDoc._id,
@@ -1756,6 +1759,22 @@ exports.confirmPayment = async (req, res) => {
           console.warn('[confirmPayment] Email failed:', e.message)
         );
       }
+
+      // Internal alert to the IFOA team — who paid, how much, which invoice.
+      sendAdminPaymentNotification(updatedReg, {
+        registrationModel,
+        purpose:               paymentDoc.purpose || (isPurposeRenewal ? 'renewal' : 'payment'),
+        amountDollars,
+        invoiceNumber:         confirmInvoiceDoc?.invoiceNumber || paymentDoc.invoiceNumber || '',
+        paymentMethod:         paymentDoc.paymentMethodType || 'card',
+        paidAt:                paymentDoc.paidAt,
+        stripePaymentIntentId: paymentDoc.stripePaymentIntentId,
+        paymentId:             paymentDoc._id,
+        registrationId,
+        additionalHolderCount:  Number(pi.metadata?.additionalHolderCount || 0),
+        newPricePerCertificate: Number(pi.metadata?.newPricePerCertificate || 0),
+        lineItems:             confirmInvoiceDoc?.lineItems || [],
+      }).catch((e) => console.warn('[confirmPayment] Admin notification failed:', e.message));
     }
   } catch (err) {
     console.error('[confirmPayment]', err.message);
@@ -2138,6 +2157,7 @@ exports.stripeWebhook = async (req, res) => {
 
       // Create canonical Invoice doc for this payment.
       // Holder-upgrades get their own new Invoice doc — original subscription invoice untouched.
+      let webhookInvoiceDocRef = null;
       try {
         let upgradeSnapshotWebhook = paymentDoc.invoiceSnapshot || {};
         if (isPurposeHolderUpgradeWebhook) {
@@ -2149,7 +2169,7 @@ exports.stripeWebhook = async (req, res) => {
             pricePerCert: newPpcW || upgradeSnapshotWebhook.pricePerCert,
           };
         }
-        const webhookInvoiceDoc = await createOrUpdateInvoice({
+        const webhookInvoiceDoc = webhookInvoiceDocRef = await createOrUpdateInvoice({
           registrationId,
           registrationModel,
           paymentId:      paymentDoc._id,
@@ -2201,6 +2221,25 @@ exports.stripeWebhook = async (req, res) => {
             console.warn('[stripeWebhook] Email failed:', e.message)
           );
         }
+      }
+
+      // Internal alert to the IFOA team. Sent whenever the webhook is the path
+      // that recorded the payment; skipped when confirmPayment already alerted.
+      if (updatedRegWebhook && !alreadyConfirmedByFrontend) {
+        sendAdminPaymentNotification(updatedRegWebhook, {
+          registrationModel,
+          purpose:               paymentDoc.purpose || (isPurposeRenewal ? 'renewal' : 'payment'),
+          amountDollars,
+          invoiceNumber:         webhookInvoiceDocRef?.invoiceNumber || paymentDoc.invoiceNumber || '',
+          paymentMethod:         paymentDoc.paymentMethodType || 'card',
+          paidAt:                paymentDoc.paidAt,
+          stripePaymentIntentId: paymentDoc.stripePaymentIntentId,
+          paymentId:             paymentDoc._id,
+          registrationId,
+          additionalHolderCount:  Number(pi.metadata?.additionalHolderCount || 0),
+          newPricePerCertificate: Number(pi.metadata?.newPricePerCertificate || 0),
+          lineItems:             webhookInvoiceDocRef?.lineItems || [],
+        }).catch((e) => console.warn('[stripeWebhook] Admin notification failed:', e.message));
       }
 
       console.log(`[stripeWebhook] Payment ${paymentDoc._id} recorded for ${registrationModel} ${registrationId}`);
