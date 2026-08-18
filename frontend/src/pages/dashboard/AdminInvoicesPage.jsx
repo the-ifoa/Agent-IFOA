@@ -28,18 +28,24 @@ const _seqKey = (num) => {
 const statusLabel = (s) => s === 'paid' ? 'paid' : s === 'void' ? 'void' : 'pending'
 
 // Build the PDF-ready invoice object from a list row (prefers its saved draft).
-const buildInvObject = (row) => (
-  row.draft && Object.keys(row.draft).length
-    ? { ...row.draft, invoiceNumber: row.draft.invoiceNumber || row.invoiceNumber }
+// `paymentId` is what the PDF prints as the "txn:" reference. It is not stored on
+// the Invoice document — the Payment row owns it — so the API joins it back on as
+// `stripePaymentIntentId`. Passing it here is what makes the admin's copy of an
+// invoice carry the same transaction id the customer's copy already showed.
+const buildInvObject = (row) => {
+  const txn = row.stripePaymentIntentId || row.draft?.paymentId || null
+  return row.draft && Object.keys(row.draft).length
+    ? { ...row.draft, invoiceNumber: row.draft.invoiceNumber || row.invoiceNumber, paymentId: txn }
     : {
         invoiceNumber:    row.invoiceNumber,
         issueDate:        row.issueDate,
         payableBy:        row.paidAt,
         recipientCompany: row.recipientCompany,
         recipientName:    row.recipientName,
+        paymentId:        txn,
         lineItems:        [{ description: 'Agent For Service', quantity: 1, unitPrice: row.totalAmount, totalPrice: row.totalAmount }],
       }
-)
+}
 
 export default function AdminInvoicesPage() {
   const [rows, setRows] = useState([])

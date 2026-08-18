@@ -1037,6 +1037,36 @@ async function applyLiveStatus(rows) {
 }
 
 /**
+ * Attach the Stripe reference (and a more specific purpose) from the linked Payment.
+ *
+ * `stripePaymentIntentId` is deliberately NOT a field on Invoice — the Payment row
+ * owns it — so every read model that surfaces invoices has to join it back on.
+ * Both the customer's invoice list and the admin invoices dashboard print it as the
+ * "txn:" line on the PDF, so if only one of them enriches, the same invoice renders
+ * with a transaction id for the customer and without one for the admin.
+ *
+ * @param {Array} invoices  lean Invoice docs (mutated in place)
+ */
+async function attachPaymentMeta(invoices) {
+  const paymentIds = invoices.map(i => i.paymentId).filter(Boolean);
+  if (!paymentIds.length) return invoices;
+
+  const payments = await Payment.find({ _id: { $in: paymentIds } })
+    .select('_id purpose stripePaymentIntentId').lean();
+  const meta = new Map(payments.map(p => [String(p._id), p]));
+
+  for (const inv of invoices) {
+    const p = inv.paymentId ? meta.get(String(inv.paymentId)) : null;
+    if (!p) continue;
+    if ((!inv.purpose || inv.purpose === 'payment') && p.purpose && p.purpose !== 'payment') {
+      inv.purpose = p.purpose;
+    }
+    inv.stripePaymentIntentId = inv.stripePaymentIntentId || p.stripePaymentIntentId || '';
+  }
+  return invoices;
+}
+
+/**
  * Every invoice belonging to one registration.
  * Non-admins never see a pro-forma wire invoice that is still awaiting approval.
  */
@@ -1049,21 +1079,7 @@ async function listForRegistration(registrationId, { isAdmin = false } = {}) {
   const invoices = (await Invoice.find(query).lean())
     .filter(inv => !hidden.has(normalizeInvoiceNumber(inv.invoiceNumber)));
 
-  // Enrich with the Stripe reference the payment carries, for admin display.
-  const paymentIds = invoices.map(i => i.paymentId).filter(Boolean);
-  if (paymentIds.length) {
-    const payments = await Payment.find({ _id: { $in: paymentIds } })
-      .select('_id purpose stripePaymentIntentId').lean();
-    const meta = new Map(payments.map(p => [String(p._id), p]));
-    for (const inv of invoices) {
-      const p = inv.paymentId ? meta.get(String(inv.paymentId)) : null;
-      if (!p) continue;
-      if ((!inv.purpose || inv.purpose === 'payment') && p.purpose && p.purpose !== 'payment') {
-        inv.purpose = p.purpose;
-      }
-      inv.stripePaymentIntentId = inv.stripePaymentIntentId || p.stripePaymentIntentId || '';
-    }
-  }
+  await attachPaymentMeta(invoices);
 
   await applyLiveStatus(invoices);
   return { invoices: invoices.sort(byNewestFirst), hidden: [...hidden] };
@@ -1072,6 +1088,9 @@ async function listForRegistration(registrationId, { isAdmin = false } = {}) {
 /** Every invoice in the system, for the admin invoices dashboard. */
 async function listAll() {
   const invoices = await Invoice.find({}).lean();
+  // Same enrichment the customer-facing list gets, so the admin PDF prints the
+  // same "txn:" reference the customer's copy of that invoice shows.
+  await attachPaymentMeta(invoices);
 
   const rows = invoices.map(inv => ({
     invoiceNumber:     normalizeInvoiceNumber(inv.invoiceNumber),
@@ -1088,6 +1107,7 @@ async function listAll() {
     adminGenerated:    !!inv.adminGenerated,
     voided:            inv.status === 'void',
     orphaned:          !!inv.orphaned,
+    stripePaymentIntentId: inv.stripePaymentIntentId || '',
     createdAt:         inv.createdAt,
     issueDate:         inv.issueDate,
     paidAt:            inv.paidAt,
