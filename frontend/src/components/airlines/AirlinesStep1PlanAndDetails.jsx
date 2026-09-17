@@ -3,41 +3,12 @@ import { airlinePricePerCertByRange } from '../../services/pricing'
 import LegalCheckboxes from '../legal/LegalModal'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import CustomSelect from '../ui/CustomSelect'
+import CountrySelect, { COUNTRY_TO_ISO2 } from '../ui/CountrySelect'
 
 import PhoneInputLib from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
 const PhoneInput = PhoneInputLib.default || PhoneInputLib
-
-const COUNTRY_TO_ISO2 = {
-  'Afghanistan': 'af', 'Albania': 'al', 'Algeria': 'dz', 'American Samoa': 'as', 'Andorra': 'ad',
-  'Angola': 'ao', 'Anguilla': 'ai', 'Antigua and Barbuda': 'ag', 'Argentina': 'ar', 'Armenia': 'am',
-  'Australia': 'au', 'Austria': 'at', 'Azerbaijan': 'az', 'Bahamas': 'bs', 'Bahrain': 'bh',
-  'Bangladesh': 'bd', 'Barbados': 'bb', 'Belarus': 'by', 'Belgium': 'be', 'Belize': 'bz',
-  'Benin': 'bj', 'Bhutan': 'bt', 'Bolivia': 'bo', 'Bosnia and Herzegovina': 'ba', 'Botswana': 'bw',
-  'Brazil': 'br', 'Brunei': 'bn', 'Bulgaria': 'bg', 'Burkina Faso': 'bf', 'Burundi': 'bi',
-  'Cambodia': 'kh', 'Cameroon': 'cm', 'Canada': 'ca', 'Cayman Islands': 'ky', 'Chile': 'cl',
-  'China': 'cn', 'Colombia': 'co', 'Costa Rica': 'cr', 'Croatia': 'hr', 'Cuba': 'cu',
-  'Cyprus': 'cy', 'Czech Republic': 'cz', 'Denmark': 'dk', 'Dominican Republic': 'do', 'Ecuador': 'ec',
-  'Egypt': 'eg', 'El Salvador': 'sv', 'Estonia': 'ee', 'Ethiopia': 'et', 'Finland': 'fi',
-  'France': 'fr', 'Germany': 'de', 'Ghana': 'gh', 'Greece': 'gr', 'Guatemala': 'gt',
-  'Haiti': 'ht', 'Honduras': 'hn', 'Hong Kong': 'hk', 'Hungary': 'hu', 'Iceland': 'is',
-  'India': 'in', 'Indonesia': 'id', 'Iraq': 'iq', 'Ireland': 'ie', 'Israel': 'il',
-  'Italy': 'it', 'Jamaica': 'jm', 'Japan': 'jp', 'Jordan': 'jo', 'Kazakhstan': 'kz',
-  'Kenya': 'ke', 'Korea (Republic of)': 'kr', 'Kuwait': 'kw', 'Latvia': 'lv', 'Lebanon': 'lb',
-  'Libya': 'ly', 'Lithuania': 'lt', 'Luxembourg': 'lu', 'Malaysia': 'my', 'Maldives': 'mv',
-  'Malta': 'mt', 'Mexico': 'mx', 'Moldova': 'md', 'Monaco': 'mc', 'Mongolia': 'mn',
-  'Morocco': 'ma', 'Mozambique': 'mz', 'Myanmar': 'mm', 'Nepal': 'np', 'Netherlands': 'nl',
-  'New Zealand': 'nz', 'Nicaragua': 'ni', 'Nigeria': 'ng', 'Norway': 'no', 'Oman': 'om',
-  'Pakistan': 'pk', 'Palestine': 'ps', 'Panama': 'pa', 'Paraguay': 'py', 'Peru': 'pe',
-  'Philippines': 'ph', 'Poland': 'pl', 'Portugal': 'pt', 'Puerto Rico': 'pr', 'Qatar': 'qa',
-  'Romania': 'ro', 'Russian Federation': 'ru', 'Rwanda': 'rw', 'Saudi Arabia': 'sa', 'Senegal': 'sn',
-  'Serbia': 'rs', 'Singapore': 'sg', 'Slovakia': 'sk', 'Slovenia': 'si', 'Somalia': 'so',
-  'South Africa': 'za', 'Spain': 'es', 'Sri Lanka': 'lk', 'Sudan': 'sd', 'Sweden': 'se',
-  'Switzerland': 'ch', 'Syria': 'sy', 'Taiwan': 'tw', 'Tanzania': 'tz', 'Thailand': 'th',
-  'Tunisia': 'tn', 'Türkiye': 'tr', 'Uganda': 'ug', 'Ukraine': 'ua', 'United Arab Emirates': 'ae',
-  'United Kingdom': 'gb', 'United States of America': 'us', 'Uruguay': 'uy', 'Uzbekistan': 'uz',
-  'Venezuela': 've', 'Vietnam': 'vn', 'Yemen': 'ye', 'Zambia': 'zm', 'Zimbabwe': 'zw',
-}
 
 // Prices come from the server (services/pricing.js → GET /api/pricing/config).
 // Never reintroduce a local table here: the customer must be shown the same
@@ -54,23 +25,6 @@ const COUNT_OPTIONS = {
 const HOLDER_COUNTS = ['3 to 5', '5 to 10', 'More than 10']
 const SUBSCRIPTION_PLANS = ['1 Year Subscription Plan', 'Unlimited Plan']
 
-const COUNTRIES = [
-  'Afghanistan','Albania','Algeria','American Samoa','Andorra','Angola','Anguilla','Antigua and Barbuda','Argentina',
-  'Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize',
-  'Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi',
-  'Cambodia','Cameroon','Canada','Cayman Islands','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus',
-  'Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France',
-  'Germany','Ghana','Greece','Guatemala','Haiti','Honduras','Hong Kong','Hungary','Iceland','India','Indonesia','Iraq',
-  'Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Korea (Republic of)','Kuwait','Latvia',
-  'Lebanon','Libya','Lithuania','Luxembourg','Malaysia','Maldives','Malta','Mexico','Moldova','Monaco','Mongolia',
-  'Morocco','Mozambique','Myanmar','Nepal','Netherlands','New Zealand','Nicaragua','Nigeria','Norway','Oman','Pakistan',
-  'Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Puerto Rico','Qatar','Romania',
-  'Russian Federation','Rwanda','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','Somalia',
-  'South Africa','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan','Tanzania','Thailand',
-  'Tunisia','Türkiye','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States of America',
-  'Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe',
-]
-
 function Field({ label, required, error, children }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -85,46 +39,6 @@ function Field({ label, required, error, children }) {
           </svg>
           {error}
         </span>
-      )}
-    </div>
-  )
-}
-
-function CountrySelect({ value, onChange, error }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const filtered = COUNTRIES.filter(c => c.toLowerCase().includes(search.toLowerCase()))
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => { setOpen(v => !v); setSearch('') }}
-        className={`w-full text-left px-3.5 py-2.5 border rounded-xl text-sm bg-white outline-none transition-all duration-150 flex items-center justify-between ${
-          error ? 'border-red-300' : open ? 'border-slate-400 ring-2 ring-slate-200' : 'border-gray-200 hover:border-gray-300'
-        } ${value ? 'text-gray-900' : 'text-gray-400'}`}
-      >
-        <span>{value || '--- Select country ---'}</span>
-        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-gray-100 bg-white">
-            <input autoFocus type="text" placeholder="Search country…" value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-slate-400 bg-slate-50 text-gray-800 placeholder:text-gray-400" />
-          </div>
-          <div className="max-h-52 overflow-y-auto">
-            {filtered.length === 0 && <div className="px-4 py-3 text-sm text-gray-400">No results</div>}
-            {filtered.map(c => (
-              <div key={c} onClick={() => { onChange(c); setOpen(false); setSearch('') }}
-                className={`px-4 py-2 text-sm cursor-pointer transition-colors duration-100 ${c === value ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-gray-700 hover:bg-slate-50'}`}>
-                {c}
-              </div>
-            ))}
-          </div>
-        </div>
       )}
     </div>
   )
@@ -171,14 +85,14 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
   }, [data.country])
 
   const inputCls = (field) =>
-    `w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 bg-white outline-none transition-all duration-150 focus:ring-2 focus:ring-blue-600/15 placeholder:text-gray-400 ${
+    `w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 bg-white outline-none transition-all duration-150 focus:ring-2 focus:ring-slate-100 placeholder:text-gray-400 ${
       errors[field]
         ? 'border-red-300 focus:border-red-400 bg-red-50/30'
-        : 'border-gray-200 focus:border-blue-600 hover:border-gray-300'
+        : 'border-gray-200 focus:border-slate-800 hover:border-gray-300'
     }`
 
   const holderLabel = data.holderCount
-    ? `Agent for Service — ${data.holderCount === '3 to 5' ? 'Up to 5' : data.holderCount === '5 to 10' ? 'Up to 10' : 'More than 10'}`
+    ? `Agent for Service, ${data.holderCount === '3 to 5' ? 'Up to 5' : data.holderCount === '5 to 10' ? 'Up to 10' : 'More than 10'}`
     : null
   const planLabel = data.subscriptionPlan === '1 Year Subscription Plan'
     ? '1 Year Subscription'
@@ -229,8 +143,8 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
             const active = data.holderCount === count
             return (
               <label key={count}
-                className={`flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all duration-150 ${active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-blue-300 text-gray-600 bg-white'}`}>
-                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${active ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                className={`flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all duration-150 ${active ? 'border-slate-900 bg-slate-50 text-slate-900' : 'border-gray-200 hover:border-slate-400 text-gray-600 bg-white'}`}>
+                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${active ? 'border-slate-900 bg-slate-900' : 'border-gray-300'}`}>
                   {active && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </span>
                 <input type="radio" name="holderCount" value={count} checked={active}
@@ -250,16 +164,18 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
             <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
               Exact Number <span className="text-red-400">*</span>
             </label>
-            <select
-              value={data.holderCountValue || ''}
-              onChange={e => update({ holderCountValue: e.target.value })}
-              className={`w-40 px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 bg-white outline-none cursor-pointer transition-all duration-150 focus:ring-2 focus:ring-blue-600/15 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M2.22%204.47a.75.75%200%20011.06%200L6%207.19l2.72-2.72a.75.75%200%20011.06%201.06l-3.25%203.25a.75.75%200%2001-1.06%200L2.22%205.53a.75.75%200%20010-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center] pr-9 ${errors.holderCountValue ? 'border-red-300' : 'border-gray-200 focus:border-blue-600 hover:border-gray-300'}`}
-            >
-              <option value="">— Select —</option>
-              {COUNT_OPTIONS[data.holderCount].map(n => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+            <div className="w-44">
+              <CustomSelect
+                value={data.holderCountValue || ''}
+                onChange={val => update({ holderCountValue: val })}
+                placeholder="— Select —"
+                error={!!errors.holderCountValue}
+                options={[
+                  { value: '', label: '— Select —' },
+                  ...(COUNT_OPTIONS[data.holderCount] || []).map(n => ({ value: String(n), label: String(n) }))
+                ]}
+              />
+            </div>
             {errors.holderCountValue && <p className="text-red-500 text-xs mt-1">{errors.holderCountValue}</p>}
           </div>
         )}
@@ -272,38 +188,37 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
         </h3>
         {errors.subscriptionPlan && <p className="text-red-500 text-xs mb-2">{errors.subscriptionPlan}</p>}
         <div className="mt-3">
-          <select
+          <CustomSelect
             value={data.subscriptionPlan || ''}
-            onChange={e => {
-              const plan = e.target.value
+            onChange={plan => {
               const price = data.holderCount ? ppcFor(plan, data.holderCount) : null
               update({ subscriptionPlan: plan, pricePerCertificate: price || 0 })
             }}
-            className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 bg-white outline-none cursor-pointer transition-all duration-150 focus:ring-2 focus:ring-blue-600/15 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M2.22%204.47a.75.75%200%20011.06%200L6%207.19l2.72-2.72a.75.75%200%20011.06%201.06l-3.25%203.25a.75.75%200%2001-1.06%200L2.22%205.53a.75.75%200%20010-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center] pr-10 ${errors.subscriptionPlan ? 'border-red-300' : 'border-gray-200 focus:border-blue-600 hover:border-gray-300'}`}
-          >
-            <option value="">— Select a plan —</option>
-            {SUBSCRIPTION_PLANS.map(plan => (
-              <option key={plan} value={plan}>{plan}</option>
-            ))}
-          </select>
+            placeholder="— Select a plan —"
+            error={!!errors.subscriptionPlan}
+            options={[
+              { value: '', label: '— Select a plan —' },
+              ...SUBSCRIPTION_PLANS.map(plan => ({ value: plan, label: plan }))
+            ]}
+          />
         </div>
         {serviceLabel && (
-          <div className="mt-3 px-4 py-3.5 rounded-xl border border-blue-100 bg-blue-50/40">
+          <div className="mt-3 px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
             <div className="flex items-center justify-between mb-1">
               <p className="text-sm font-semibold text-gray-700">{serviceLabel.left}</p>
               <p className="text-sm font-semibold text-gray-700">{serviceLabel.right}</p>
             </div>
             <p className="text-sm font-bold text-gray-900">
               Price:{' '}
-              <span className="text-green-600 text-base">
+              <span className="text-[#34E06E] font-extrabold text-base">
                 {data.holderCount && data.subscriptionPlan ? priceLabel(data.subscriptionPlan, data.holderCount) : '—'}
               </span>
               {data.subscriptionPlan === '1 Year Subscription Plan' && <span className="text-xs text-gray-400 font-normal ml-1.5">per certificate / year</span>}
               {data.subscriptionPlan === 'Unlimited Plan' && <span className="text-xs text-gray-400 font-normal ml-1.5">per certificate / unlimited</span>}
             </p>
             {payableTotal > 0 && (
-              <p className="text-sm font-black text-blue-900 mt-1.5">
-                Payable Total: <span className="text-green-700">${payableTotal} USD</span>
+              <p className="text-sm font-black text-slate-900 mt-1.5">
+                Payable Total: <span className="text-[#34E06E] font-black">${payableTotal} USD</span>
                 {selectedCount > 0 ? ` (${selectedCount} holder${selectedCount !== 1 ? 's' : ''})` : ''}
               </p>
             )}
@@ -320,16 +235,16 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
           </label>
           <div className={`flex items-center justify-between gap-3 px-3.5 py-2.5 border rounded-xl text-sm bg-gray-50 border-gray-200 ${errors.airlineName ? 'border-red-300 bg-red-50/30' : ''}`}>
             <span className={`font-medium ${data.airlineName ? 'text-gray-900' : 'text-gray-400'}`}>
-              {data.airlineName || 'Not set — update in your profile'}
+              {data.airlineName || 'Not set, update in your profile'}
             </span>
-            <Link to="/dashboard/profile" className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors whitespace-nowrap">
+            <Link to="/dashboard/profile" className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-800 hover:text-black transition-colors whitespace-nowrap">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
               Edit in Profile
             </Link>
           </div>
           <p className="text-[10px] text-gray-400 mt-0.5">
             This is set from your account. To change it, visit your{' '}
-            <Link to="/dashboard/profile" className="text-blue-600 hover:underline font-semibold">Profile page</Link>.
+            <Link to="/dashboard/profile" className="text-slate-800 hover:underline font-semibold">Profile page</Link>.
           </p>
           {errors.airlineName && (
             <span className="flex items-center gap-1 text-red-500 text-xs font-medium">
@@ -403,69 +318,17 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
             </Field>
             <Field label="Phone" required error={errors.phone}>
               <div id="al1-field-phone">
-                <style>{`
-                  .airlines-phone .react-tel-input .form-control {
-                    background: #ffffff !important; border: 1px solid #e5e7eb !important;
-                    color: #111827 !important; border-radius: 0.75rem !important;
-                    width: 100% !important; height: 42px !important;
-                    font-size: 0.875rem !important; padding-left: 52px !important;
-                    outline: none !important; box-shadow: none !important;
-                  }
-                  .airlines-phone .react-tel-input .form-control:focus {
-                    border-color: #1a1aff !important;
-                    box-shadow: 0 0 0 3px rgba(0,0,255,0.12) !important;
-                  }
-                  .airlines-phone .react-tel-input .flag-dropdown {
-                    background: #f9fafb !important; border: 1px solid #e5e7eb !important;
-                    border-right: none !important; border-radius: 0.75rem 0 0 0.75rem !important;
-                  }
-                  .airlines-phone .react-tel-input .flag-dropdown.open { z-index: 9999 !important; }
-                  .airlines-phone .react-tel-input .selected-flag {
-                    background: transparent !important; border-radius: 0.75rem 0 0 0.75rem !important; padding-left: 10px !important;
-                  }
-                  .airlines-phone .react-tel-input .country-list {
-                    background: #ffffff !important; border: 1px solid #e2e8f0 !important;
-                    border-radius: 10px !important; box-shadow: 0 4px 16px rgba(15,23,42,0.10), 0 1px 4px rgba(15,23,42,0.06) !important;
-                    max-height: 340px !important; min-width: 300px !important; width: 300px !important;
-                    margin-top: 4px !important; overflow-y: auto !important; z-index: 9999 !important;
-                  }
-                  .airlines-phone .react-tel-input .country-list .country {
-                    color: #1e293b !important; padding: 8px 12px !important;
-                    display: flex !important; align-items: center !important; gap: 9px !important; font-size: 13px !important;
-                  }
-                  .airlines-phone .react-tel-input .country-list .country:hover,
-                  .airlines-phone .react-tel-input .country-list .country.highlight { background: #f8fafc !important; }
-                  .airlines-phone .react-tel-input .country-list .country-name,
-                  .airlines-phone .react-tel-input .country-list .country:hover .country-name,
-                  .airlines-phone .react-tel-input .country-list .country.highlight .country-name { color: #1e293b !important; font-size: 13px !important; font-weight: 400 !important; }
-                  .airlines-phone .react-tel-input .country-list .dial-code { color: #94a3b8 !important; font-size: 12px !important; }
-                  .airlines-phone .react-tel-input .country-list .search {
-                    padding: 10px 10px 8px !important; position: sticky !important; top: 0 !important;
-                    background: #fff !important; border-bottom: 1px solid #f1f5f9 !important; z-index: 1 !important;
-                  }
-                  .airlines-phone .react-tel-input .search-box {
-                    background: #f8fafc !important; border: 1px solid #e2e8f0 !important;
-                    color: #1e293b !important; border-radius: 7px !important;
-                    padding: 7px 11px !important; width: 100% !important; font-size: 13px !important;
-                    outline: none !important; box-sizing: border-box !important;
-                  }
-                  .airlines-phone .react-tel-input .search-box:focus,
-                  .airlines-phone .react-tel-input .country-list .form-control:focus { border-color: #94a3b8 !important; background: #ffffff !important; box-shadow: none !important; outline: none !important; }
-                  .airlines-phone .react-tel-input .search-emoji { display: none !important; }
-                `}</style>
-                <div className="airlines-phone">
-                  <PhoneInput
-                    country={phoneCountry}
-                    value={data.phone || ''}
-                    onChange={(phone, countryData) => {
-                      update({ phone })
-                      if (countryData?.countryCode) setPhoneCountry(countryData.countryCode)
-                    }}
-                    enableSearch
-                    searchPlaceholder="Search country..."
-                    preferredCountries={['us', 'gb', 'ae', 'au', 'ca', 'in']}
-                  />
-                </div>
+                <PhoneInput
+                  country={phoneCountry}
+                  value={data.phone || ''}
+                  onChange={(phone, countryData) => {
+                    update({ phone })
+                    if (countryData?.countryCode) setPhoneCountry(countryData.countryCode)
+                  }}
+                  enableSearch
+                  searchPlaceholder="Search country..."
+                  preferredCountries={['us', 'gb', 'ae', 'au', 'ca', 'in']}
+                />
               </div>
             </Field>
           </div>
@@ -492,14 +355,13 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
           if (te || pe) return
           if (validate()) onNext()
         }}
-          className="inline-flex items-center gap-2 px-8 py-3 active:scale-95 text-white font-bold rounded-xl transition-all duration-150 shadow-sm hover:-translate-y-px"
-          style={{ background: '#0000ff' }}
-          onMouseEnter={e => e.currentTarget.style.background='#0000e6'}
-          onMouseLeave={e => e.currentTarget.style.background='#0000ff'}>
+          className="inline-flex items-center gap-2 px-7 py-3 active:scale-95 text-white font-extrabold text-xs uppercase tracking-widest rounded-full transition-all duration-150 shadow-sm"
+          style={{ background: '#020617' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+          onMouseLeave={e => e.currentTarget.style.background = '#020617'}>
           Next
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            
           </svg>
         </button>
       </div>

@@ -1,7 +1,7 @@
 function ReviewSection({ title, rows }) {
   return (
     <section className="rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">{title}</p>
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">{title}</p>
       <div className="mt-5 grid gap-3">
         {rows.map(({ label, value }) => (
           <div
@@ -77,9 +77,9 @@ export default function Step3Preview({ data, onNext, onBack, onEdit }) {
       <div className="flex justify-end">
         <button
           onClick={onEdit}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-5 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-5 py-2 text-xs uppercase tracking-wider font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
           Edit
@@ -98,9 +98,9 @@ export default function Step3Preview({ data, onNext, onBack, onEdit }) {
       <div className="flex flex-col justify-between gap-3 border-t border-slate-100 pt-2 sm:flex-row">
         <button
           onClick={onBack}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-xs uppercase tracking-wider font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0 5-5m-5 5h12" />
           </svg>
           Back
@@ -108,10 +108,13 @@ export default function Step3Preview({ data, onNext, onBack, onEdit }) {
 
         <button
           onClick={onNext}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
+          className="inline-flex items-center justify-center gap-2 rounded-full px-7 py-3 text-xs uppercase tracking-widest font-extrabold transition-all duration-150 shadow-sm active:scale-95"
+          style={{ background: '#020617', color: '#ffffff' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+          onMouseLeave={e => e.currentTarget.style.background = '#020617'}
         >
           Continue to payment
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0-5 5m5-5H6" />
           </svg>
         </button>

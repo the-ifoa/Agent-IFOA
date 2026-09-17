@@ -31,19 +31,19 @@ function WireTransferSuccess({ onClose }) {
   return (
     <div className={`flex flex-col items-center justify-center px-6 py-10 text-center transition-all duration-500 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
       <div className="relative mb-6">
-        <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200"
+        <div className="w-24 h-24 rounded-full bg-[#020617] text-white flex items-center justify-center shadow-lg"
           style={{ animation: show ? 'wirePopIn 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none' }}>
-          <svg className="w-11 h-11 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+          <svg className="w-11 h-11 text-[#34E06E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
         </div>
-        <div className="absolute inset-0 rounded-full border-4 border-blue-400 opacity-0" style={{ animation: show ? 'wireRipple 1s ease-out 0.3s forwards' : 'none' }} />
+        <div className="absolute inset-0 rounded-full border-4 border-[#34E06E] opacity-0" style={{ animation: show ? 'wireRipple 1s ease-out 0.3s forwards' : 'none' }} />
       </div>
-      <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-600 mb-2">Invoice Request Sent</p>
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-800 mb-2">Invoice Request Sent</p>
       <h3 className="text-2xl font-black text-gray-900 mb-2">Request Submitted!</h3>
       <p className="text-sm text-gray-500 mb-2 max-w-xs leading-relaxed">Notification has been sent to admin. Our team will review your registration and generate a wire transfer invoice within 1 business day.</p>
-      <div className="w-full max-w-xs rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 mb-7 text-left space-y-2">
-        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-3">Bank Details for Wire Transfer</p>
+      <div className="w-full max-w-xs rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 mb-7 text-left space-y-2">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Bank Details for Wire Transfer</p>
         {[['Bank', 'Banque Revolut Bank UAB'],['Account Owner', 'International Flight Operations Academy GmbH'],['BIC', 'REVOLT21'],['Intermediary BIC', 'CHASGB2L'],['Account #', 'LT04 3250 0415 2968 6697']].map(([k,v]) => (
           <div key={k} className="flex items-start justify-between gap-3 text-sm">
             <span className="text-gray-400 font-medium whitespace-nowrap">{k}</span>
@@ -52,7 +52,7 @@ function WireTransferSuccess({ onClose }) {
         ))}
       </div>
       <button type="button" onClick={onClose}
-        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-200">
+        className="inline-flex items-center gap-2 bg-[#020617] hover:bg-slate-800 text-white font-bold px-8 py-3 rounded-full text-xs uppercase tracking-wider transition-all">
         Done
       </button>
       <style>{`@keyframes wirePopIn{0%{transform:scale(0.4);opacity:0}100%{transform:scale(1);opacity:1}}@keyframes wireRipple{0%{transform:scale(1);opacity:0.6}100%{transform:scale(1.7);opacity:0}}`}</style>
@@ -74,7 +74,7 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
   const isUnlimited   = data.subscriptionPlan === 'Unlimited Plan'
   const selectedCount = Number(data.holderCountValue || data.committedCount || holders.length || 0)
   const pricePerCert  = data.pricePerCertificate || data.pricePerCert || 0
-  // Always multiply by count — Unlimited plan is $265/certificate too
+  // Always multiply by count, Unlimited plan is $265/certificate too
   const total         = pricePerCert * selectedCount
   const amountCents   = Math.round(total * 100)
   const selectedPaymentMethod = data.paymentMethod || paymentMethod || 'card'
@@ -166,7 +166,7 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
   // ── Wire success screen ─────────────────────────────────────────────────────
   if (wireSuccess) {
     return (
-      <div className="rounded-2xl border border-blue-200 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         <WireTransferSuccess onClose={() => navigate('/dashboard/subscription')} />
       </div>
     )
@@ -191,7 +191,7 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
           <div>
-            <p className="font-bold mb-0.5">Submission blocked — wrong account type</p>
+            <p className="font-bold mb-0.5">Submission blocked, wrong account type</p>
             <p className="text-amber-700 text-xs leading-relaxed">You are signed in with an <strong>Individual account</strong>. Only <strong>Airlines accounts</strong> can submit this form.</p>
           </div>
         </div>
@@ -202,10 +202,10 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
         {/* Header with total */}
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">Order Summary</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">Order Summary</p>
             <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-slate-950">Final registration amount</h3>
           </div>
-          <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-right flex-shrink-0">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right flex-shrink-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Total</p>
             <p className="mt-1 text-2xl font-extrabold tracking-[-0.04em] text-slate-950">${Number(total || 0).toFixed(2)}</p>
           </div>
@@ -275,7 +275,7 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
       </section>
 
       {isExistingSubmission && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800">
           <p className="font-black mb-1.5">You already submitted your Company form</p>
           <p className="text-xs leading-relaxed">New registration is disabled. You can still request a wire invoice for your existing submission below.</p>
         </div>
@@ -291,25 +291,25 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
             onClick={() => { setPaymentMethod('card'); update({ paymentMethod: 'card' }) }}
             className={`relative rounded-2xl border-2 p-5 text-left transition-all duration-200 ${
               paymentMethod === 'card'
-                ? 'border-blue-600 bg-blue-50/40 shadow-sm shadow-blue-100'
-                : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-gray-50'
+                ? 'border-slate-900 bg-slate-50'
+                : 'border-gray-200 bg-white hover:border-slate-300 hover:bg-gray-50'
             }`}
           >
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 'bg-gray-100'
               }`}>
-                <svg className={`w-5 h-5 ${selectedPaymentMethod === 'card' ? 'text-blue-600' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className={`w-5 h-5 ${selectedPaymentMethod === 'card' ? 'text-slate-900' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <rect x="2" y="5" width="20" height="14" rx="2" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" />
                 </svg>
               </div>
               <div className="flex-1">
-                <p className={`font-black text-sm ${selectedPaymentMethod === 'card' ? 'text-blue-900' : 'text-gray-900'}`}>Credit / Debit Card</p>
+                <p className={`font-black text-sm ${selectedPaymentMethod === 'card' ? 'text-slate-950' : 'text-gray-900'}`}>Credit / Debit Card</p>
                 <p className="text-xs text-gray-400">Instant payment</p>
               </div>
               <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                selectedPaymentMethod === 'card' ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'
+                selectedPaymentMethod === 'card' ? 'border-slate-900 bg-slate-900' : 'border-gray-300 bg-white'
               }`}>
                 {selectedPaymentMethod === 'card' && <div className="w-2 h-2 rounded-full bg-white" />}
               </div>
@@ -323,32 +323,32 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
             onClick={() => { setPaymentMethod('wire'); update({ paymentMethod: 'wire' }) }}
             className={`relative rounded-2xl border-2 p-5 text-left transition-all duration-200 ${
               selectedPaymentMethod === 'wire'
-                ? 'border-blue-600 bg-blue-50/40 shadow-sm shadow-blue-100'
-                : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-gray-50'
+                ? 'border-slate-900 bg-slate-50'
+                : 'border-gray-200 bg-white hover:border-slate-300 hover:bg-gray-50'
             }`}
           >
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 'bg-gray-100'
               }`}>
-                <svg className={`w-5 h-5 ${selectedPaymentMethod === 'wire' ? 'text-blue-600' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className={`w-5 h-5 ${selectedPaymentMethod === 'wire' ? 'text-slate-900' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <p className={`font-black text-sm ${selectedPaymentMethod === 'wire' ? 'text-blue-900' : 'text-gray-900'}`}>Wire Transfer</p>
+                <p className={`font-black text-sm ${selectedPaymentMethod === 'wire' ? 'text-slate-950' : 'text-gray-900'}`}>Wire Transfer</p>
                 <p className="text-xs text-gray-400">Invoice via bank transfer</p>
               </div>
               <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                selectedPaymentMethod === 'wire' ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'
+                selectedPaymentMethod === 'wire' ? 'border-slate-900 bg-slate-900' : 'border-gray-300 bg-white'
               }`}>
                 {selectedPaymentMethod === 'wire' && <div className="w-2 h-2 rounded-full bg-white" />}
               </div>
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed">Request an invoice — admin will generate a wire-transfer invoice for your company within 1 business day.</p>
+            <p className="text-xs text-gray-500 leading-relaxed">Request an invoice, admin will generate a wire-transfer invoice for your company within 1 business day.</p>
             {selectedPaymentMethod === 'wire' && (
               <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs text-slate-700 space-y-1">
-                <p className="font-black uppercase tracking-widest text-[9px] text-slate-400 mb-1.5">Banque Revolut Bank UAB — Wire Details</p>
+                <p className="font-black uppercase tracking-widest text-[9px] text-slate-400 mb-1.5">Banque Revolut Bank UAB, Wire Details</p>
                 {[['Account Owner','International Flight Operations Academy GmbH'],['BIC','REVOLT21'],['Intermediary BIC','CHASGB2L'],['Account #','LT04 3250 0415 2968 6697']].map(([k,v]) => (
                   <div key={k} className="flex items-start justify-between gap-3"><span className="text-slate-400 whitespace-nowrap">{k}</span><span className="font-bold text-slate-800 text-right">{v}</span></div>
                 ))}
@@ -388,12 +388,12 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
       {/* Terms */}
       {!isExistingSubmission && <div className={`rounded-[26px] border p-5 ${errors.agreedToTerms ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-slate-50/80'}`}>
         <label className="flex cursor-pointer items-start gap-3">
-          <input type="checkbox" checked={data.agreedToTerms || false} onChange={(e) => update({ agreedToTerms: e.target.checked })} className="mt-1 h-4 w-4 accent-blue-600" />
+          <input type="checkbox" checked={data.agreedToTerms || false} onChange={(e) => update({ agreedToTerms: e.target.checked })} className="mt-1 h-4 w-4 accent-slate-800" />
           <span className="text-sm leading-6 text-slate-700">
             I confirm the submitted information is accurate, and I agree to the{' '}
-            <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('terms') }} className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 transition">Terms of Service</button>
+            <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('terms') }} className="font-semibold text-slate-950 underline underline-offset-2 hover:text-black transition">Terms of Service</button>
             {' '}and{' '}
-            <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('privacy') }} className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 transition">Privacy Policy</button>.
+            <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('privacy') }} className="font-semibold text-slate-950 underline underline-offset-2 hover:text-black transition">Privacy Policy</button>.
           </span>
         </label>
         {errors.agreedToTerms && (
@@ -412,7 +412,7 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
 
       <div className="flex justify-between pt-6 border-t border-gray-100">
         <button type="button" onClick={onBack} disabled={submitting || wireSubmitting}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl transition-all duration-150 disabled:opacity-40">
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-full text-xs uppercase tracking-wider transition-all duration-150 disabled:opacity-40">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
           Previous
         </button>
@@ -422,10 +422,11 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
             type="button"
             onClick={handleWireClick}
             disabled={wireSubmitting || isBlocked}
-            className={`inline-flex items-center gap-2.5 px-8 py-3 text-white font-bold rounded-xl transition-all duration-150 shadow-sm min-w-52 justify-center ${
-              isBlocked ? 'bg-gray-300 cursor-not-allowed opacity-60'
-              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 hover:shadow-md hover:-translate-y-px disabled:opacity-50'
-            }`}>
+            className={`inline-flex items-center gap-2.5 px-8 py-3 text-white font-extrabold rounded-full text-xs uppercase tracking-widest transition-all duration-150 shadow-sm min-w-52 justify-center ${
+              isBlocked ? 'bg-gray-300 cursor-not-allowed opacity-60 text-white'
+              : 'hover:bg-slate-800 disabled:opacity-50'
+            }`}
+            style={{ background: isBlocked ? '#d1d5db' : '#020617', boxShadow: isBlocked ? 'none' : '0 4px 14px rgba(2, 6, 23, 0.25)' }}>
             {wireSubmitting
               ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" /><path fill="currentColor" d="M4 12a8 8 0 018-8v8z" className="opacity-75" /></svg>Submitting…</>
               : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>Request Wire Invoice</>
@@ -437,10 +438,11 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
             type="button"
             onClick={handleWireClick}
             disabled={wireSubmitting || isBlocked}
-            className={`inline-flex items-center gap-2.5 px-8 py-3 text-white font-bold rounded-xl transition-all duration-150 shadow-sm min-w-52 justify-center ${
-              isBlocked ? 'bg-gray-300 cursor-not-allowed opacity-60'
-              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 hover:shadow-md hover:-translate-y-px disabled:opacity-50'
-            }`}>
+            className={`inline-flex items-center gap-2.5 px-8 py-3 text-white font-extrabold rounded-full text-xs uppercase tracking-widest transition-all duration-150 shadow-sm min-w-52 justify-center ${
+              isBlocked ? 'bg-gray-300 cursor-not-allowed opacity-60 text-white'
+              : 'hover:bg-slate-800 disabled:opacity-50'
+            }`}
+            style={{ background: isBlocked ? '#d1d5db' : '#020617', boxShadow: isBlocked ? 'none' : '0 4px 14px rgba(2, 6, 23, 0.25)' }}>
             {wireSubmitting
               ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" /><path fill="currentColor" d="M4 12a8 8 0 018-8v8z" className="opacity-75" /></svg>Submitting…</>
               : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>Request Wire Invoice</>
@@ -452,10 +454,10 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
             onClick={handlePayClick}
             disabled={submitting || isBlocked}
             title={isBlocked ? 'You need an Airlines account to submit this form' : undefined}
-            className="inline-flex items-center gap-2.5 px-8 py-3 text-white font-bold rounded-xl transition-all duration-150 shadow-sm min-w-52 justify-center hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            style={{ background: isBlocked ? '#d1d5db' : '#0000ff' }}
-            onMouseEnter={e => { if (!isBlocked && !submitting) e.currentTarget.style.background='#0000e6' }}
-            onMouseLeave={e => { if (!isBlocked) e.currentTarget.style.background='#0000ff' }}>
+            className="inline-flex items-center gap-2.5 px-8 py-3 font-extrabold rounded-full text-xs uppercase tracking-widest transition-all duration-150 shadow-sm min-w-52 justify-center hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            style={{ background: isBlocked ? '#d1d5db' : '#020617', color: '#ffffff', boxShadow: isBlocked ? 'none' : '0 4px 14px rgba(2, 6, 23, 0.25)' }}
+            onMouseEnter={e => { if (!isBlocked && !submitting) e.currentTarget.style.background='#1e293b' }}
+            onMouseLeave={e => { if (!isBlocked) e.currentTarget.style.background='#020617' }}>
             {submitting
               ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" /><path fill="currentColor" d="M4 12a8 8 0 018-8v8z" className="opacity-75" /></svg>Completing…</>
               : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><rect x="2" y="5" width="20" height="14" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" /></svg>Pay with Card</>

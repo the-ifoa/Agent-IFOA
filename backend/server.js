@@ -8,7 +8,14 @@ const helmet     = require('helmet');
 const rateLimit  = require('express-rate-limit');
 const { Server } = require('socket.io');
 
-dotenv.config({ override: true });
+// Separate dev/prod env files: NODE_ENV=production loads .env.production,
+// anything else loads .env (dev). Neither file is committed — on a real host
+// (Render, etc.) env vars come from its dashboard and this is a no-op if the
+// file isn't present.
+dotenv.config({
+  path: path.resolve(__dirname, process.env.NODE_ENV === 'production' ? '.env.production' : '.env'),
+  override: true,
+});
 
 // ── Fail fast if required env vars are missing ────────────────────────────────
 if (!process.env.MONGO_URI)   throw new Error('MONGO_URI env var is required');

@@ -1,5 +1,5 @@
 /**
- * socket.js — Socket.IO client singleton for the live support chat.
+ * socket.js, Socket.IO client singleton for the live support chat.
  *
  * The socket server runs on the same origin as the REST API (minus the `/api`
  * path). Auth is the same JWT stored in localStorage. One shared connection is
@@ -30,7 +30,7 @@ export function getSocket() {
       autoConnect: true,
     })
   } else {
-    // Token may have changed (re-login) — refresh and reconnect.
+    // Token may have changed (re-login), refresh and reconnect.
     socket.auth = { token }
     if (!socket.connected) socket.connect()
   }

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 // ── Modern stat card for admin overview ───────────────────────────────────────
 export function StatCard({ label, value, sub, icon, accent = 'default' }) {
   const cfg = {
-    blue:    { border: 'border-blue-100',    iconBg: 'bg-blue-50',    iconColor: 'text-blue-600',    bar: 'bg-blue-500'    },
+    slate:   { border: 'border-slate-200',   iconBg: 'bg-slate-100',   iconColor: 'text-slate-800',   bar: 'bg-slate-900'   },
     emerald: { border: 'border-emerald-100', iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600', bar: 'bg-emerald-500' },
     violet:  { border: 'border-violet-100',  iconBg: 'bg-violet-50',  iconColor: 'text-violet-600',  bar: 'bg-violet-500'  },
     amber:   { border: 'border-amber-100',   iconBg: 'bg-amber-50',   iconColor: 'text-amber-600',   bar: 'bg-amber-500'   },
@@ -25,9 +25,9 @@ export function StatCard({ label, value, sub, icon, accent = 'default' }) {
             <span className={c.iconColor}>{icon}</span>
           </div>
         )}
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">{label}</p>
         <p className="text-2xl font-black text-slate-900">{value}</p>
-        {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+        {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
       </div>
     </motion.div>
   )
@@ -80,12 +80,12 @@ export function OverviewPanel({ individuals, airlines }) {
 
         {/* Plan Distribution */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 lg:col-span-1" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Plan Distribution</p>
+          <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-1">Plan Distribution</p>
           <p className="text-sm font-bold text-slate-700 mb-5">Individual subscriptions</p>
           <div className="space-y-4">
             {Object.entries(planCounts).map(([plan, count], i) => {
               const pct = individuals.length ? Math.round((count / individuals.length) * 100) : 0
-              const colors = ['bg-red-500', 'bg-blue-500', 'bg-emerald-500']
+              const colors = ['bg-slate-900', 'bg-[#34E06E]', 'bg-emerald-500']
               return (
                 <div key={plan}>
                   <div className="flex justify-between text-xs mb-1.5">
@@ -107,7 +107,7 @@ export function OverviewPanel({ individuals, airlines }) {
 
           {/* Revenue donut summary */}
           <div className="mt-6 pt-5 border-t border-slate-100">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Revenue Split</p>
+            <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">Revenue Split</p>
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <p className="text-xs text-slate-500 mb-0.5">Individual</p>
@@ -127,9 +127,9 @@ export function OverviewPanel({ individuals, airlines }) {
           </div>
         </div>
 
-        {/* Top countries — individuals */}
+        {/* Top countries, individuals */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Top Countries</p>
+          <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-1">Top Countries</p>
           <p className="text-sm font-bold text-slate-700 mb-5">Individual registrations</p>
           {topCountries.length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">No data yet.</p>
@@ -153,9 +153,9 @@ export function OverviewPanel({ individuals, airlines }) {
           )}
         </div>
 
-        {/* Top countries — airlines */}
+        {/* Top countries, airlines */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Top Countries</p>
+          <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-1">Top Countries</p>
           <p className="text-sm font-bold text-slate-700 mb-5">Airline registrations</p>
           {topAirlineCountries.length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">No data yet.</p>
@@ -180,15 +180,15 @@ export function OverviewPanel({ individuals, airlines }) {
 
           {/* Payment status summary */}
           <div className="mt-6 pt-5 border-t border-slate-100">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Payment Status</p>
+            <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">Payment Status</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
                 <p className="text-xl font-black text-emerald-700">{airPaid}</p>
-                <p className="text-[10px] font-bold text-emerald-600 mt-0.5">Paid</p>
+                <p className="text-xs font-bold text-emerald-600 mt-0.5">Paid</p>
               </div>
               <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-center">
                 <p className="text-xl font-black text-amber-700">{airlines.length - airPaid}</p>
-                <p className="text-[10px] font-bold text-amber-600 mt-0.5">Pending</p>
+                <p className="text-xs font-bold text-amber-600 mt-0.5">Pending</p>
               </div>
             </div>
           </div>

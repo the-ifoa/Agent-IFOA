@@ -26,8 +26,8 @@ export default function SeedAdminSignupPage() {
   }
 
   const focusStyle = (e) => {
-    e.target.style.borderColor = '#0000ff'
-    e.target.style.boxShadow = '0 0 0 3px rgba(0,0,255,0.12)'
+    e.target.style.borderColor = '#020617'
+    e.target.style.boxShadow = '0 0 0 2px rgba(2,6,23,0.1)'
   }
 
   const blurStyle = (e) => {
@@ -198,14 +198,7 @@ export default function SeedAdminSignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl px-6 py-3.5 text-sm font-bold text-white transition-all flex items-center justify-center gap-2"
-                style={{ background: loading ? '#8080ff' : '#0000ff' }}
-                onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#0000e6'
-                }}
-                onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#0000ff'
-                }}
+                className="w-full rounded-full px-6 py-3.5 text-xs font-extrabold uppercase tracking-wider text-white bg-[#020617] transition-all flex items-center justify-center gap-2 shadow-sm hover:bg-slate-800 disabled:opacity-50"
               >
                 {loading ? 'Creating account...' : 'Create Admin Account'}
               </button>
@@ -214,7 +207,7 @@ export default function SeedAdminSignupPage() {
             <div className="mt-5 flex items-center justify-between">
               <p className="text-sm" style={{ color: '#64748b' }}>
                 Already have an account?{' '}
-                <Link to="/seed-admin-login" className="font-semibold transition-colors" style={{ color: '#0000ff' }}>
+                <Link to="/seed-admin-login" className="font-semibold transition-colors text-slate-900 hover:text-black">
                   Sign in
                 </Link>
               </p>

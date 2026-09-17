@@ -1,10 +1,10 @@
 /**
- * pricing.js — the browser's ONLY source of prices.
+ * pricing.js, the browser's ONLY source of prices.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  *  There are no price constants in this file, and there must be none anywhere
  *  else in the frontend. Every number is fetched from `GET /api/pricing/config`,
- *  which serves backend/shared/pricing.js — the same module that prices the
+ *  which serves backend/shared/pricing.js, the same module that prices the
  *  Stripe PaymentIntent.
  *
  *  This is the fix for the drift that made this refactor necessary: the tier
@@ -14,10 +14,10 @@
  *
  * Two levels of guarantee:
  *
- *   getPricing()  — the shared tables, for instant UI feedback while the user
+ *   getPricing() , the shared tables, for instant UI feedback while the user
  *                   moves a holder-count slider. Same numbers as the server.
  *
- *   quote()       — asks the server to price a scenario outright. Use this for
+ *   quote()      , asks the server to price a scenario outright. Use this for
  *                   any amount the customer is about to be charged: it is
  *                   computed by the server, so it cannot disagree with the
  *                   charge. Airline renewals and add-ons in particular depend on
@@ -36,8 +36,8 @@ let inflight = null
  * survive a tab close and a browser restart.
  *
  * This is the resilience that stops one endpoint from taking the app down: after
- * a single successful load, a backend blip — or a frontend deployed slightly
- * ahead of its backend — falls back to the last tables the server served instead
+ * a single successful load, a backend blip, or a frontend deployed slightly
+ * ahead of its backend, falls back to the last tables the server served instead
  * of blocking every page. Prices change rarely; a few-minutes-stale table is far
  * better than an unusable app, and the next successful fetch replaces it.
  */
@@ -54,7 +54,7 @@ function readCache() {
 function writeCache(cfg) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cfg))
-  } catch { /* private mode / quota — not critical */ }
+  } catch { /* private mode / quota, not critical */ }
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -65,7 +65,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
  * Retries a few times with backoff, because the usual cause of failure is a
  * transient one (cold-start on the host, a redeploy in flight) rather than a
  * permanent one. Falls back to the cached tables if every attempt fails, and
- * only rejects when there is nothing cached at all — i.e. a first-ever visit
+ * only rejects when there is nothing cached at all, i.e. a first-ever visit
  * while the backend is unreachable, at which point nothing else in the app
  * would work either.
  */
@@ -93,7 +93,7 @@ export function loadPricing({ attempts = 3 } = {}) {
     if (cached) {
       config = cached
       // Visible on purpose: the app is running on last-known-good prices.
-      console.warn('[pricing] server unreachable — using last known tables', lastErr?.message)
+      console.warn('[pricing] server unreachable, using last known tables', lastErr?.message)
       return config
     }
     throw lastErr
@@ -113,7 +113,7 @@ export function reloadPricing() {
 /** The loaded config. Throws if called before loadPricing() resolved. */
 export function getPricing() {
   if (!config) {
-    throw new Error('Pricing config not loaded — render inside <PricingProvider>.')
+    throw new Error('Pricing config not loaded, render inside <PricingProvider>.')
   }
   return config
 }

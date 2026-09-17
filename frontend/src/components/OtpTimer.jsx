@@ -20,7 +20,7 @@ export default function OtpTimer({ resetKey = 0, duration = 600 }) {
 
   return (
     <span className={`text-xs font-semibold tabular-nums ${expired ? 'text-red-500' : warning ? 'text-orange-500' : 'text-slate-400'}`}>
-      {expired ? 'Code expired — resend below' : `Expires in ${mins}:${String(secs).padStart(2, '0')}`}
+      {expired ? 'Code expired, resend below' : `Expires in ${mins}:${String(secs).padStart(2, '0')}`}
     </span>
   )
 }

@@ -70,7 +70,7 @@ export const activateGroupRenewalNow        = (id, groupId) => API.post(`/airlin
 // Delete one add-on/upgrade plan (admin)
 export const deleteHolderGroup              = (id, groupId) => API.delete(`/airlines/${id}/holder-group/${groupId}`)
 // Airline cancels (permanently deletes) one of its plans. planRef = 'base' | groupId.
-// holderTarget = 'base' | groupId | null — move this plan's holders to an active plan
+// holderTarget = 'base' | groupId | null, move this plan's holders to an active plan
 // so they persist (null = delete them with the plan).
 export const cancelAirlinePlan              = (id, planRef, holderTarget, moveHolderIds) => API.post(`/airlines/${id}/cancel-plan`, { planRef, holderTarget: holderTarget || null, moveHolderIds: moveHolderIds || null })
 // Admin renews a subscription (no payment) + generates invoice. registrationModel: 'Airlines' | 'Individual'.
@@ -107,7 +107,7 @@ export const getAllPayments = (params) => API.get('/payments', { params })
 
 /**
  * Admin saves edited invoice fields back to the Payment document.
- * This is the SINGLE SOURCE OF TRUTH — both admin and user see the same invoice.
+ * This is the SINGLE SOURCE OF TRUTH, both admin and user see the same invoice.
  * @param {string} paymentId   - Payment._id
  * @param {object} invoiceDraft - Full invoice shape used by generateIFOAInvoicePDF()
  * @param {string} invoiceNumber
@@ -128,7 +128,7 @@ export const sendRenewalReminders = (recipients) =>
   API.post('/payments/admin/send-renewal-reminders', { recipients })
 
 // User: auto-activate a queued renewal whose activationDate has already passed.
-// Backend enforces ownership + date guard — safe for non-admin users.
+// Backend enforces ownership + date guard, safe for non-admin users.
 export const autoActivateRenewal = (registrationId, registrationModel) =>
   API.post('/payments/auto-activate-renewal', { registrationId, registrationModel })
 
@@ -143,7 +143,7 @@ export const saveInvoiceDraftToDoc     = (invoiceId, draft, invoiceNumber) =>
 // Admin creates a new canonical Invoice doc when none exists (wire/no-payment registrations)
 export const createAdminInvoiceDoc = (registrationId, registrationModel, draft, invoiceNumber, purpose, wirePending) =>
   API.post('/invoices/admin-create', { registrationId, registrationModel, draft, invoiceNumber, purpose, wirePending })
-// Admin deletes an invoice — removed for both admin and the airline/individual
+// Admin deletes an invoice, removed for both admin and the airline/individual
 export const deleteInvoice = (registrationId, invoiceNumber) =>
   API.delete(`/invoices/by-registration/${registrationId}/${encodeURIComponent(invoiceNumber)}`)
 // Admin Invoices tab: list every invoice generated so far (de-duplicated by number)

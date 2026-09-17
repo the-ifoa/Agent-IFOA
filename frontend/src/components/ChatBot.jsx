@@ -20,9 +20,9 @@ const SUGGESTIONS = [
 // quote a rate the checkout does not honour. Built lazily (inside
 // <PricingProvider>) because the tables are fetched.
 const makePlanInfo = () => `
-IFOA (International Flight Operational Academy) — Subscription Plans:
+IFOA (International Flight Operational Academy), Subscription Plans:
 
-1. TURBOPROP PLAN — $${individualPrice('1 Year Subscription Plan').toFixed(2)}/year (1 Year Subscription)
+1. TURBOPROP PLAN, $${individualPrice('1 Year Subscription Plan').toFixed(2)}/year (1 Year Subscription)
    • Dedicated U.S. Mailing Address
    • FAA Compliance Guaranteed
    • Real-Time Notification
@@ -30,7 +30,7 @@ IFOA (International Flight Operational Academy) — Subscription Plans:
    • Yearly Payment
    • Unlimited Certificates
 
-2. JET PLAN — $${(individualPrice('Multiple Years Subscription Plan', 2) / 2).toFixed(2)}/year (Up to 5 Years Subscription)
+2. JET PLAN, $${(individualPrice('Multiple Years Subscription Plan', 2) / 2).toFixed(2)}/year (Up to 5 Years Subscription)
    • 20% Discount Yearly
    • Dedicated U.S. Mailing Address
    • FAA Compliance Guaranteed
@@ -39,8 +39,8 @@ IFOA (International Flight Operational Academy) — Subscription Plans:
    • One Payment for the Period
    • Unlimited Certificates
 
-3. VIP PLAN — $${individualPrice('Unlimited Plan').toFixed(2)} ONE-TIME (Unlimited / Lifetime Subscription) ⭐ BEST VALUE
-   • The Most Economic Flat Rate — Pay once, covered forever
+3. VIP PLAN, $${individualPrice('Unlimited Plan').toFixed(2)} ONE-TIME (Unlimited / Lifetime Subscription) ⭐ BEST VALUE
+   • The Most Economic Flat Rate, Pay once, covered forever
    • Dedicated U.S. Mailing Address
    • FAA Compliance Guaranteed
    • Real-Time Notification
@@ -48,7 +48,7 @@ IFOA (International Flight Operational Academy) — Subscription Plans:
    • One Time Lifetime Payment
    • Unlimited Certificates
 
-4. AIRLINES PLAN — Tailored Price
+4. AIRLINES PLAN, Tailored Price
    • Volume Discount for operators with 3+ FAA certificate holders
    • Dedicated U.S. Mailing Address
    • FAA Compliance Guaranteed
@@ -59,7 +59,7 @@ IFOA (International Flight Operational Academy) — Subscription Plans:
 
 PAYMENT INFORMATION:
    • We accept payments via Stripe (credit/debit card).
-   • You can also choose "Pay Later" — submit your registration now and receive an invoice by email.
+   • You can also choose "Pay Later", submit your registration now and receive an invoice by email.
    • All card payments are secured by Stripe with 256-bit SSL encryption.
    • We do NOT accept PayPal.
 `
@@ -174,7 +174,7 @@ function ArticleView({ title, content, onBack }) {
   )
 }
 
-// ── Help view — direct contact with the IFOA team ───────────────────────────────
+// ── Help view, direct contact with the IFOA team ───────────────────────────────
 function HelpView({ onAsk }) {
   const SUPPORT_EMAIL = 'agent@theifoa.com'
   return (
@@ -304,7 +304,7 @@ function ChatView({ messages, setMessages, loading, setLoading, initialQuestion,
             if (/^https?:\/\//.test(seg)) {
               return (
                 <a key={j} href={seg} target="_blank" rel="noopener noreferrer"
-                   className="text-blue-500 underline hover:text-blue-700 break-all font-medium">
+                   className="text-emerald-600 underline decoration-[#34E06E] decoration-2 underline-offset-2 hover:text-emerald-700 break-all font-medium">
                   {seg}
                 </a>
               )
@@ -492,7 +492,7 @@ export default function ChatBot() {
     setWidthIndex(i => (i + 1) % WIDTH_SIZES.length)
   }
 
-  // On the dashboard there is no hero section — show immediately. Elsewhere, gate on hero.
+  // On the dashboard there is no hero section, show immediately. Elsewhere, gate on hero.
   if (isAuthPage || (heroVisible && !isDashboard)) return null
 
   // Bottom tabs
@@ -593,7 +593,7 @@ export default function ChatBot() {
                 {/* Width toggle */}
                 <button
                   onClick={cycleWidth}
-                  title={`Width: ${currentWidth}px — click to resize`}
+                  title={`Width: ${currentWidth}px, click to resize`}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
                 >
                   {widthIndex === WIDTH_SIZES.length - 1 ? (

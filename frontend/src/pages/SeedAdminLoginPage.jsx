@@ -72,7 +72,7 @@ export default function SeedAdminLoginPage() {
                   placeholder="admin@example.com"
                   className="w-full rounded-xl border px-4 py-3 text-sm outline-none transition"
                   style={{ borderColor: '#e2e8f0', background: '#f8fafc', color: '#0f172a' }}
-                  onFocus={e => { e.target.style.borderColor = '#0000ff'; e.target.style.boxShadow = '0 0 0 3px rgba(0,0,255,0.12)' }}
+                  onFocus={e => { e.target.style.borderColor = '#020617'; e.target.style.boxShadow = '0 0 0 2px rgba(2,6,23,0.1)' }}
                   onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
                 />
               </div>
@@ -88,7 +88,7 @@ export default function SeedAdminLoginPage() {
                     placeholder="••••••••"
                     className="w-full rounded-xl border px-4 py-3 pr-12 text-sm outline-none transition"
                     style={{ borderColor: '#e2e8f0', background: '#f8fafc', color: '#0f172a' }}
-                    onFocus={e => { e.target.style.borderColor = '#0000ff'; e.target.style.boxShadow = '0 0 0 3px rgba(0,0,255,0.12)' }}
+                    onFocus={e => { e.target.style.borderColor = '#020617'; e.target.style.boxShadow = '0 0 0 2px rgba(2,6,23,0.1)' }}
                     onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' }}
                   />
                   <button
@@ -108,10 +108,7 @@ export default function SeedAdminLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl px-6 py-3.5 text-sm font-bold text-white transition-all duration-200 flex items-center justify-center gap-2"
-                style={{ background: loading ? '#8080ff' : '#0000ff' }}
-                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#0000e6' }}
-                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#0000ff' }}
+                className="w-full rounded-full px-6 py-3.5 text-xs uppercase tracking-wider font-extrabold text-white bg-[#020617] transition-all duration-200 flex items-center justify-center gap-2 shadow-sm hover:bg-slate-800 disabled:opacity-50"
               >
                 {loading ? (
                   <>

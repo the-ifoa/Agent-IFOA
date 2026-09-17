@@ -14,13 +14,14 @@ API.interceptors.request.use((config) => {
 })
 
 const C = {
-  blue: '#0000ff',
-  blueDark: '#0000e6',
-  blueLight: '#3333ff',
-  blueXLight: '#dbeafe',
-  blueMuted: '#eff6ff',
+  blue: '#020617',
+  blueDark: '#0f172a',
+  blueLight: '#334155',
+  blueXLight: '#e2e8f0',
+  blueMuted: '#f8fafc',
+  brand: '#34E06E',
   red: '#dc2626',
-  dark: '#0f172a',
+  dark: '#020617',
   white: '#ffffff',
   gray50: '#f8fafc',
   gray100: '#f1f5f9',

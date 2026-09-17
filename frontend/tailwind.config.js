@@ -11,52 +11,78 @@ export default {
         'xs': '480px',
       },
       fontFamily: {
-        sans: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"DM Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        display: ['"Hanken Grotesk"', 'sans-serif'],
+        heading: ['"Hanken Grotesk"', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      },
+      maxWidth: {
+        '7xl': '1280px',
+        'container': '1280px',
+      },
+      borderRadius: {
+        '3xl': '1.5rem', // 24px (Standard Cards)
+        '2xl': '1rem',   // 16px (Input Fields & Dropdowns)
+        'xl': '0.75rem', // 12px (Small Badges)
+        'lg': '0.5rem',  // 8px (Small Badges)
       },
       colors: {
-        // ── Primary: Blue ──────────────────────────────────────
+        // ── Brand & Accent Color: strictly rgb(52, 224, 110) / #34E06E ──
+        brand: {
+          DEFAULT: '#34E06E',
+          hover:   '#34E06E',
+          dark:    '#34E06E',
+          light:   '#34E06E',
+          xlight:  '#e8fbf0',
+          muted:   '#f0fdf4',
+          glow:    'rgba(52, 224, 110, 0.40)',
+        },
         primary: {
-          DEFAULT:  '#1d4ed8', // blue-700
-          dark:     '#1e40af', // blue-800
-          light:    '#3b82f6', // blue-500
-          xlight:   '#dbeafe', // blue-100
-          muted:    '#eff6ff', // blue-50
+          DEFAULT: '#34E06E',
+          hover:   '#34E06E',
+          dark:    '#34E06E',
+          light:   '#34E06E',
+          xlight:  '#e8fbf0',
+          muted:   '#f0fdf4',
         },
-        // ── Secondary: Red ─────────────────────────────────────
-        secondary: {
-          DEFAULT:  '#dc2626', // red-600
-          dark:     '#b91c1c', // red-700
-          light:    '#ef4444', // red-500
-          xlight:   '#fecaca', // red-200
-          muted:    '#fef2f2', // red-50
+        // ── Midnight & Slate 950 ────────────────────────────────
+        midnight: {
+          DEFAULT: '#020617',
+          dark:    '#000021',
+          card:    '#020617',
         },
-        // ── Accent: Black ──────────────────────────────────────
-        accent: {
-          DEFAULT:  '#0f172a',
-          soft:     '#1e293b',
-          card:     '#1e293b',
-        },
-        // ── Light page surfaces ────────────────────────────────
+        // ── Light Page Surfaces ─────────────────────────────────
         surface: {
-          DEFAULT:  '#ffffff',
-          soft:     '#f8fafc',
-          muted:    '#f1f5f9',
+          DEFAULT:   '#ffffff',
+          soft:      '#f8f9fa',
+          muted:     '#f1f5f9',
+          low:       '#f8f9fa',
+          container: '#f1f5f9',
         },
-        // ── Text ──────────────────────────────────────────────
+        // ── Text Palette ────────────────────────────────────────
         text: {
-          main:   '#0f172a',
+          main:   '#020617',
           muted:  '#475569',
+          sub:    '#64748B',
           light:  '#94a3b8',
+        },
+        // ── Borders ─────────────────────────────────────────────
+        border: {
+          DEFAULT: '#e2e8f0',
+          light:   'rgba(2, 6, 23, 0.08)',
+          slate:   '#e2e8f0',
+          dark:    'rgba(255, 255, 255, 0.10)',
         },
       },
       backgroundImage: {
-        'brand-gradient':  'linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)',
-        'red-gradient':    'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)',
-        'dark-gradient':   'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        'brand-gradient':  'linear-gradient(135deg, #34E06E 0%, #34E06E 100%)',
+        'midnight-gradient': 'linear-gradient(135deg, #020617 0%, #000021 100%)',
+        'dark-gradient':   'linear-gradient(135deg, #020617 0%, #0f172a 100%)',
       },
       boxShadow: {
-        'blue-glow':  '0 0 0 4px rgba(29,78,216,0.15)',
-        'red-glow':   '0 0 0 4px rgba(220,38,38,0.12)',
+        'brand-glow':    '0 0 20px rgba(52, 224, 110, 0.40)',
+        'brand-glow-sm': '0 0 10px rgba(52, 224, 110, 0.25)',
+        'ring-brand':    '0 0 0 3px rgba(52, 224, 110, 0.25)',
       },
     },
   },

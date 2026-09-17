@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 // ── Content ───────────────────────────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ const TERMS_SECTIONS = [
   },
   {
     heading: '13. Marketing Usage & Public Representation',
-    body: 'By using our services, you grant IFOA USA Corporation the right to reference your company name and logo for marketing and promotional purposes — for example, on our website or in presentations. We will never use personal names or individual identities for promotional purposes without your explicit consent.\n\nYou may withdraw this permission at any time by contacting us at agent@theifoa.com.',
+    body: 'By using our services, you grant IFOA USA Corporation the right to reference your company name and logo for marketing and promotional purposes, for example, on our website or in presentations. We will never use personal names or individual identities for promotional purposes without your explicit consent.\n\nYou may withdraw this permission at any time by contacting us at agent@theifoa.com.',
   },
   {
     heading: '14. Client Responsibility for FAA Designation',
@@ -135,40 +136,45 @@ const PRIVACY_SECTIONS = [
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 export function LegalModal({ open, onClose, type }) {
+  useEffect(() => {
+    if (!open) return
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
   if (!open) return null
 
   const isTerms = type === 'terms'
   const title = isTerms ? 'Terms & Conditions' : 'Privacy Policy'
   const subtitle = isTerms
-    ? 'IFOA USA Corporation — U.S. Agent for Service Platform'
+    ? 'IFOA USA Corporation, U.S. Agent for Service Platform'
     : 'IFOA USA Corporation'
   const sections = isTerms ? TERMS_SECTIONS : PRIVACY_SECTIONS
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
+      style={{ zIndex: 9999 }}
     >
       <div
-        className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]"
+        className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100 flex-shrink-0 bg-slate-50/70">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-0.5">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
               {isTerms ? 'Legal Agreement' : 'Privacy & Data'}
             </p>
-            <h2 className="text-base font-black text-slate-900">{title}</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+            <h2 className="text-lg font-black text-slate-900">{title}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex-shrink-0 ml-4 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            className="w-8 h-8 flex-shrink-0 ml-4 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
+            ✕
           </button>
         </div>
 
@@ -176,12 +182,12 @@ export function LegalModal({ open, onClose, type }) {
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
           {sections.map((s) => (
             <div key={s.heading}>
-              <p className="text-xs font-bold text-slate-800 mb-1.5">{s.heading}</p>
+              <p className="text-xs font-bold text-slate-900 mb-1.5">{s.heading}</p>
               {s.body.split('\n').map((line, i) =>
                 line.trim() === '' ? (
                   <div key={i} className="h-2" />
                 ) : (
-                  <p key={i} className={`text-xs leading-relaxed ${line.startsWith('•') ? 'pl-3 text-slate-600' : 'text-slate-600'}`}>
+                  <p key={i} className={`text-xs leading-relaxed ${line.startsWith('•') ? 'pl-3 text-slate-600 font-medium' : 'text-slate-600'}`}>
                     {line}
                   </p>
                 )
@@ -191,16 +197,17 @@ export function LegalModal({ open, onClose, type }) {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-6 py-4 border-t border-slate-100">
+        <div className="flex-shrink-0 px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end">
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold transition"
+            className="px-6 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm"
           >
-            Close
+            I Understand & Close
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -212,7 +219,7 @@ function LegalCheckbox({ checked, onChange, error, children }) {
       className="flex items-start gap-3 cursor-pointer p-4 rounded-2xl border transition-all duration-150"
       style={
         checked
-          ? { background: '#eff6ff', borderColor: '#0000ff', boxShadow: '0 0 0 3px rgba(0,0,255,0.08)' }
+          ? { background: '#f8fafc', borderColor: '#020617', boxShadow: '0 0 0 2px rgba(2,6,23,0.08)' }
           : error
           ? { background: 'rgba(254,242,242,0.5)', borderColor: '#fca5a5' }
           : { background: '#fff', borderColor: '#e2e8f0' }
@@ -224,20 +231,20 @@ function LegalCheckbox({ checked, onChange, error, children }) {
           className="w-5 h-5 rounded flex items-center justify-center transition-all duration-150"
           style={
             checked
-              ? { background: '#0000ff', border: '2px solid #0000ff' }
+              ? { background: '#020617', border: '2px solid #020617' }
               : error
               ? { background: '#fff1f2', border: '2px solid #f87171' }
               : { background: 'white', border: '2px solid #cbd5e1' }
           }
         >
           {checked && (
-            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <svg className="w-3 h-3 text-[#34E06E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           )}
         </div>
       </div>
-      <span className="text-sm leading-relaxed" style={{ color: checked ? '#1e3a8a' : '#475569' }}>{children}</span>
+      <span className="text-sm leading-relaxed" style={{ color: checked ? '#020617' : '#475569' }}>{children}</span>
     </label>
   )
 }
@@ -261,7 +268,7 @@ export default function LegalCheckboxes({ agreedTerms, agreedPrivacy, onChangeTe
           <button
             type="button"
             onClick={e => { e.preventDefault(); e.stopPropagation(); setModal('terms') }}
-            className="font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition"
+            className="font-semibold text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-2 hover:text-emerald-600 transition"
           >
             Terms & Conditions
           </button>
@@ -275,7 +282,7 @@ export default function LegalCheckboxes({ agreedTerms, agreedPrivacy, onChangeTe
           <button
             type="button"
             onClick={e => { e.preventDefault(); e.stopPropagation(); setModal('privacy') }}
-            className="font-semibold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition"
+            className="font-semibold text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-2 hover:text-emerald-600 transition"
           >
             Privacy Policy
           </button>

@@ -10,13 +10,13 @@
  * changes over time.
  *
  * The badge is DYNAMIC and derived from the registration's live state:
- *   - `reg.invoiceNumber`  — always points to the currently ACTIVE plan's invoice.
+ *   - `reg.invoiceNumber` , always points to the currently ACTIVE plan's invoice.
  *                            When a queued renewal activates, the backend flips
  *                            this to the renewal's number, so the Active badge
  *                            automatically moves to the renewal invoice.
- *   - `reg.nextRenewal`    — a paid-but-future renewal (queued) → shows "Queued".
- *   - `reg.holderGroups`   — per-upgrade live status (active / expired / pending).
- *   - `reg.expirationDate` — drives whether the current period is still live.
+ *   - `reg.nextRenewal`   , a paid-but-future renewal (queued) → shows "Queued".
+ *   - `reg.holderGroups`  , per-upgrade live status (active / expired / pending).
+ *   - `reg.expirationDate`, drives whether the current period is still live.
  *
  * Usage:
  *   import { getInvoiceStatus } from '../utils/invoiceStatus'
@@ -26,7 +26,7 @@
 
 const BADGES = {
   active:     { label: 'Active',     cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  queued:     { label: 'Queued',     cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  queued:     { label: 'Queued',     cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   expired:    { label: 'Expired',    cls: 'bg-amber-50 text-amber-700 border-amber-200' },
   pending:    { label: 'Pending',    cls: 'bg-amber-50 text-amber-700 border-amber-200' },
   superseded: { label: 'Renewed', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
@@ -42,7 +42,7 @@ const BADGES = {
  */
 export function getInvoiceStatus(doc, reg, opts = {}) {
   if (!doc) return null
-  // Custom one-off admin invoices have NO subscription lifecycle — they are standalone
+  // Custom one-off admin invoices have NO subscription lifecycle, they are standalone
   // documents, so they must never inherit the registration's expired/superseded/active
   // state (which is what made a fresh custom invoice show "Expired" under an expired base).
   if (doc.purpose === 'custom') return null

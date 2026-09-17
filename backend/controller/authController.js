@@ -400,6 +400,10 @@ exports.removeSecondaryEmail = async (req, res) => {
 };
 
 // ── OTP helpers ───────────────────────────────────────────────────────────────
+// Dev-only bypass — set SKIP_OTP=true in .env to skip real email delivery and
+// code checking (any code, e.g. 000000, is accepted). Never set this in prod.
+const SKIP_OTP = String(process.env.SKIP_OTP).toLowerCase() === 'true';
+
 function generateOtpCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -416,10 +420,20 @@ async function createAndSendOtp(email, purpose) {
   // Invalidate any prior unused OTPs for this email+purpose
   await OTP.deleteMany({ email: email.toLowerCase(), purpose, used: false });
   await OTP.create({ email: email.toLowerCase(), code, purpose, expiresAt });
+  if (SKIP_OTP) {
+    console.log(`[SKIP_OTP] ${purpose} code for ${email}: ${code}`);
+    return;
+  }
   await sendOtpEmail(email.toLowerCase(), code, purpose);
 }
 
 async function verifyOtp(email, code, purpose) {
+  if (SKIP_OTP) {
+    // Any code is accepted — reuse the most recent unused record so callers
+    // that mark it used (record.used = true; record.save()) still work.
+    const record = await OTP.findOne({ email: email.toLowerCase(), purpose, used: false }).sort({ createdAt: -1 });
+    return record || { used: false, save: async () => {} };
+  }
   const record = await OTP.findOne({
     email:   email.toLowerCase(),
     code:    normalizeCode(code),

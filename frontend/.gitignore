@@ -23,5 +23,5 @@ public_html
 *.njsproj
 *.sln
 *.sw?
-.env
-.env.example
+.env*
+!.env.example

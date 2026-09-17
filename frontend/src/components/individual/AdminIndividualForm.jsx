@@ -3,11 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createAdminIndividualForm, importIndividualsFromExcel } from '../../services/api'
 
 const C = {
-  dark: '#0f172a',
+  dark: '#020617',
   gray300: '#cbd5e1',
   gray600: '#475569',
   red: '#dc2626',
-  blue: '#0000ff',
+  blue: '#020617',
+  brand: '#34E06E',
 }
 
 const PLAN_OPTIONS = [

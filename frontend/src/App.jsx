@@ -10,36 +10,38 @@ import HeaderNav from './components/layout/HeaderNav'
 import Navbar from './components/Navbar'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// Public pages — eagerly loaded
+// Public pages, eagerly loaded
 import Home from './pages/Home'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 
-// Admin pages — eagerly loaded to avoid React 19 lazyInitializer crash
+// Admin pages, eagerly loaded to avoid React 19 lazyInitializer crash
 // with ES module namespace objects on Vite 8 dev server
 import AdminDashboard   from './pages/AdminDashboard'
 import AdminProfilePage from './pages/dashboard/AdminProfilePage'
 import AdminInvoicesPage from './pages/dashboard/AdminInvoicesPage'
 import AdminSupportPage from './pages/dashboard/AdminSupportPage'
 
-// Lazy-loaded pages — only downloaded when first visited
+// User dashboard pages, eagerly loaded to eliminate tab-switching lag and suspense flash
+import UserDashboard   from './pages/dashboard/UserDashboard'
+import ProfilePage     from './pages/dashboard/ProfilePage'
+import SubscriptionPage from './pages/dashboard/SubscriptionPage'
+import SettingsPage    from './pages/dashboard/SettingsPage'
+import UserSupportPage from './pages/dashboard/UserSupportPage'
+import FaqPage         from './pages/dashboard/FaqPage'
+
+// Lazy-loaded public/onboarding pages
 const RegisterPage        = lazy(() => import('./pages/RegisterPage'))
 const SeedAdminSignupPage = lazy(() => import('./pages/SeedAdminSignupPage'))
 const SeedAdminLoginPage  = lazy(() => import('./pages/SeedAdminLoginPage'))
-const UserDashboard       = lazy(() => import('./pages/dashboard/UserDashboard'))
-const ProfilePage         = lazy(() => import('./pages/dashboard/ProfilePage'))
-const SubscriptionPage    = lazy(() => import('./pages/dashboard/SubscriptionPage'))
-const SettingsPage        = lazy(() => import('./pages/dashboard/SettingsPage'))
-const UserSupportPage     = lazy(() => import('./pages/dashboard/UserSupportPage'))
-const FaqPage             = lazy(() => import('./pages/dashboard/FaqPage'))
 
-// Tiny blank-slate while a lazy chunk loads — no spinner flash
+// Tiny blank-slate while a lazy chunk loads, no spinner flash
 function PageFallback() {
   return <div className="min-h-screen bg-slate-50" />
 }
 
 // ── Global mustChangePassword gate ──────────────────────────────────────────
-// Runs on EVERY route — public and protected alike.
+// Runs on EVERY route, public and protected alike.
 // If a token exists but the user hasn't set their password yet, they must not
 // be allowed to access ANY page (home, register form, dashboard, etc.) until
 // the forced-change modal is completed.  This prevents the "logged-in navbar
@@ -48,11 +50,11 @@ function MustChangePasswordGate({ children }) {
   const { user, loading, mustChangePassword } = useAuth()
   const location = useLocation()
 
-  // Wait until auth is resolved — avoids a flash redirect
+  // Wait until auth is resolved, avoids a flash redirect
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin" />
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#34E06E] animate-spin" />
       </div>
     )
   }
@@ -65,7 +67,7 @@ function MustChangePasswordGate({ children }) {
   return children
 }
 
-// Auth guard — memoised so it never re-mounts children on unrelated renders
+// Auth guard, memoised so it never re-mounts children on unrelated renders
 function RequireAuth({ roles }) {
   const { user, loading, mustChangePassword } = useAuth()
   const location = useLocation()
@@ -73,7 +75,7 @@ function RequireAuth({ roles }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin" />
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#34E06E] animate-spin" />
       </div>
     )
   }
@@ -87,33 +89,20 @@ function RequireAuth({ roles }) {
   return <Outlet />
 }
 
-// ── Animated Outlet for smooth page transitions ─────────────────────────────
+// ── Smooth Outlet for immediate seamless tab navigation (no unmount flicker) ──
 function AnimatedOutlet() {
-  const location = useLocation()
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <Outlet />
-      </motion.div>
-    </AnimatePresence>
-  )
+  return <Outlet />
 }
 
 // ── Persistent dashboard shell ──────────────────────────────────────────────
 // HeaderNav stays mounted the entire time the user is inside /dashboard/*
-// Only the <main> content swaps — no header remount, no layout flicker.
+// Only the <main> content swaps, no header remount, no layout flicker.
 function DashboardShell() {
   return (
     <div className="min-h-screen bg-white">
       <HeaderNav />
-      <main className="mx-auto w-full max-w-7xl px-4 sm:px-5 pt-[76px] sm:pt-[100px] pb-10 sm:mb-14 lg:px-10">
-        <Suspense fallback={<div className="py-20 flex justify-center"><div className="w-6 h-6 rounded-full border-4 border-slate-200 border-t-blue-500 animate-spin" /></div>}>
+      <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 pt-[76px] sm:pt-[100px] pb-10 sm:pb-14">
+        <Suspense fallback={<div className="py-20 flex justify-center"><div className="w-6 h-6 rounded-full border-4 border-slate-200 border-t-[#34E06E] animate-spin" /></div>}>
           <AnimatedOutlet />
         </Suspense>
       </main>
@@ -128,7 +117,7 @@ function AdminShell() {
       <HeaderNav />
       {/* Changed overflow-x-clip to overflow-x-hidden to allow table scrolling while preventing page-level horizontal jitter */}
       <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-5 pt-[76px] sm:pt-[100px] pb-10 sm:pb-14 lg:px-8 overflow-x-hidden">
-        <Suspense fallback={<div className="py-20 flex justify-center"><div className="w-6 h-6 rounded-full border-4 border-slate-200 border-t-blue-500 animate-spin" /></div>}>
+        <Suspense fallback={<div className="py-20 flex justify-center"><div className="w-6 h-6 rounded-full border-4 border-slate-200 border-t-[#34E06E] animate-spin" /></div>}>
           <AnimatedOutlet />
         </Suspense>
       </main>
@@ -140,6 +129,43 @@ function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [pathname])
+  return null
+}
+
+// ── Per-route browser tab title ─────────────────────────────────────────────
+const PAGE_TITLES = [
+  [/^\/$/, 'Home'],
+  [/^\/login/, 'Log In'],
+  [/^\/signup/, 'Sign Up'],
+  [/^\/seed-admin-signup/, 'Admin Signup'],
+  [/^\/seed-admin-login/, 'Admin Login'],
+  [/^\/register/, 'Register'],
+  [/^\/faq/, 'FAQ'],
+  [/^\/admin\/individuals/, 'Admin · Individuals'],
+  [/^\/admin\/airlines/, 'Admin · Airlines'],
+  [/^\/admin\/add-airline/, 'Admin · Add Airline'],
+  [/^\/admin\/add-individual/, 'Admin · Add Individual'],
+  [/^\/admin\/invoices/, 'Admin · Invoices'],
+  [/^\/admin\/support/, 'Admin · Support'],
+  [/^\/admin\/profile/, 'Admin · Profile'],
+  [/^\/admin\/faq/, 'Admin · FAQ'],
+  [/^\/admin/, 'Admin Dashboard'],
+  [/^\/dashboard\/profile/, 'My Profile'],
+  [/^\/dashboard\/subscription/, 'Subscription'],
+  [/^\/dashboard\/support/, 'Support'],
+  [/^\/dashboard\/settings/, 'Settings'],
+  [/^\/dashboard\/faq/, 'FAQ'],
+  [/^\/dashboard/, 'Dashboard'],
+]
+
+const SITE_TITLE = 'IFOA USA | U.S. Agent for Service'
+
+function PageTitle() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const match = PAGE_TITLES.find(([re]) => re.test(pathname))
+    document.title = match ? `${match[1]} | IFOA USA` : SITE_TITLE
   }, [pathname])
   return null
 }
@@ -191,6 +217,7 @@ function App() {
       <PricingProvider>
       <DataCacheProvider>
         <ScrollToTop />
+        <PageTitle />
         <ChatBot />
         <MustChangePasswordGate>
         <Suspense fallback={<PageFallback />}>
@@ -209,7 +236,7 @@ function App() {
               </div>
             } />
 
-            {/* ── Admin — single shell, header never remounts ── */}
+            {/* ── Admin, single shell, header never remounts ── */}
             <Route element={<RequireAuth roles={['admin']} />}>
               <Route element={<AdminShell />}>
                 <Route path="/admin" element={<AdminDashboard />} />
@@ -224,7 +251,7 @@ function App() {
               </Route>
             </Route>
 
-            {/* ── User dashboard — single shell, header never remounts ── */}
+            {/* ── User dashboard, single shell, header never remounts ── */}
             <Route element={<RequireAuth roles={['individual', 'airline']} />}>
               <Route element={<DashboardShell />}>
                 <Route path="/dashboard" element={<UserDashboard />} />

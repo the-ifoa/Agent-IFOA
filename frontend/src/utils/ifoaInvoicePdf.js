@@ -116,7 +116,7 @@ export async function generateIFOAInvoicePDF(inv) {
 
   txt('Invoice  ' + displayInvoiceNumber, ML, Y, { size: 12, font: fontBold })
   if (inv.paymentId && inv.paymentId !== '—') {
-    // Admin/manual payments use an internal reference (admin_<ids>) — show a clean
+    // Admin/manual payments use an internal reference (admin_<ids>), show a clean
     // "MANUAL <invoice #>" instead of leaking raw database ids. ASCII only so the
     // standard PDF font can always encode it.
     const rawTxn = String(inv.paymentId)

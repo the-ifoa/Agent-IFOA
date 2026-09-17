@@ -1,103 +1,12 @@
 import { useState } from 'react'
 import { individualPrice } from '../../services/pricing'
 import LegalCheckboxes from '../legal/LegalModal'
+import CustomSelect from '../ui/CustomSelect'
+import CountrySelect, { COUNTRY_TO_ISO2 } from '../ui/CountrySelect'
 import PhoneInputLib from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
 
 const PhoneInput = PhoneInputLib.default || PhoneInputLib
-
-// Map country names to ISO2 codes used by react-phone-input-2
-const COUNTRY_TO_ISO2 = {
-  'Afghanistan': 'af', 'Albania': 'al', 'Algeria': 'dz', 'American Samoa': 'as', 'Andorra': 'ad',
-  'Angola': 'ao', 'Anguilla': 'ai', 'Antigua and Barbuda': 'ag', 'Argentina': 'ar', 'Armenia': 'am',
-  'Aruba': 'aw', 'Australia': 'au', 'Austria': 'at', 'Azerbaijan': 'az', 'Bahamas': 'bs',
-  'Bahrain': 'bh', 'Bangladesh': 'bd', 'Barbados': 'bb', 'Belarus': 'by', 'Belgium': 'be',
-  'Belize': 'bz', 'Benin': 'bj', 'Bermuda': 'bm', 'Bhutan': 'bt', 'Bolivia': 'bo',
-  'Bosnia and Herzegovina': 'ba', 'Botswana': 'bw', 'Brazil': 'br', 'Brunei': 'bn', 'Bulgaria': 'bg',
-  'Burkina Faso': 'bf', 'Burundi': 'bi', 'Cabo Verde': 'cv', 'Cambodia': 'kh', 'Cameroon': 'cm',
-  'Canada': 'ca', 'Cayman Islands': 'ky', 'Central African Republic': 'cf', 'Chad': 'td', 'Chile': 'cl',
-  'China': 'cn', 'Colombia': 'co', 'Comoros': 'km', 'Congo': 'cg', 'Costa Rica': 'cr',
-  'Croatia': 'hr', 'Cuba': 'cu', 'Cyprus': 'cy', 'Czech Republic': 'cz', 'Denmark': 'dk',
-  'Dominican Republic': 'do', 'Ecuador': 'ec', 'Egypt': 'eg', 'El Salvador': 'sv', 'Eritrea': 'er',
-  'Estonia': 'ee', 'Ethiopia': 'et', 'Finland': 'fi', 'France': 'fr', 'Germany': 'de',
-  'Ghana': 'gh', 'Greece': 'gr', 'Guatemala': 'gt', 'Haiti': 'ht', 'Honduras': 'hn',
-  'Hong Kong': 'hk', 'Hungary': 'hu', 'Iceland': 'is', 'India': 'in', 'Indonesia': 'id',
-  'Iraq': 'iq', 'Ireland': 'ie', 'Israel': 'il', 'Italy': 'it', 'Jamaica': 'jm',
-  'Japan': 'jp', 'Jordan': 'jo', 'Kazakhstan': 'kz', 'Kenya': 'ke', 'Korea (Republic of)': 'kr',
-  'Kuwait': 'kw', 'Kyrgyzstan': 'kg', 'Latvia': 'lv', 'Lebanon': 'lb', 'Libya': 'ly',
-  'Lithuania': 'lt', 'Luxembourg': 'lu', 'Malaysia': 'my', 'Maldives': 'mv', 'Mali': 'ml',
-  'Malta': 'mt', 'Mexico': 'mx', 'Moldova': 'md', 'Monaco': 'mc', 'Mongolia': 'mn',
-  'Morocco': 'ma', 'Mozambique': 'mz', 'Myanmar': 'mm', 'Nepal': 'np', 'Netherlands': 'nl',
-  'New Zealand': 'nz', 'Nicaragua': 'ni', 'Nigeria': 'ng', 'Norway': 'no', 'Oman': 'om',
-  'Pakistan': 'pk', 'Palestine': 'ps', 'Panama': 'pa', 'Paraguay': 'py', 'Peru': 'pe',
-  'Philippines': 'ph', 'Poland': 'pl', 'Portugal': 'pt', 'Puerto Rico': 'pr', 'Qatar': 'qa',
-  'Romania': 'ro', 'Russian Federation': 'ru', 'Rwanda': 'rw', 'Saudi Arabia': 'sa', 'Senegal': 'sn',
-  'Serbia': 'rs', 'Singapore': 'sg', 'Slovakia': 'sk', 'Slovenia': 'si', 'Somalia': 'so',
-  'South Africa': 'za', 'Spain': 'es', 'Sri Lanka': 'lk', 'Sudan': 'sd', 'Sweden': 'se',
-  'Switzerland': 'ch', 'Syria': 'sy', 'Taiwan': 'tw', 'Tanzania': 'tz', 'Thailand': 'th',
-  'Tunisia': 'tn', 'Turkey': 'tr', 'Uganda': 'ug', 'Ukraine': 'ua', 'United Arab Emirates': 'ae',
-  'United Kingdom': 'gb', 'United States of America': 'us', 'Uruguay': 'uy', 'Uzbekistan': 'uz',
-  'Venezuela': 've', 'Vietnam': 'vn', 'Yemen': 'ye', 'Zambia': 'zm', 'Zimbabwe': 'zw',
-}
-
-// Individual plan prices come from the server (services/pricing.js). No local
-// table: the price shown here is the price the backend charges.
-
-const COUNTRIES = [
-  'Afghanistan', 'Albania', 'Algeria', 'American Samoa', 'Andorra', 'Angola', 'Anguilla', 'Antarctica', 'Antigua and Barbuda', 'Argentina',
-  'Armenia', 'Aruba', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize',
-  'Benin', 'Bermuda', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
-  'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Cayman Islands', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia',
-  'Comoros', 'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Dominican Republic', 'Ecuador', 'Egypt',
-  'El Salvador', 'Eritrea', 'Estonia', 'Ethiopia', 'Finland', 'France', 'Germany', 'Ghana', 'Greece', 'Guatemala', 'Haiti', 'Honduras',
-  'Hong Kong', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan',
-  'Kenya', 'Korea (Republic of)', 'Kuwait', 'Kyrgyzstan', 'Latvia', 'Lebanon', 'Libya', 'Lithuania', 'Luxembourg', 'Malaysia', 'Maldives',
-  'Mali', 'Malta', 'Mexico', 'Moldova', 'Monaco', 'Mongolia', 'Morocco', 'Mozambique', 'Myanmar', 'Nepal', 'Netherlands', 'New Zealand',
-  'Nicaragua', 'Nigeria', 'Norway', 'Oman', 'Pakistan', 'Palestine', 'Panama', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
-  'Puerto Rico', 'Qatar', 'Romania', 'Russian Federation', 'Rwanda', 'Saudi Arabia', 'Senegal', 'Serbia', 'Singapore', 'Slovakia',
-  'Slovenia', 'Somalia', 'South Africa', 'Spain', 'Sri Lanka', 'Sudan', 'Sweden', 'Switzerland', 'Syria', 'Taiwan', 'Tanzania', 'Thailand',
-  'Tunisia', 'Turkey', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States of America', 'Uruguay',
-  'Uzbekistan', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe',
-]
-
-function CountrySelect({ value, onChange, error }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const filtered = COUNTRIES.filter(c => c.toLowerCase().includes(search.toLowerCase()))
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => { setOpen(v => !v); setSearch('') }}
-        className={`w-full text-left px-3.5 py-2.5 border rounded-xl text-sm bg-white outline-none transition-all duration-150 flex items-center justify-between ${
-          error ? 'border-red-300' : open ? 'border-slate-400 ring-2 ring-slate-200' : 'border-gray-200 hover:border-gray-300'
-        } ${value ? 'text-gray-900' : 'text-gray-400'}`}
-      >
-        <span>{value || '--- Select country ---'}</span>
-        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-gray-100 bg-white">
-            <input autoFocus type="text" placeholder="Search country…" value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-slate-400 bg-slate-50 text-gray-800 placeholder:text-gray-400" />
-          </div>
-          <div className="max-h-52 overflow-y-auto">
-            {filtered.length === 0 && <div className="px-4 py-3 text-sm text-gray-400">No results</div>}
-            {filtered.map(c => (
-              <div key={c} onClick={() => { onChange(c); setOpen(false); setSearch('') }}
-                className={`px-4 py-2 text-sm cursor-pointer transition-colors duration-100 ${c === value ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-gray-700 hover:bg-slate-50'}`}>
-                {c}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function Field({ label, required, error, helper, children }) {
   return (
@@ -159,7 +68,7 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
     `w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-all duration-150 placeholder:text-slate-400 hover:border-slate-300 ${
       errors[field]
         ? 'border-red-300 bg-red-50/40 focus:border-red-400 focus:ring-3 focus:ring-red-100'
-        : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-3 focus:ring-blue-100'
+        : 'border-slate-200 bg-white focus:border-slate-800 focus:ring-2 focus:ring-slate-100'
     }`
 
   return (
@@ -167,31 +76,31 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
       <section className={sectionClass}>
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-600 mb-1">Service Plan</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-800 mb-1">Service Plan</p>
             <h3 className="text-lg font-bold text-slate-900">Select your registration term</h3>
           </div>
           <span className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600">USD</span>
         </div>
 
         <Field label="Subscription Plan" required error={errors.subscriptionPlan}>
-          <select
+          <CustomSelect
             id="field-subscriptionPlan"
             value={data.subscriptionPlan || ''}
-            onChange={(e) => {
-              const val = e.target.value
+            onChange={(val) => {
               update({ subscriptionPlan: val, price: individualPrice(val, data.multiYearCount) })
             }}
-            className={`${inputCls('subscriptionPlan')} appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M2.22%204.47a.75.75%200%20011.06%200L6%207.19l2.72-2.72a.75.75%200%20011.06%201.06l-3.25%203.25a.75.75%200%2001-1.06%200L2.22%205.53a.75.75%200%20010-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center] pr-10 cursor-pointer text-sm font-semibold`}
-          >
-            <option value="">— Select a Plan —</option>
-            <option value="1 Year Subscription Plan">1 Year Subscription Plan</option>
-            <option value="Multiple Years Subscription Plan">Multiple Years Subscription Plan</option>
-            <option value="Unlimited Plan">Unlimited Plan</option>
-          </select>
+            options={[
+              { value: '1 Year Subscription Plan', label: '1 Year Subscription Plan' },
+              { value: 'Multiple Years Subscription Plan', label: 'Multiple Years Subscription Plan' },
+              { value: 'Unlimited Plan', label: 'Unlimited Plan' },
+            ]}
+            placeholder="— Select a Plan —"
+            error={!!errors.subscriptionPlan}
+          />
         </Field>
 
         {data.subscriptionPlan && (
-          <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/50 p-5">
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/70 p-5">
             {data.subscriptionPlan === '1 Year Subscription Plan' && (
               <p className="text-sm font-bold text-slate-800">Agent for Service - Individual - 1 year</p>
             )}
@@ -200,19 +109,17 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
               <div className="space-y-4">
                 <p className="text-sm font-bold text-slate-800">Agent for Service - Individual - Up to 5 Years Subscription</p>
                 <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-slate-600">Select Duration:</label>
-                  <select
-                    value={data.multiYearCount || 2}
-                    onChange={(e) => {
-                      const yrs = parseInt(e.target.value)
-                      update({ multiYearCount: yrs, price: individualPrice('Multiple Years Subscription Plan', yrs) })
-                    }}
-                    className="cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white px-4 py-2 pr-10 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M2.22%204.47a.75.75%200%20011.06%200L6%207.19l2.72-2.72a.75.75%200%20011.06%201.06l-3.25%203.25a.75.75%200%2001-1.06%200L2.22%205.53a.75.75%200%20010-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center]"
-                  >
-                    {[2, 3, 4, 5].map((y) => (
-                      <option key={y} value={y}>{y} Years</option>
-                    ))}
-                  </select>
+                  <label className="text-sm font-medium text-slate-600 flex-shrink-0">Select Duration:</label>
+                  <div className="w-44">
+                    <CustomSelect
+                      value={String(data.multiYearCount || 2)}
+                      onChange={(val) => {
+                        const yrs = parseInt(val)
+                        update({ multiYearCount: yrs, price: individualPrice('Multiple Years Subscription Plan', yrs) })
+                      }}
+                      options={[2, 3, 4, 5].map((y) => ({ value: String(y), label: `${y} Years` }))}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -220,11 +127,11 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
             {data.subscriptionPlan === 'Unlimited Plan' && (
               <p className="text-sm font-bold text-slate-800">Agent for Service - Individual - Unlimited</p>
             )}
-            <div className="mt-5 flex items-end justify-between border-t border-blue-100 pt-4">
+            <div className="mt-5 flex items-end justify-between border-t border-slate-200 pt-4">
               <div>
                 <span className="block text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Total Price</span>
                 {data.subscriptionPlan === 'Multiple Years Subscription Plan' && (
-                  <span className="text-xs font-semibold text-blue-600 mt-1 block">
+                  <span className="text-xs font-semibold text-slate-600 mt-1 block">
                     (${individualPrice('Multiple Years Subscription Plan', 2) / 2}.00 / year)
                   </span>
                 )}
@@ -240,7 +147,7 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
       </section>
 
       <section className={sectionClass}>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-600 mb-1">Personal Details</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-800 mb-1">Personal Details</p>
         <h3 className="text-lg font-bold text-slate-900 mb-5">Tell us who the registration is for.</h3>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -289,7 +196,7 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
       </section>
 
       <section className={sectionClass}>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-600 mb-1">Address</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-800 mb-1">Address</p>
         <h3 className="text-lg font-bold text-slate-900 mb-5">Add your mailing address.</h3>
 
         <div className="space-y-4">
@@ -350,7 +257,7 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
       </section>
 
       <section className={sectionClass}>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-600 mb-1">Contact</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-800 mb-1">Contact</p>
         <h3 className="text-lg font-bold text-slate-900 mb-5">Where should updates and payment communication go?</h3>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -403,10 +310,10 @@ export default function Step1PersonalInfo({ data, update, onNext }) {
             if (te || pe) return
             if (validate()) onNext()
           }}
-          className="inline-flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold text-white transition-all duration-150 shadow-sm active:scale-95"
-          style={{ background: '#0000ff' }}
-          onMouseEnter={e => e.currentTarget.style.background='#0000e6'}
-          onMouseLeave={e => e.currentTarget.style.background='#0000ff'}
+          className="inline-flex items-center gap-2 rounded-full px-7 py-3 text-xs uppercase tracking-widest font-extrabold transition-all duration-150 shadow-sm active:scale-95"
+          style={{ background: '#020617', color: '#ffffff' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+          onMouseLeave={e => e.currentTarget.style.background = '#020617'}
         >
           Continue to certificates
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">

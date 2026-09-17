@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CustomSelect from '../ui/CustomSelect'
 
 const EMPTY_HOLDER = {
   fullName: '',
@@ -106,7 +107,7 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
     return errs.every(e => Object.keys(e).length === 0)
   }
 
-  // No focus ring — clean, simple border transition only
+  // No focus ring, clean, simple border transition only
   const inputCls = (idx, field) =>
     `w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 bg-white outline-none transition-all duration-150 placeholder:text-gray-400
     [&::-webkit-calendar-picker-indicator]:opacity-70
@@ -114,7 +115,7 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
     [color-scheme:light] ${
       errors[idx]?.[field]
         ? 'border-red-300 focus:border-red-400 bg-red-50/30'
-        : 'border-gray-200 focus:border-blue-500 hover:border-gray-300'
+        : 'border-gray-200 focus:border-slate-800 hover:border-gray-300'
     }`
 
   return (
@@ -135,7 +136,7 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
             {payableCount ? ` · ${payableCount} holder${payableCount !== 1 ? 's' : ''} selected` : ` · ${holders.length} added`}
           </span>
           <span className="font-black text-slate-900">
-            Payable Total: <span className="text-green-700">${numericTotal} USD</span>
+            Payable Total: <span className="text-[#34E06E] font-black">${numericTotal} USD</span>
           </span>
         </div>
       )}
@@ -158,7 +159,7 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
             {/* Card header */}
             <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center">{i + 1}</div>
+                <div className="w-7 h-7 rounded-full bg-[#020617] text-white text-xs font-black flex items-center justify-center">{i + 1}</div>
                 <span className="text-sm font-bold text-gray-900">{h.fullName?.trim() ? h.fullName : `Team Member #${i + 1}`}</span>
               </div>
               <button type="button" onClick={() => removeHolder(i)} disabled={holders.length <= 1} title="Remove this member"
@@ -195,13 +196,16 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Certificate Type <span className="text-red-400">*</span></label>
-                  <select value={h.certificateType || ''}
-                    onChange={e => onChange(i, 'certificateType', e.target.value)}
-                    data-field="certificateType"
-                    className={inputCls(i, 'certificateType') + ' cursor-pointer'}>
-                    <option value="">Select certificate type…</option>
-                    {CERTIFICATE_TYPES.map(type => (<option key={type} value={type}>{type}</option>))}
-                  </select>
+                  <CustomSelect
+                    value={h.certificateType || ''}
+                    onChange={val => onChange(i, 'certificateType', val)}
+                    placeholder="Select certificate type…"
+                    error={!!errors[i]?.certificateType}
+                    options={[
+                      { value: '', label: 'Select certificate type…' },
+                      ...CERTIFICATE_TYPES.map(type => ({ value: type, label: type }))
+                    ]}
+                  />
                   {errors[i]?.certificateType && <p className="text-red-500 text-xs">{errors[i].certificateType}</p>}
                 </div>
                 <div className="space-y-1">
@@ -252,10 +256,10 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
 
               {/* Secondary Certificate toggle + collapsible details */}
               <div className="flex flex-col">
-                <label className={`relative flex items-center gap-3 cursor-pointer p-3.5 rounded-xl border transition-all duration-150 select-none ${h.hasSecondaryCertificate ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-blue-300 bg-white'}`}>
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${h.hasSecondaryCertificate ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}>
+                <label className={`relative flex items-center gap-3 cursor-pointer p-3.5 rounded-xl border transition-all duration-150 select-none ${h.hasSecondaryCertificate ? 'border-slate-400 bg-slate-50' : 'border-gray-200 hover:border-slate-300 bg-white'}`}>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${h.hasSecondaryCertificate ? 'bg-[#020617] border-[#020617]' : 'bg-white border-gray-300'}`}>
                     {h.hasSecondaryCertificate && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <svg className="w-3 h-3 text-[#34E06E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -267,19 +271,20 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
 
                 {h.hasSecondaryCertificate && (
                   <div className="mt-2 mb-4 rounded-xl border border-slate-200 bg-slate-50 pt-3 px-3 pb-4 space-y-3">
-                    <p className="text-[11px] font-black uppercase tracking-widest text-blue-600">Secondary Certificate Details</p>
+                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-800">Secondary Certificate Details</p>
 
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Secondary Certificate Type <span className="text-red-400">*</span></label>
-                      <select value={h.secondaryCertificateType || ''}
-                        onChange={e => onChange(i, 'secondaryCertificateType', e.target.value)}
-                        data-field="secondaryCertificateType"
-                        className={inputCls(i, 'secondaryCertificateType') + ' cursor-pointer'}>
-                        <option value="">Select secondary type…</option>
-                        {CERTIFICATE_TYPES.filter(t => t !== h.certificateType).map(type => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
+                      <CustomSelect
+                        value={h.secondaryCertificateType || ''}
+                        onChange={val => onChange(i, 'secondaryCertificateType', val)}
+                        placeholder="Select secondary type…"
+                        error={!!errors[i]?.secondaryCertificateType}
+                        options={[
+                          { value: '', label: 'Select secondary type…' },
+                          ...CERTIFICATE_TYPES.filter(t => t !== h.certificateType).map(type => ({ value: type, label: type }))
+                        ]}
+                      />
                       {errors[i]?.secondaryCertificateType && <p className="text-red-500 text-xs">{errors[i].secondaryCertificateType}</p>}
                     </div>
 
@@ -308,7 +313,7 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
       {/* Actions */}
       <div className="flex gap-3 justify-between mt-4 pt-3 border-t border-gray-100">
         <button type="button" onClick={addHolder} disabled={atLimit}
-          title={atLimit ? `Limit of ${maxHolders} holders reached — go back to Step 1 to change` : 'Add a team member'}
+          title={atLimit ? `Limit of ${maxHolders} holders reached, go back to Step 1 to change` : 'Add a team member'}
           className={`inline-flex items-center gap-1.5 px-4 py-2.5 font-semibold rounded-lg transition-all ${atLimit ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -324,7 +329,7 @@ export default function AirlinesStep2Holders({ data, update, onNext, onBack }) {
             Back
           </button>
           <button type="button" onClick={() => { if (validate()) onNext() }}
-            className="inline-flex items-center gap-2 px-8 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition-all">
+            className="inline-flex items-center gap-2 px-7 py-3 bg-[#020617] text-white font-extrabold text-xs uppercase tracking-widest rounded-full transition-all hover:bg-slate-800 shadow-sm">
             Next
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />

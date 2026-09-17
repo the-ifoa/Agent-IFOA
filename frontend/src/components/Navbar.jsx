@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import logo from '../assets/IFOA_USA_white.png'
+import logo from '../assets/IFOA_USA_dark.png'
 
 export default function Navbar() {
   const { pathname } = useLocation()
@@ -11,6 +11,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10)
@@ -18,11 +19,25 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setProfileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   const isActive = (to) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
 
   const initials = user
     ? ([user?.firstName?.[0], user?.lastName?.[0]].filter(Boolean).join('').toUpperCase() || user?.email?.[0]?.toUpperCase() || '?')
     : null
+
+  const fullName = user
+    ? ([user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user?.email ? user.email.split('@')[0] : 'User'))
+    : ''
 
   const handleLogout = () => {
     logout()
@@ -37,154 +52,167 @@ export default function Navbar() {
 
   return (
     <nav
-      className="sticky top-0 z-50 transition-all duration-300"
-      style={{
-        background: '#ffffff',
-        borderBottom: scrolled ? '1px solid #e5e7eb' : '1px solid #f1f5f9',
-        boxShadow: scrolled ? '0 1px 16px rgba(15,23,42,0.06)' : 'none',
-        backdropFilter: scrolled ? 'blur(16px)' : 'none',
-      }}
+      className="sticky top-0 z-50 transition-all duration-300 bg-[#020617] border-b border-white/10 shadow-lg"
+      style={{ background: '#020617' }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-[68px] items-center justify-between">
+        <div className="flex h-[72px] items-center justify-between">
 
           {/* ── Logo ── */}
           <Link to="/" className="group flex shrink-0 items-center gap-3">
-            <div
-              className="flex items-center justify-center rounded-xl px-2 py-1 transition-all duration-200 group-hover:opacity-80"
-              
-            >
+            <div className="flex items-center justify-center rounded-xl px-2 py-1 transition-all duration-200 group-hover:opacity-80">
               <img
                 src={logo}
                 alt="IFOA USA"
                 className="h-8 w-auto object-contain"
               />
             </div>
-            <div className="hidden h-5 w-px sm:block" style={{ background: '#e5e7eb' }} />
+            <div className="hidden h-5 w-px sm:block bg-white/20" />
             <span
-              className="hidden text-[10px] font-black uppercase tracking-[0.22em] sm:block"
-              style={{ color: '#374151' }}
+              className="hidden font-mono text-[10px] font-bold uppercase tracking-widest sm:block text-slate-300"
             >
               Agent for Service
             </span>
           </Link>
 
           {/* ── Desktop nav ── */}
-          <div className="hidden items-center gap-1.5 md:flex">
+          <div className="hidden items-center gap-2 md:flex">
             <Link
               to="/"
-              className="rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150"
-              style={isActive('/') ? { background: '#0f172a', color: '#ffffff' } : { color: '#374151' }}
-              onMouseEnter={e => { if (!isActive('/')) { e.target.style.background = '#f8fafc'; e.target.style.color = '#0f172a' } }}
-              onMouseLeave={e => { if (!isActive('/')) { e.target.style.background = ''; e.target.style.color = '#374151' } }}
+              className={`rounded-full px-5 py-2 text-xs uppercase tracking-widest font-extrabold transition-all duration-150 ${
+                isActive('/')
+                  ? 'bg-white text-slate-950'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
             >
               Home
             </Link>
 
-            <div className="mx-2 h-5 w-px" style={{ background: '#e5e7eb' }} />
+            <Link
+              to="/faq"
+              className={`rounded-full px-5 py-2 text-xs uppercase tracking-widest font-extrabold transition-all duration-150 ${
+                isActive('/faq')
+                  ? 'bg-white text-slate-950'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              FAQ
+            </Link>
+
+            <div className="mx-2 h-5 w-px bg-white/20" />
 
             {user ? (
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setProfileOpen(o => !o)}
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-1.5 border bg-white transition-all duration-150"
-                  style={{ borderColor: '#e5e7eb' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
+                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-full border transition-all duration-150 group cursor-pointer ${
+                    profileOpen
+                      ? 'border-white/30 bg-slate-800'
+                      : 'border-white/10 bg-slate-900 hover:border-white/20 hover:bg-slate-800'
+                  }`}
                 >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black"
-                    style={{ background: '#0000ff' }}
-                  >
+                  <div className="w-7 h-7 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-white text-xs font-black flex-shrink-0">
                     {initials}
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-gray-900 leading-tight">
-                      {user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email?.split('@')[0]}
-                    </p>
-                    <p className="text-[10px] text-gray-400 capitalize">{user.role}</p>
-                  </div>
-                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  <span className="text-sm font-semibold text-slate-200 group-hover:text-white max-w-[120px] truncate">
+                    {fullName}
+                  </span>
+                  <svg
+                    className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${profileOpen ? 'rotate-180 text-white' : 'group-hover:text-slate-200'}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
                   </svg>
                 </button>
 
-                {profileOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white shadow-xl z-50 overflow-hidden">
-                      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <p className="text-xs font-bold text-gray-900 truncate">
-                          {user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email}
-                        </p>
-                        <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                <AnimatePresence>
+                  {profileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                      transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-[calc(100%+8px)] w-60 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-white/10 overflow-hidden z-50"
+                    >
+                      {/* User info */}
+                      <div className="px-4 py-3.5 border-b border-white/10 bg-slate-950/60">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-slate-800 border border-white/20 flex items-center justify-center text-white text-xs font-black flex-shrink-0">
+                            {initials}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{fullName}</p>
+                            <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-2">
-                        <Link to={dashPath} onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                            <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                            <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+
+                      {/* Nav items */}
+                      <div className="p-1.5">
+                        <Link
+                          to={profilePath}
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-slate-200 hover:bg-white/10 hover:text-white font-medium transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <circle cx="12" cy="8" r="3.5" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.582-6 8-6s8 2 8 6" />
                           </svg>
-                          Dashboard
+                          {user?.role === 'admin' ? 'Profile' : 'My Profile'}
                         </Link>
-                        <Link to={profilePath} onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <circle cx="12" cy="8" r="4" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                          </svg>
-                          Profile
-                        </Link>
-                        <Link to={faqPath} onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <Link
+                          to={faqPath}
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-slate-200 hover:bg-white/10 hover:text-white font-medium transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                             <circle cx="12" cy="12" r="9" />
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3.5M12 17h.01" />
                           </svg>
                           Help &amp; FAQ
                         </Link>
-                        <button onClick={handleLogout}
-                          className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors text-slate-600 hover:bg-slate-100"
+                        <a
+                          href="mailto:agent@theifoa.com?subject=IFOA%20Agent%20for%20Service%20Enquiry"
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-slate-200 hover:bg-white/10 hover:text-white font-medium transition-colors"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 0 1-6 0v-1m0-8V7a3 3 0 0 1 6 0v1" />
+                          <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0-9.75 6-9.75-6" />
                           </svg>
-                          Logout
+                          Contact Support
+                        </a>
+                      </div>
+
+                      {/* Logout */}
+                      <div className="p-1.5 border-t border-white/10">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/20 font-semibold transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" />
+                          </svg>
+                          Log Out
                         </button>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/faq"
-                  className="rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200"
-                  style={isActive('/faq') ? { background: '#0f172a', color: '#ffffff' } : { color: '#374151' }}
-                  onMouseEnter={e => { if (!isActive('/faq')) { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#0f172a' } }}
-                  onMouseLeave={e => { if (!isActive('/faq')) { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#374151' } }}
-                >
-                  FAQ
-                </Link>
+              <div className="flex items-center gap-2.5">
                 <Link
                   to="/login"
-                  className="rounded-xl px-5 py-2.5 text-sm font-bold border transition-all duration-200"
-                  style={{ color: '#374151', borderColor: '#d1d5db', background: '#ffffff' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#9ca3af' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#d1d5db' }}
+                  className="rounded-full px-5 py-2.5 text-xs uppercase tracking-widest font-extrabold text-slate-200 hover:text-white border border-white/20 hover:bg-white/10 transition-all duration-200"
                 >
                   Login
                 </Link>
                 <Link
                   to="/signup"
-                  className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all duration-200"
-                  style={{ background: '#0000ff' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#0000e6' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#0000ff' }}
+                  className="rounded-full px-6 py-2.5 text-xs uppercase tracking-widest font-extrabold bg-white text-slate-950 hover:bg-slate-100 transition-all duration-200 shadow-sm"
                 >
                   Sign Up
                 </Link>
@@ -195,7 +223,7 @@ export default function Navbar() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 md:hidden"
+            className="flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-lg text-white transition-colors hover:bg-white/10 md:hidden"
           >
             <span className={`block h-[1.5px] w-5 origin-center rounded-full bg-current transition-all duration-300 ${menuOpen ? 'translate-y-[6.5px] rotate-45' : ''}`} />
             <span className={`block h-[1.5px] w-5 rounded-full bg-current transition-all duration-300 ${menuOpen ? 'scale-x-0 opacity-0' : ''}`} />
@@ -212,50 +240,47 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="flex flex-col gap-1.5 px-4 py-4 bg-white shadow-lg md:hidden"
-            style={{ borderTop: '1px solid #f1f5f9' }}
+            className="flex flex-col gap-1.5 px-4 py-4 bg-slate-950/95 backdrop-blur-md shadow-xl md:hidden border-t border-white/10 text-white"
           >
             <Link to="/" onClick={() => setMenuOpen(false)}
-              className="rounded-xl px-4 py-3 text-sm font-semibold transition-colors"
-              style={isActive('/') ? { background: '#0f172a', color: '#ffffff' } : { color: '#374151' }}>
+              className={`rounded-xl px-4 py-3 text-xs uppercase tracking-widest font-extrabold transition-colors ${
+                isActive('/') ? 'bg-white text-slate-950' : 'text-slate-200 hover:bg-white/10'
+              }`}>
               Home
+            </Link>
+
+            <Link to="/faq" onClick={() => setMenuOpen(false)}
+              className={`rounded-xl px-4 py-3 text-xs uppercase tracking-widest font-extrabold transition-colors ${
+                isActive('/faq') ? 'bg-white text-slate-950' : 'text-slate-200 hover:bg-white/10'
+              }`}>
+              Help &amp; FAQ
             </Link>
 
             {user ? (
               <>
-                <Link to={dashPath} onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                  Dashboard
-                </Link>
                 <Link to={profilePath} onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                  Profile
+                  className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-white/10 transition-colors">
+                  {user?.role === 'admin' ? 'Profile' : 'My Profile'}
                 </Link>
-                <Link to={faqPath} onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                  Help &amp; FAQ
-                </Link>
-                <div className="my-1 h-px bg-gray-100" />
+                <a href="mailto:agent@theifoa.com?subject=IFOA%20Agent%20for%20Service%20Enquiry" onClick={() => setMenuOpen(false)}
+                  className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-white/10 transition-colors">
+                  Contact Support
+                </a>
+                <div className="my-1 h-px bg-white/10" />
                 <button onClick={handleLogout}
-                  className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-slate-100 transition-colors text-left text-slate-600">
-                  Logout
+                  className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-red-500/20 transition-colors text-left text-red-400">
+                  Log Out
                 </button>
               </>
             ) : (
               <>
-                <Link to="/faq" onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                  Help &amp; FAQ
-                </Link>
-                <div className="my-1 h-px bg-gray-100" />
+                <div className="my-1 h-px bg-white/10" />
                 <Link to="/login" onClick={() => setMenuOpen(false)}
-                  className="rounded-xl border px-4 py-3 text-center text-sm font-bold transition-all"
-                  style={{ color: '#374151', borderColor: '#d1d5db' }}>
+                  className="rounded-full border border-white/20 px-4 py-3 text-center text-xs uppercase tracking-widest font-extrabold text-white transition-all hover:bg-white/10">
                   Login
                 </Link>
                 <Link to="/signup" onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-4 py-3 text-center text-sm font-bold text-white transition-all"
-                  style={{ background: '#0000ff' }}>
+                  className="rounded-full px-4 py-3 text-center text-xs uppercase tracking-widest font-extrabold bg-white text-slate-950 transition-all hover:bg-slate-100">
                   Sign Up
                 </Link>
               </>

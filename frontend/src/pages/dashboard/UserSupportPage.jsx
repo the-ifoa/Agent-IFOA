@@ -1,15 +1,15 @@
 /**
- * UserSupportPage.jsx  — /dashboard/support
+ * UserSupportPage.jsx , /dashboard/support
  *
  * Full-page live support chat for airline / individual users (single conversation
- * with the IFOA support team). Mirrors the admin thread view — not a floating
+ * with the IFOA support team). Mirrors the admin thread view, not a floating
  * chatbot. Real-time via Socket.IO, history + fallback via REST.
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getSocket } from '../../services/socket'
 import { getMySupportChat, sendMySupportMsg, markMySupportRead } from '../../services/api'
-import ifoaLogo from '../../assets/IFOA_USA_white.png'
+import ifoaLogo from '../../assets/IFOA_USA_dark.png'
 
 const fmtTime = (d) => {
   const dt = new Date(d)
@@ -280,15 +280,16 @@ export default function UserSupportPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-116px)] sm:h-[calc(100vh-140px)] overflow-hidden w-full">
-      {/* Two-column layout — fills full available height */}
+      {/* Two-column layout, fills full available height */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 lg:max-w-none max-w-2xl mx-auto w-full lg:mx-0">
 
         {/* ── Suggestions panel ── */}
         <div className="hidden lg:flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden min-h-0">
           {/* Panel header */}
-          <div className="px-5 py-4 border-b border-slate-100 flex-shrink-0 bg-slate-900 rounded-t-2xl">
-            <p className="text-xs font-bold text-white uppercase tracking-widest">Quick Questions</p>
-            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">Select a topic — edit if needed, then send</p>
+          <div className="h-[68px] px-5 flex flex-col justify-center border-b border-white/5 flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
+            <p className="text-xs font-bold text-white uppercase tracking-widest leading-tight">Quick Questions</p>
+            <p className="text-[11px] text-slate-400 mt-1 leading-tight truncate">Select a topic, edit if needed, then send</p>
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-3 space-y-1" style={{ scrollbarWidth: 'thin' }}>
             {SUGGESTIONS.map((s) => {
@@ -335,14 +336,12 @@ export default function UserSupportPage() {
         <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden min-h-0">
 
           {/* Header */}
-          <div className="flex-shrink-0 flex items-center gap-3.5 px-4 sm:px-5 py-3.5 border-b border-white/5"
+          <div className="h-[68px] flex-shrink-0 flex items-center gap-3.5 px-4 sm:px-5 border-b border-white/5"
             style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
             {/* Avatar + online dot */}
-            <div className="relative flex-shrink-0">
-              <div className="w-10 h-10 rounded-xl bg-white shadow-md flex items-center justify-center p-1.5">
-                <img src={ifoaLogo} alt="IFOA" className="w-full h-full object-contain" />
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0f172a]" />
+            <div className="relative flex-shrink-0 flex items-center justify-center">
+              <img src={ifoaLogo} alt="IFOA" className="h-8 w-auto object-contain" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0f172a]" />
             </div>
             {/* Text */}
             <div className="flex-1 min-w-0">
@@ -351,7 +350,7 @@ export default function UserSupportPage() {
             </div>
           </div>
 
-          {/* Mobile suggestions — horizontal scroll chips */}
+          {/* Mobile suggestions, horizontal scroll chips */}
           <div className="lg:hidden flex-shrink-0 border-b border-slate-100 overflow-hidden">
           <div className="flex gap-2 px-4 py-2.5 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none' }}>
             {SUGGESTIONS.map((s) => (
@@ -406,11 +405,11 @@ export default function UserSupportPage() {
                 <div key={m._id} ref={isFirstNew ? firstNewRef : null} className="scroll-mt-4">
                   {isFirstNew && (
                     <div className={`flex items-center gap-3 my-3 transition-opacity duration-700 ${highlightFaded ? 'opacity-0' : 'opacity-100'}`}>
-                      <div className="flex-1 h-px bg-blue-200" />
-                      <span className="text-[11px] font-black uppercase tracking-widest text-blue-500 bg-blue-50 border border-blue-200 rounded-full px-3 py-1">
+                      <div className="flex-1 h-px bg-emerald-200" />
+                      <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">
                         New Messages
                       </span>
-                      <div className="flex-1 h-px bg-blue-200" />
+                      <div className="flex-1 h-px bg-emerald-200" />
                     </div>
                   )}
                   {!isFirstNew && showSep && (
@@ -430,14 +429,14 @@ export default function UserSupportPage() {
                       mine
                         ? 'bg-slate-900 text-white rounded-br-sm'
                         : isNew && !highlightFaded
-                          ? 'bg-blue-50 text-slate-800 border border-blue-200 shadow-sm rounded-bl-sm ring-1 ring-blue-300/50'
+                          ? 'bg-emerald-50/70 text-slate-800 border border-emerald-200 shadow-sm rounded-bl-sm ring-1 ring-emerald-300/40'
                           : 'bg-white text-slate-800 border border-slate-200 shadow-sm rounded-bl-sm'
                     }`}>
                       <p className="whitespace-pre-wrap break-words">{m.body?.trim().replace(/\n{3,}/g, '\n\n')}</p>
                       <div className="flex items-center justify-between mt-1.5 gap-2">
                         <p className="text-[10px] text-slate-400">{fmtTime(m.createdAt)}</p>
                         {isNew && !highlightFaded && (
-                          <span className="text-[9px] font-black uppercase tracking-widest text-blue-500">new</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">new</span>
                         )}
                       </div>
                     </div>

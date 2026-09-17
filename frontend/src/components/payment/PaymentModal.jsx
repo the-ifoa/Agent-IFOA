@@ -84,77 +84,90 @@ function PaymentSuccessScreen({ amount, invoice, onViewInvoice, onClose }) {
   ].filter(Boolean)
 
   return (
-    <div className={`transition-all duration-500 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-      {/* Top success strip */}
-      <div className="px-6 pt-5 pb-3 text-center border-b border-slate-100">
-        <div className="relative inline-flex mb-3">
+    <div className={`transition-all duration-500 space-y-5 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+      {/* Top success badge and amount */}
+      <div className="pt-3 pb-1 text-center">
+        <div className="relative inline-flex mb-3.5">
           <div
-            className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-100"
-            style={{ animation: show ? 'pmPopIn 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none' }}
+            className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center shadow-xs"
+            style={{
+              backgroundColor: '#e8fbf0',
+              borderColor: '#34E06E',
+              animation: show ? 'pmPopIn 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none'
+            }}
           >
             <svg
-              className="w-6 h-6 text-white"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}
-              style={{
-                strokeDasharray: 36,
-                strokeDashoffset: show ? 0 : 36,
-                transition: 'stroke-dashoffset 0.45s ease 0.25s',
-              }}
+              className="w-7 h-7 text-slate-900"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
           </div>
-          <div className="absolute inset-0 rounded-2xl border-2 border-emerald-300 opacity-0"
-            style={{ animation: show ? 'pmRipple 1s ease-out 0.35s forwards' : 'none' }} />
         </div>
 
-        <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-600 mb-0.5">Payment Successful</p>
+        <div>
+          <div
+            className="inline-flex items-center px-3.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider text-slate-900 border mb-2"
+            style={{
+              backgroundColor: '#e8fbf0',
+              borderColor: '#34E06E',
+            }}
+          >
+            Payment Confirmed
+          </div>
+        </div>
+
         {displayAmt && (
-          <p className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-0.5">{displayAmt}</p>
+          <div>
+            <div className="inline-block">
+              <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight tabular-nums">{displayAmt}</h3>
+              <div className="w-full h-0.5 rounded-full mt-1.5 mb-1.5" style={{ backgroundColor: '#34E06E' }} />
+            </div>
+          </div>
         )}
+
         {recipientName && (
-          <p className="text-xs font-semibold text-slate-600 mt-0.5">{recipientName}</p>
+          <p className="text-sm font-bold text-slate-800 mt-1">{recipientName}</p>
         )}
-        <p className="text-[10px] text-slate-400 mt-0.5">Confirmation email will be sent shortly.</p>
+        <p className="text-xs text-slate-500 mt-0.5">A receipt and confirmation invoice have been issued.</p>
       </div>
 
       {/* Detail rows */}
       {rows.length > 0 && (
-        <div className="px-5 py-2">
-          <div className="rounded-xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
-            {rows.map(({ label, value, mono }) => (
-              <div key={label} className="flex items-center justify-between px-3.5 py-1.5 gap-3">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 flex-shrink-0">{label}</span>
-                <span className={`text-right font-semibold text-slate-700 ${mono ? 'font-mono text-[9px] break-all' : 'text-xs truncate max-w-[200px]'}`}>{value}</span>
-              </div>
-            ))}
-          </div>
+        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 divide-y divide-slate-200/60 shadow-2xs">
+          {rows.map(({ label, value, mono }) => (
+            <div key={label} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-3">
+              <span className="text-xs font-semibold text-slate-500">{label}</span>
+              <span className={`text-right font-bold text-slate-900 ${mono ? 'font-mono text-xs text-slate-600 bg-white border border-slate-200/80 px-2 py-0.5 rounded-md break-all' : 'text-xs truncate max-w-[280px]'}`}>
+                {value}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Actions */}
-      <div className="px-5 pb-4 flex flex-col gap-2">
+      <div className="pt-2 flex flex-col gap-2.5 pb-2">
         <button
+          type="button"
           onClick={onViewInvoice}
-          className="w-full inline-flex items-center justify-center gap-2 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}
+          className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-3 rounded-xl text-sm transition-all shadow-sm active:scale-[0.99]"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0-3-3m3 3 3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+          <svg className="w-4 h-4 text-[#34E06E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
           View &amp; Download Invoice
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="w-full inline-flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold px-4 py-2 rounded-lg text-xs transition-all border border-slate-200"
+          className="w-full inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-bold px-5 py-3 rounded-xl text-sm transition-all border border-slate-200 shadow-2xs"
         >
           Close
         </button>
       </div>
       <style>{`
-        @keyframes pmPopIn  { 0%{transform:scale(0.4);opacity:0} 100%{transform:scale(1);opacity:1} }
-        @keyframes pmRipple { 0%{transform:scale(1);opacity:0.5} 100%{transform:scale(1.9);opacity:0} }
+        @keyframes pmPopIn  { 0%{transform:scale(0.5);opacity:0} 100%{transform:scale(1);opacity:1} }
       `}</style>
     </div>
   )
@@ -251,7 +264,7 @@ function CheckoutForm({ registrationId, registrationModel, amount, subscriptionD
       if (paymentIntent?.status === 'succeeded') {
         const token = localStorage.getItem('ifoa_token') || ''
 
-        // Notify our backend — creates Payment record + marks subscription Active
+        // Notify our backend, creates Payment record + marks subscription Active
         let confirmJson = { success: false }
         try {
           const confirmRes = await fetch(`${BASE_URL}/payments/confirm`, {
@@ -275,10 +288,10 @@ function CheckoutForm({ registrationId, registrationModel, amount, subscriptionD
 
         // No client-side fallback when confirm fails: the mark-paid endpoints are
         // admin-only (a customer call always 403s), and the Stripe webhook is the
-        // authoritative backup — it records the payment and activates the
+        // authoritative backup, it records the payment and activates the
         // subscription server-side even if this confirm call never lands.
         if (!confirmJson.success) {
-          console.warn('[PaymentModal] /payments/confirm failed — webhook will reconcile:', confirmJson.message)
+          console.warn('[PaymentModal] /payments/confirm failed, webhook will reconcile:', confirmJson.message)
         }
 
         // Prefer canonical Invoice doc for accurate holder count / totals
@@ -324,10 +337,10 @@ function CheckoutForm({ registrationId, registrationModel, amount, subscriptionD
     <form onSubmit={handleSubmit} className="space-y-3">
       {/* Amount strip */}
       <div className="rounded-2xl px-4 py-3.5 relative overflow-hidden flex items-center justify-between"
-        style={{ background: 'linear-gradient(135deg, #000021 0%, #0f172a 60%, #1e3a5f 100%)' }}>
+        style={{ background: 'linear-gradient(135deg, #020617 0%, #0f172a 60%, #1e293b 100%)' }}>
         <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none" />
         <div>
-          <p className="text-[9px] font-black uppercase tracking-widest text-blue-300 mb-0.5">Amount Due</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-[#34E06E] mb-0.5">Amount to Pay</p>
           <p className="text-white font-black text-2xl tracking-tight leading-none">
             ${(amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </p>
@@ -338,12 +351,12 @@ function CheckoutForm({ registrationId, registrationModel, amount, subscriptionD
           )}
         </div>
         <div className="flex items-center opacity-50 flex-shrink-0">
-          <div className="w-8 h-8 rounded-full bg-blue-500/60" />
-          <div className="w-8 h-8 rounded-full bg-blue-300/40 -ml-4" />
+          <div className="w-8 h-8 rounded-full bg-[#34E06E]/50" />
+          <div className="w-8 h-8 rounded-full bg-emerald-300/30 -ml-4" />
         </div>
       </div>
 
-      {/* Stripe PaymentElement — shows all methods enabled in Stripe Dashboard (card, bank, Link …) */}
+      {/* Stripe PaymentElement, shows all methods enabled in Stripe Dashboard (card, bank, Link …) */}
       <div className="min-h-[140px]">
         <PaymentElement
           onReady={() => setElementsReady(true)}
@@ -370,8 +383,8 @@ function CheckoutForm({ registrationId, registrationModel, amount, subscriptionD
           Cancel
         </button>
         <button type="submit" disabled={loading || !stripe || !elementsReady}
-          className="flex-[2] rounded-xl text-white font-bold px-4 py-2.5 text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-          style={{ background: '#0000ff' }}>
+          className="flex-[2] rounded-xl text-white font-extrabold px-4 py-2.5 text-xs uppercase tracking-wider transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm hover:bg-slate-800"
+          style={{ background: '#020617' }}>
           {loading ? (
             <>
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -518,7 +531,7 @@ export default function PaymentModal({
           body.renewalHoldersToRemove = renewalHoldersToRemove
         if (additionalHolderCount) body.additionalHolderCount = additionalHolderCount
         if (holderGroupId) body.holderGroupId = holderGroupId
-        // 'base' | '<groupId>' — merge added holders into an existing plan instead of a new group
+        // 'base' | '<groupId>', merge added holders into an existing plan instead of a new group
         if (mergeTarget) body.mergeTarget = mergeTarget
 
         const res = await fetch(`${BASE_URL}/payments/create-intent`, {
@@ -551,34 +564,37 @@ export default function PaymentModal({
       {visible && (
         <motion.div
           variants={BACKDROP} initial="hidden" animate="visible" exit="exit"
-          className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4" style={{ zIndex: 9999 }}>
+          className="fixed inset-0 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 sm:p-6" style={{ zIndex: 9999 }}>
           <motion.div
             variants={PANEL} initial="hidden" animate="visible" exit="exit"
-            className="w-full max-w-md rounded-3xl bg-white flex flex-col overflow-hidden"
-            style={{ boxShadow: '0 32px 80px -12px rgba(15,23,42,0.35), 0 0 0 1px rgba(15,23,42,0.06)', maxHeight: 'min(85vh, calc(100vh - 120px))' }}>
+            className="w-full max-w-lg sm:max-w-xl rounded-3xl bg-white border border-slate-200/80 flex flex-col overflow-hidden shadow-2xl shadow-slate-950/40"
+            style={{ maxHeight: 'min(90vh, 820px)' }}>
 
             {/* Header */}
-            <div className="flex-shrink-0 px-5 py-3.5 flex items-center justify-between bg-white border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-900">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="flex-shrink-0 px-6 py-4 flex items-center justify-between bg-white border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-slate-900 shadow-2xs">
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Secure Checkout</p>
-                  <p className="text-slate-900 font-black text-[14px] leading-tight">Complete Your Subscription</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Secure Checkout</p>
+                  <p className="text-slate-900 font-extrabold text-sm leading-tight">Complete Your Subscription</p>
                 </div>
               </div>
-              <button onClick={handleClose}
-                className="w-7 h-7 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <button
+                onClick={handleClose}
+                aria-label="Close modal"
+                className="w-8 h-8 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shadow-2xs"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-3">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               {loading && (
                 <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">

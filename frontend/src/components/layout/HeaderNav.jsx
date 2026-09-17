@@ -196,7 +196,7 @@ export default function HeaderNav() {
     if (n.type === 'payment-pending') return { bg: 'bg-amber-100', svgPath: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'text-amber-600', dot: 'bg-amber-500' }
     if (n.type === 'subscription-active') return { bg: 'bg-emerald-100', svgPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'text-emerald-600', dot: 'bg-emerald-500' }
     if (n.type === 'expiry-soon') return { bg: 'bg-yellow-100', svgPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z', color: 'text-yellow-600', dot: 'bg-yellow-500' }
-    if (n.type === 'new-registration') return { bg: 'bg-blue-100', svgPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 000 4h6a2 2 0 000-4M9 5a2 2 0 012-2h2a2 2 0 012 2', color: 'text-blue-600', dot: 'bg-blue-500' }
+    if (n.type === 'new-registration') return { bg: 'bg-emerald-50', svgPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 000 4h6a2 2 0 000-4M9 5a2 2 0 012-2h2a2 2 0 012 2', color: 'text-emerald-700', dot: 'bg-emerald-500' }
     if (n.type === 'payment-confirmed') return { bg: 'bg-emerald-100', svgPath: 'M5 13l4 4L19 7', color: 'text-emerald-600', dot: 'bg-emerald-500' }
     if (n.type === 'invoice-ready') return { bg: 'bg-indigo-100', svgPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', color: 'text-indigo-600', dot: 'bg-indigo-500' }
     if (n.type === 'support-message') return { bg: 'bg-slate-900', svgPath: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4-.8L3 20l1.3-3.9A7.96 7.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', color: 'text-white', dot: 'bg-slate-700' }
@@ -239,7 +239,7 @@ export default function HeaderNav() {
             <img src={ifoaLogo} alt="IFOA USA" className="h-7 w-auto object-contain" />
           </Link>
 
-          {/* Centre nav — pills */}
+          {/* Centre nav, pills */}
           <nav className="hidden lg:flex h-11 items-center gap-1 absolute left-1/2 -translate-x-1/2 bg-slate-50 rounded-full px-2 sm:px-2.5 py-1 border border-slate-100">
             {nav.map(item => <NavLink key={item.to} item={item} />)}
           </nav>
@@ -292,8 +292,8 @@ export default function HeaderNav() {
                       style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'linear-gradient(135deg, #1a1aff 0%, #0000ff 100%)' }}>
-                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          style={{ background: '#020617' }}>
+                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0m6 0H9" />
                           </svg>
                         </div>
@@ -327,8 +327,8 @@ export default function HeaderNav() {
 
                       {!notifLoading && visibleNotifications.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-14 gap-4">
-                          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-                            <svg className="w-7 h-7 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <div className="w-14 h-14 rounded-2xl bg-[#e8fbf0] border border-[#34E06E]/30 flex items-center justify-center">
+                            <svg className="w-7 h-7 text-[#34E06E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0m6 0H9" />
                             </svg>
                           </div>
@@ -378,7 +378,7 @@ export default function HeaderNav() {
                                         </span>
                                       )}
                                       {n.link && !isWireRequest && (
-                                        <span className="text-[11px] font-bold text-slate-400 group-hover:text-blue-600 transition-colors">
+                                        <span className="text-[11px] font-bold text-slate-400 group-hover:text-emerald-600 transition-colors">
                                           View →
                                         </span>
                                       )}

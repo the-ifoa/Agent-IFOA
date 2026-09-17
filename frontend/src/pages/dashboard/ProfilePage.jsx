@@ -1,37 +1,36 @@
 import { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useDataCache } from '../../context/DataCacheContext'
 import DashboardLayout from '../../components/layout/DashboardLayout'
-import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { EditSubscriptionFormModal } from './SubscriptionPage'
+import { User, Mail, Shield, PlaneTakeoff, Key, Copy, Check, Pencil, FileText, Image as ImageIcon, Sparkles } from 'lucide-react'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const API = axios.create({ baseURL: BASE_URL })
 
-function InfoRow({ label, value }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 py-3 border-b border-slate-100 last:border-0">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 sm:w-48 flex-shrink-0">{label}</span>
-      <span className="text-sm font-medium text-slate-800 break-words min-w-0">{value || '—'}</span>
-    </div>
-  )
-}
-
-/* ── EditProfileModal ────────────────────────────────────────────────────── */
+/* ── EditProfileModal ─────────────────────────────────────────────────────── */
 function EditProfileModal({ user, isAirline, onClose, onSaveName, onSaveAirlineName }) {
   const [firstName, setFirstName]     = useState(user?.firstName || '')
-  const [lastName, setLastName]       = useState(user?.lastName || '')
+  const [lastName, setLastName]       = useState(user?.lastName  || '')
   const [airlineName, setAirlineName] = useState(user?.airlineName || '')
   const [saving, setSaving]           = useState(false)
   const [err, setErr]                 = useState('')
 
-  const handleSave = async () => {
-    if (!firstName.trim() && !lastName.trim()) { setErr('Please enter at least a first name or last name.'); return }
-    if (isAirline && !airlineName.trim()) { setErr('Airline name cannot be empty.'); return }
-    setSaving(true); setErr('')
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setErr('')
     try {
-      await onSaveName(firstName.trim(), lastName.trim())
+      if (firstName.trim() !== (user?.firstName || '') || lastName.trim() !== (user?.lastName || '')) {
+        await onSaveName({ firstName: firstName.trim(), lastName: lastName.trim() })
+      }
       if (isAirline && airlineName.trim() !== (user?.airlineName || '')) {
         await onSaveAirlineName(airlineName.trim())
       }
@@ -43,55 +42,49 @@ function EditProfileModal({ user, isAirline, onClose, onSaveName, onSaveAirlineN
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/70">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-0.5">Edit Profile</p>
-            <h3 className="text-base sm:text-lg font-black text-slate-900">Update Your Details</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Account</p>
+            <h3 className="text-lg font-black text-slate-900">Edit Profile Details</h3>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition flex-shrink-0">✕</button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">✕</button>
         </div>
-        <div className="px-4 sm:px-6 py-5 space-y-4">
-          {err && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{err}</div>}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">First Name</label>
-            <input className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:border-slate-300"
-              value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Enter first name" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Name</label>
-            <input className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:border-slate-300"
-              value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Enter last name" />
-          </div>
-          {isAirline && (
-            <>
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-xs font-semibold text-amber-800">
-                  ⚠️ Changing the airline name will update how it appears on <strong>all future form submissions</strong>. Existing submitted records are not affected.
-                </p>
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-5 space-y-4">
+            {err && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">{err}</div>}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">First Name</label>
+              <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 transition hover:border-slate-300" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Last Name</label>
+              <input type="text" value={lastName} onChange={e => setLastName(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 transition hover:border-slate-300" />
+            </div>
+            {isAirline && (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Airline / Company Name</label>
+                <input type="text" value={airlineName} onChange={e => setAirlineName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 transition hover:border-slate-300" />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Airline / Company Name</label>
-                <input className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100 hover:border-slate-300"
-                  value={airlineName} onChange={e => setAirlineName(e.target.value)} placeholder="e.g. Skyline Airways Inc." />
-              </div>
-            </>
-          )}
-        </div>
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-slate-100 bg-slate-50 px-4 sm:px-6 py-4">
-          <button onClick={onClose} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50">Cancel</button>
-          <button onClick={handleSave} disabled={saving}
-            className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #1a1aff 0%, #0000ff 100%)' }}>
-            {saving && <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>}
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
+            )}
+          </div>
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end gap-2.5">
+            <button type="button" onClick={onClose} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition disabled:opacity-50">Cancel</button>
+            <button type="submit" disabled={saving}
+              className="rounded-xl text-white px-5 py-2.5 text-xs font-bold transition disabled:opacity-50 hover:bg-slate-800 shadow-sm bg-slate-950">
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -100,6 +93,11 @@ function LogoUploadModal({ currentLogoUrl, registrationId, token, onClose, onSuc
   const fileRef = useRef(null)
   const [uploading, setUploading] = useState(false)
   const [err, setErr]             = useState('')
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   const handleFile = async (file) => {
     if (!file) return
@@ -125,47 +123,57 @@ function LogoUploadModal({ currentLogoUrl, registrationId, token, onClose, onSuc
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50">
-          <h3 className="text-base font-black text-slate-900">Change Company Logo</h3>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition">✕</button>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-sm bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/70">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Branding</p>
+            <h3 className="text-base font-black text-slate-900">Upload Company Logo</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">✕</button>
         </div>
-        <div className="px-5 py-5 space-y-4">
+        <div className="px-6 py-6 space-y-4 text-center">
           {currentLogoUrl && (
-            <div className="flex justify-center">
-              <img src={currentLogoUrl} alt="Current logo" className="w-20 h-20 rounded-xl object-contain border border-slate-200 bg-white" />
+            <div className="flex justify-center mb-2">
+              <div className="w-24 h-24 rounded-2xl border border-slate-200 p-2 bg-slate-50 flex items-center justify-center shadow-inner">
+                <img src={currentLogoUrl} alt="Current logo" className="max-w-full max-h-full object-contain" />
+              </div>
             </div>
           )}
-          {err && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{err}</div>}
+          {err && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700 text-left">{err}</div>}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+          
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50">
-            {uploading ? (
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
-            )}
-            {uploading ? 'Uploading…' : 'Select Image'}
+            className="w-full border-2 border-dashed border-slate-200 hover:border-slate-400 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group">
+            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 group-hover:scale-105 transition-transform shadow-sm">
+              <ImageIcon className="w-5 h-5 text-slate-700" />
+            </div>
+            <p className="text-sm font-bold text-slate-800 mt-1">
+              {uploading ? 'Uploading…' : 'Select an image file'}
+            </p>
+            <p className="text-[11px] text-slate-400">PNG, JPG, or WebP up to 2 MB</p>
           </button>
-          <p className="text-[11px] text-slate-400 text-center">PNG, JPG, WebP · Max 2 MB</p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
 /* ── ProfilePage ──────────────────────────────────────────────────────────── */
 export default function ProfilePage() {
   const { user, token, updateProfile, updateAirlineName } = useAuth()
-  const { getOrFetch, invalidate } = useDataCache()
-  const [sub, setSub]                       = useState(null)
+  const { getOrFetch, get } = useDataCache()
+  const cacheKey = `subs_${user?.id || user?.email}`
+  const cachedSubs = get(cacheKey)
+  const [sub, setSub]                       = useState(cachedSubs?.[0] || null)
   const [editOpen, setEditOpen]             = useState(false)
   const [infoEditOpen, setInfoEditOpen]     = useState(false)
   const [logoModalOpen, setLogoModalOpen]   = useState(false)
-  const [currentLogoUrl, setCurrentLogoUrl] = useState('')
+  const [currentLogoUrl, setCurrentLogoUrl] = useState(cachedSubs?.[0]?.logoUrl || '')
+  const [copiedId, setCopiedId]             = useState(false)
 
   const initials = [user?.firstName?.[0], user?.lastName?.[0]].filter(Boolean).join('').toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
@@ -175,30 +183,30 @@ export default function ProfilePage() {
     if (!user) return
     const headers = { Authorization: `Bearer ${token}` }
     const base = isAirline ? 'airlines' : 'individuals'
-    const cacheKey = `subs_${user.id || user.email}`
-    invalidate(cacheKey)
 
     const load = async () => {
       try {
-        const emailSubs = user.email
-          ? await API.get(`/${base}/by-email?email=${encodeURIComponent(user.email)}`, { headers })
-              .then(r => r.data.all || (r.data.data ? [r.data.data] : []))
-              .catch(() => [])
-          : []
-        const seen = new Set(emailSubs.map(s => s._id?.toString()).filter(Boolean))
-        const remainingIds = [
-          ...(user.subscriptionIds || []),
-          ...(user.registrationId ? [user.registrationId] : []),
-        ].map(id => id?.toString()).filter(Boolean).filter(id => !seen.has(id))
-        const idSubs = remainingIds.length
-          ? await Promise.allSettled(remainingIds.map(id => API.get(`/${base}/${id}`, { headers })))
-              .then(rs => rs.filter(r => r.status === 'fulfilled' && r.value?.data?.data).map(r => r.value.data.data))
-          : []
-        const merged = [...emailSubs, ...idSubs]
-          .filter(Boolean)
-          .filter((item, i, arr) => arr.findIndex(x => x._id?.toString() === item._id?.toString()) === i)
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        const first = merged[0] || null
+        const merged = await getOrFetch(cacheKey, async () => {
+          const emailSubs = user.email
+            ? await API.get(`/${base}/by-email?email=${encodeURIComponent(user.email)}`, { headers })
+                .then(r => r.data.all || (r.data.data ? [r.data.data] : []))
+                .catch(() => [])
+            : []
+          const seen = new Set(emailSubs.map(s => s._id?.toString()).filter(Boolean))
+          const remainingIds = [
+            ...(user.subscriptionIds || []),
+            ...(user.registrationId ? [user.registrationId] : []),
+          ].map(id => id?.toString()).filter(Boolean).filter(id => !seen.has(id))
+          const idSubs = remainingIds.length
+            ? await Promise.allSettled(remainingIds.map(id => API.get(`/${base}/${id}`, { headers })))
+                .then(rs => rs.filter(r => r.status === 'fulfilled' && r.value?.data?.data).map(r => r.value.data.data))
+            : []
+          return [...emailSubs, ...idSubs]
+            .filter(Boolean)
+            .filter((item, i, arr) => arr.findIndex(x => x._id?.toString() === item._id?.toString()) === i)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        })
+        const first = merged?.[0] || null
         setSub(first)
         if (first?.logoUrl) setCurrentLogoUrl(first.logoUrl)
       } catch {
@@ -206,7 +214,14 @@ export default function ProfilePage() {
       }
     }
     load()
-  }, [user, token, isAirline, invalidate])
+  }, [user, token, isAirline, getOrFetch, cacheKey])
+
+  const copyAccountId = () => {
+    if (!user?.id) return
+    navigator.clipboard.writeText(user.id)
+    setCopiedId(true)
+    setTimeout(() => setCopiedId(false), 2000)
+  }
 
   return (
     <DashboardLayout>
@@ -232,60 +247,77 @@ export default function ProfilePage() {
         />
       )}
 
-      <div className="max-w-3xl mx-auto space-y-5">
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900">My Profile</h1>
+      <div className="max-w-4xl mx-auto space-y-6">
 
-        {/* ── Avatar card ── */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-4 flex-1 min-w-0">
+        {/* ── Page Header ── */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Account Profile</h1>
+          <p className="text-slate-500 text-sm mt-1">Manage your identity, personal details, and account configuration.</p>
+        </div>
+
+        {/* ── Profile Hero Card ── */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-5 min-w-0">
               {isAirline && currentLogoUrl ? (
-                <img src={currentLogoUrl} alt="Company logo"
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-contain border border-slate-200 bg-white flex-shrink-0 cursor-pointer hover:opacity-80 transition"
+                <div
+                  className="relative group cursor-pointer w-20 h-20 rounded-2xl border-2 border-slate-100 bg-white flex items-center justify-center p-2 shadow-sm overflow-hidden flex-shrink-0"
                   onClick={() => setLogoModalOpen(true)}
                   title="Click to change logo"
-                />
-              ) : (
-                <div
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl text-white text-xl sm:text-2xl font-black flex items-center justify-center flex-shrink-0"
-                  style={{ background: '#0000ff' }}
                 >
+                  <img src={currentLogoUrl} alt="Company logo" className="max-w-full max-h-full object-contain" />
+                  <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <Pencil className="w-4 h-4" />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 text-white text-2xl font-black flex items-center justify-center flex-shrink-0 shadow-md shadow-slate-900/10 border border-slate-800">
                   {initials}
                 </div>
               )}
-              <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-black text-slate-900 truncate">{fullName}</h2>
-                <p className="text-slate-500 text-sm truncate">{user?.email}</p>
-                <span className="inline-flex items-center mt-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-[10px] font-bold tracking-widest text-slate-600 capitalize">
-                  {user?.role}
-                </span>
+
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 truncate tracking-tight">{fullName}</h2>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    · {user?.role}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 truncate">{user?.email}</p>
+                {isAirline && user?.airlineName && (
+                  <p className="text-xs font-semibold text-slate-700 flex items-center gap-1 mt-0.5">
+                    <PlaneTakeoff className="w-3.5 h-3.5 text-slate-400" /> {user.airlineName}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
-              <button onClick={() => setEditOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
-                </svg>
+            {/* Actions toolbar */}
+            <div className="flex flex-wrap sm:flex-nowrap gap-2.5 flex-shrink-0">
+              <button
+                onClick={() => setEditOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 transition-all shadow-sm"
+              >
+                <Pencil className="w-3.5 h-3.5 text-slate-500" />
                 Edit Profile
               </button>
+
               {sub?._id && (
-                <button onClick={() => setInfoEditOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all shadow-sm"
-                  style={{ background: 'linear-gradient(135deg, #1a1aff 0%, #0000ff 100%)' }}>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Edit Information
+                <button
+                  onClick={() => setInfoEditOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-950 hover:bg-slate-800 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-sm"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-300" />
+                  Edit Filing Details
                 </button>
               )}
+
               {isAirline && (
-                <button onClick={() => setLogoModalOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                  </svg>
+                <button
+                  onClick={() => setLogoModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 transition-all shadow-sm"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
                   {currentLogoUrl ? 'Change Logo' : 'Upload Logo'}
                 </button>
               )}
@@ -293,18 +325,70 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ── Account Details ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Account Details</p>
+        {/* ── Account Details Card ── */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-slate-500" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Account Details & Metadata</h3>
+            </div>
+            <span className="text-[11px] font-bold text-slate-400">Verified Credentials</span>
           </div>
-          <div className="px-4 sm:px-6 py-2">
-            <InfoRow label="First Name" value={user?.firstName} />
-            <InfoRow label="Last Name" value={user?.lastName} />
-            <InfoRow label="Email Address" value={user?.email} />
-            <InfoRow label="Account Role" value={user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)} />
-            {isAirline && <InfoRow label="Airline / Company" value={user?.airlineName || '—'} />}
-            <InfoRow label="Account ID" value={user?.id} />
+
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-1 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <User className="w-3 h-3 text-slate-400" /> First Name
+              </p>
+              <p className="text-sm font-bold text-slate-900">{user?.firstName || '—'}</p>
+            </div>
+
+            <div className="space-y-1 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <User className="w-3 h-3 text-slate-400" /> Last Name
+              </p>
+              <p className="text-sm font-bold text-slate-900">{user?.lastName || '—'}</p>
+            </div>
+
+            <div className="space-y-1 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Mail className="w-3 h-3 text-slate-400" /> Primary Email Address
+              </p>
+              <p className="text-sm font-bold text-slate-900 break-all">{user?.email || '—'}</p>
+            </div>
+
+            <div className="space-y-1 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Shield className="w-3 h-3 text-slate-400" /> System Account Role
+              </p>
+              <p className="text-sm font-bold text-slate-900 capitalize">{user?.role || '—'}</p>
+            </div>
+
+            {isAirline && (
+              <div className="space-y-1 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 sm:col-span-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <PlaneTakeoff className="w-3 h-3 text-slate-400" /> Airline / Company Organization
+                </p>
+                <p className="text-sm font-bold text-slate-900">{user?.airlineName || '—'}</p>
+              </div>
+            )}
+
+            <div className="space-y-1 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Key className="w-3 h-3 text-slate-400" /> Unique Account ID
+                </p>
+                <button
+                  type="button"
+                  onClick={copyAccountId}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-black transition-colors"
+                >
+                  {copiedId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                  {copiedId ? 'Copied' : 'Copy ID'}
+                </button>
+              </div>
+              <p className="font-mono text-xs text-slate-700 break-all">{user?.id || '—'}</p>
+            </div>
           </div>
         </div>
 

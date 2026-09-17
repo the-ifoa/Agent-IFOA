@@ -11,7 +11,7 @@ import AirlinesStep4Payment from '../components/airlines/AirlinesStep4Payment'
 import AirlinesSuccessPage from '../components/airlines/AirlinesSuccessPage'
 import { createAirlinesSubscription } from '../services/api'
 import { useAuth } from '../context/AuthContext'
-import { User, Lock, ShieldCheck, MapPin, Plane, Users, Flag } from 'lucide-react'
+import { User, Lock, ShieldCheck, MapPin, PlaneTakeoff, Users, Flag } from 'lucide-react'
 
 const STEPS = [
   { label: 'Plan & Details', detail: 'Choose your plan and enter company information.' },
@@ -57,7 +57,7 @@ const WHY_CARDS = [
       </svg>
     ),
     title: 'Volume Team Management',
-    body: 'Register and manage your entire flight crew in a single workflow — from 3 holders to entire fleets.',
+    body: 'Register and manage your entire flight crew in a single workflow, from 3 holders to entire fleets.',
     srcs: [
       'https://images.unsplash.com/photo-1529074963764-98f45c47344b?w=600&q=80&auto=format&fit=crop&crop=center',
       'https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=600&q=80&auto=format&fit=crop',
@@ -72,7 +72,7 @@ const WHY_CARDS = [
       </svg>
     ),
     title: 'FAA Certified & Compliant',
-    body: 'All registrations handled by an officially recognized U.S. Agent for Service — ensuring full regulatory compliance.',
+    body: 'All registrations handled by an officially recognized U.S. Agent for Service, ensuring full regulatory compliance.',
     srcs: [
       'https://images.unsplash.com/photo-1436491865332-7a61a109db56?w=600&q=80&auto=format&fit=crop&crop=center',
       'https://images.unsplash.com/photo-1474302770737-173ee21bab63?w=600&q=80&auto=format&fit=crop',
@@ -151,27 +151,27 @@ const fadeUp = {
 // ── Wrong-role banner ──
 function WrongRoleBanner() {
   return (
-    <div className="rounded-t-3xl border-b border-blue-200 bg-blue-50 px-7 py-5">
+    <div className="rounded-t-3xl border-b border-amber-200 bg-amber-50/80 px-7 py-5">
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-blue-100 border border-blue-200 mt-0.5">
-          <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-amber-100 border border-amber-200 mt-0.5">
+          <svg className="w-5 h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-black text-blue-900 mb-1">Individual Account Detected — Form Submission Disabled</p>
-          <p className="text-xs text-blue-700 leading-relaxed">
+          <p className="text-sm font-black text-amber-900 mb-1">Individual Account Detected, Form Submission Disabled</p>
+          <p className="text-xs text-amber-800 leading-relaxed">
             You are signed in with an <strong>Individual account</strong>. This form requires an{' '}
             <strong>Airlines account</strong> to submit. You can browse and fill in the form freely,
             but the final submit button will be disabled.
           </p>
         </div>
         <div className="flex-shrink-0 flex gap-2 flex-wrap justify-end">
-          <Link to="/signup" className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all whitespace-nowrap">
+          <Link to="/signup" className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all whitespace-nowrap">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
             Create Airlines Account
           </Link>
-          <Link to="/individual/register" className="inline-flex items-center gap-1.5 border border-blue-300 text-blue-800 font-semibold px-4 py-2 rounded-lg text-xs hover:bg-blue-100 transition-all whitespace-nowrap">
+          <Link to="/individual/register" className="inline-flex items-center gap-1.5 border border-amber-300 text-amber-900 font-semibold px-4 py-2 rounded-lg text-xs hover:bg-amber-100 transition-all whitespace-nowrap">
             <User className="w-3.5 h-3.5" /> Go to Individual Form
           </Link>
         </div>
@@ -204,7 +204,7 @@ function AuthModal({ onClose }) {
           </div>
           <h3 className="text-2xl font-black text-white mb-2">Account Required</h3>
           <p className="text-gray-400 text-sm leading-relaxed mb-2">You need to sign in or create a free account to continue to the next step.</p>
-          <p className="text-gray-600 text-xs mb-8">Your form data is saved — you won't lose any progress.</p>
+          <p className="text-gray-600 text-xs mb-8">Your form data is saved, you won't lose any progress.</p>
           <div className="flex flex-col gap-3">
             <button onClick={() => navigate('/signup', { state: { from: location } })}
               className="w-full inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-3.5 rounded-xl text-sm transition-all"
@@ -327,7 +327,7 @@ export default function AirlinesForm() {
   }
 
   // Payment success callback. The server already activated the subscription via
-  // /payments/confirm (Stripe webhook as backup) — mark-paid is admin-only, so the
+  // /payments/confirm (Stripe webhook as backup), mark-paid is admin-only, so the
   // old client call here always 403'd. Just transition the UI.
   const handleMarkPaidAndFinish = async () => {
     setSubmitted(true)
@@ -369,8 +369,8 @@ export default function AirlinesForm() {
           </span>
           <div className="w-px h-5 bg-red-800 hidden sm:block" />
           <p className="text-sm leading-relaxed text-gray-300">
-            <strong className="text-white">02 Apr 2025</strong> — New operators with non-U.S. addresses must appoint a U.S. Agent. &nbsp;
-            <strong className="text-white">07 Jul 2025</strong> — Existing certificate holders must designate an Agent to maintain FAA certification.
+            <strong className="text-white">02 Apr 2025</strong>, New operators with non-U.S. addresses must appoint a U.S. Agent. &nbsp;
+            <strong className="text-white">07 Jul 2025</strong>, Existing certificate holders must designate an Agent to maintain FAA certification.
           </p>
         </div>
       </div>
@@ -379,7 +379,7 @@ export default function AirlinesForm() {
       <section className="bg-gray-50 py-16 px-6 border-b border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-12">
-            <p className="text-red-600 text-xs font-black uppercase tracking-widest mb-2">Get Started — Airlines Plan</p>
+            <p className="text-red-600 text-xs font-black uppercase tracking-widest mb-2">Get Started, Airlines Plan</p>
             <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">Before You Register Your Team</h2>
             <p className="text-gray-500 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
               Each certificate holder in your organization must be registered on both FAA portals before you submit this form. Watch the video and follow these steps for every member of your team.
@@ -398,7 +398,7 @@ export default function AirlinesForm() {
                 <h3 className="text-xl font-black text-gray-900">Watch Our Video First</h3>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                Make sure to watch our short YouTube video — it walks you through the key steps to stay compliant with the FAA's Agent for Service requirement for airline operators and all certificate holders.
+                Make sure to watch our short YouTube video, it walks you through the key steps to stay compliant with the FAA's Agent for Service requirement for airline operators and all certificate holders.
               </p>
               <div className="flex flex-wrap gap-3">
                 <a href="https://www.youtube.com/watch?v=cfjy4wI7ZY4" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-red-200">
@@ -449,13 +449,13 @@ export default function AirlinesForm() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.45, delay: 0.1 }}
-            className="rounded-2xl border border-blue-200 bg-blue-50 p-5 flex gap-4 items-start mb-10">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+            className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 flex gap-4 items-start mb-10">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-blue-900 mb-1">Important — Each Holder Must Complete Both Portals</p>
-              <p className="text-sm text-blue-700 leading-relaxed">
+              <p className="text-sm font-bold text-slate-900 mb-1">Important, Each Holder Must Complete Both Portals</p>
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Every certificate holder listed in your airline registration must independently complete both FAA IACRA and FAA USAS registration steps. Collect all FTN numbers before filling in the form below.
               </p>
             </div>
@@ -594,7 +594,7 @@ export default function AirlinesForm() {
               <span className="text-black text-xs font-semibold tracking-wide">Secure Registration</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight mb-3">Complete Your Team Registration</h2>
-            <p className="text-gray-500 text-base max-w-md mx-auto leading-relaxed">A guided 4-step form for operators and airlines — covers plan selection, holder details, and invoicing.</p>
+            <p className="text-gray-500 text-base max-w-md mx-auto leading-relaxed">A guided 4-step form for operators and airlines, covers plan selection, holder details, and invoicing.</p>
             {!user && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold" style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', color: '#dc2626' }}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -656,7 +656,7 @@ export default function AirlinesForm() {
               { icon: <Lock className="w-3.5 h-3.5" />, text: 'Secure & Encrypted' },
               { icon: <ShieldCheck className="w-3.5 h-3.5" />, text: 'FAA Compliant' },
               { icon: <MapPin className="w-3.5 h-3.5" />, text: 'U.S. Based Office' },
-              { icon: <Plane className="w-3.5 h-3.5" />, text: 'Fleet Management' },
+              { icon: <PlaneTakeoff className="w-3.5 h-3.5" />, text: 'Fleet Management' },
             ].map((badge) => (
               <div key={badge.text} className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-sm">
                 {badge.icon}{badge.text}

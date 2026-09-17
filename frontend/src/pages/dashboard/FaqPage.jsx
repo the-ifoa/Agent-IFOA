@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { holderRangeFromCount, airlinePricePerCert, airlineTiers, individualPrice } from '../../services/pricing'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -11,19 +12,19 @@ const usd = (n) => `$${Number(n).toLocaleString('en-US')}`
 const perYearRate = () => individualPrice('Multiple Years Subscription Plan', 2) / 2
 
 const buildAirlineTierRows = () => airlineTiers().map(t => ({
-  range:     t.label,
-  oneYear:   `${usd(t.oneYear)} / cert`,
+  range: t.label,
+  oneYear: `${usd(t.oneYear)} / cert`,
   unlimited: `${usd(t.unlimited)} / cert`,
 }))
 
 const buildIndividualPlanRows = () => {
-  const oneYear   = individualPrice('1 Year Subscription Plan')
-  const perYear   = individualPrice('Multiple Years Subscription Plan', 1 + 1) / 2
+  const oneYear = individualPrice('1 Year Subscription Plan')
+  const perYear = individualPrice('Multiple Years Subscription Plan', 1 + 1) / 2
   const unlimited = individualPrice('Unlimited Plan')
   return [
-    { plan: '1 Year',              price: usd(oneYear),            note: 'Renews every year.' },
-    { plan: 'Multiple Years',      price: `${usd(perYear)} / year`, note: 'Pay upfront for several years.' },
-    { plan: 'Unlimited (Lifetime)', price: usd(unlimited),          note: 'One-time — never expires.' },
+    { plan: '1 Year', price: usd(oneYear), note: 'Renews every year.' },
+    { plan: 'Multiple Years', price: `${usd(perYear)} / year`, note: 'Pay upfront for several years.' },
+    { plan: 'Unlimited (Lifetime)', price: usd(unlimited), note: 'One-time, never expires.' },
   ]
 }
 
@@ -34,32 +35,32 @@ const makeFaqs = () => [
   {
     for: 'airline',
     q: 'What is the difference between the Base plan and an Upgrade plan?',
-    a: 'The Base plan is your main subscription — it sets your core certificate-holder capacity and pricing tier. An Upgrade (add-on) plan adds extra holder slots on top of the base. Upgrades are billed and renewed separately, but their holders stack directly on top of the base coverage.',
+    a: 'The Base plan is your main subscription, it sets your core certificate-holder capacity and pricing tier. An Upgrade (add-on) plan adds extra holder slots on top of the base. Upgrades are billed and renewed separately, but their holders stack directly on top of the base coverage.',
   },
   {
     for: 'airline',
     q: 'How is the holder count calculated?',
-    a: 'Your total committed count = base plan holders + every active upgrade plan’s holders. Upgrade holders are numbered AFTER the base. Example: a base of 6 plus a 4-holder upgrade gives holders 1–6 (base) and 7–10 (upgrade) — 10 total.',
+    a: 'Your total committed count = base plan holders + every active upgrade plan’s holders. Upgrade holders are numbered AFTER the base. Example: a base of 6 plus a 4-holder upgrade gives holders 1–6 (base) and 7–10 (upgrade), 10 total.',
   },
   {
     for: 'airline',
     q: 'Why did my per-certificate price change when I added or renewed an upgrade?',
-    a: 'Pricing is tier-based on the cumulative position. An upgrade that sits at holders 7–9 is priced at the “5 to 10” tier, not the “3 to 5” tier — the more holders stacked below it, the higher the volume tier (and the lower the per-cert rate).',
+    a: 'Pricing is tier-based on the cumulative position. An upgrade that sits at holders 7–9 is priced at the “5 to 10” tier, not the “3 to 5” tier, the more holders stacked below it, the higher the volume tier (and the lower the per-cert rate).',
   },
   {
     for: 'airline',
     q: 'Can I reduce the number of holders at renewal?',
-    a: 'Yes. Lower the holder count and a “Select Holders to Keep” picker appears — you choose exactly which holders carry into the renewed term. The rest are dropped. The same selection is available on the admin side.',
+    a: 'Yes. Lower the holder count and a “Select Holders to Keep” picker appears, you choose exactly which holders carry into the renewed term. The rest are dropped. The same selection is available on the admin side.',
   },
   {
     for: 'airline',
     q: 'What happens to an expired upgrade if my base plan is still active?',
-    a: 'The renewed upgrade continues counting after your active base. If your base covers 6 holders, the renewed upgrade starts at holder 7 — and its pricing tier reflects that stacked position.',
+    a: 'The renewed upgrade continues counting after your active base. If your base covers 6 holders, the renewed upgrade starts at holder 7, and its pricing tier reflects that stacked position.',
   },
   {
     for: 'individual',
     q: 'Do individuals have a holder count or tiers?',
-    a: 'No. Individuals have a single subscription with one fixed price — no per-holder pricing, no upgrades, and no tiers. You just pick 1 Year, Multiple Years, or Unlimited (Lifetime).',
+    a: 'No. Individuals have a single subscription with one fixed price, no per-holder pricing, no upgrades, and no tiers. You just pick 1 Year, Multiple Years, or Unlimited (Lifetime).',
   },
   {
     for: 'individual',
@@ -69,7 +70,7 @@ const makeFaqs = () => [
   {
     for: 'individual',
     q: 'Is the Unlimited (Lifetime) plan really one-time?',
-    a: `Yes. Unlimited is a single ${usd(individualPrice('Unlimited Plan'))} payment that never expires — there is nothing to renew.`,
+    a: `Yes. Unlimited is a single ${usd(individualPrice('Unlimited Plan'))} payment that never expires, there is nothing to renew.`,
   },
   {
     for: 'both',
@@ -79,12 +80,12 @@ const makeFaqs = () => [
   {
     for: 'both',
     q: 'What is the difference between “queued” and “immediate” renewal?',
-    a: 'If the plan is still active, renewing QUEUES the new term — it activates automatically the day the current term expires, so you never lose coverage and never double-pay. If the plan is already expired, the renewal activates immediately from today.',
+    a: 'If the plan is still active, renewing QUEUES the new term, it activates automatically the day the current term expires, so you never lose coverage and never double-pay. If the plan is already expired, the renewal activates immediately from today.',
   },
   {
     for: 'both',
     q: 'Can I upgrade an existing plan?',
-    a: 'Yes, any active plan — no need to buy a separate one. Individuals: open “Upgrade Plan” and pick Multiple Years or Unlimited. Airlines: use “Convert to Unlimited” on the base plan or any add-on. The plan switches in place immediately, keeps everything it had, and your other plans are untouched. Expired plans must be renewed first.',
+    a: 'Yes, any active plan, no need to buy a separate one. Individuals: open “Upgrade Plan” and pick Multiple Years or Unlimited. Airlines: use “Convert to Unlimited” on the base plan or any add-on. The plan switches in place immediately, keeps everything it had, and your other plans are untouched. Expired plans must be renewed first.',
   },
   {
     for: 'both',
@@ -99,22 +100,22 @@ const makeFaqs = () => [
   {
     for: 'both',
     q: 'What does the upgrade invoice look like?',
-    a: 'It shows the new-plan price as one line, then a negative “Credit — unused …” line, netting to exactly what you are charged. Admins can add or edit lines before issuing it. Your previous invoice is preserved — the upgrade adds a NEW invoice to your history and never overwrites the old one.',
+    a: 'It shows the new-plan price as one line, then a negative “Credit, unused …” line, netting to exactly what you are charged. Admins can add or edit lines before issuing it. Your previous invoice is preserved, the upgrade adds a NEW invoice to your history and never overwrites the old one.',
   },
   {
     for: 'airline',
     q: 'Can I pay for the Unlimited upgrade by wire transfer?',
-    a: 'Yes. When you convert, choose Card (activates instantly) or Wire Transfer (requests an invoice for admin review). With wire, the upgrade shows as a “Convert to Unlimited — Pending” card until the admin approves it; nothing changes on your plan until approval.',
+    a: 'Yes. When you convert, choose Card (activates instantly) or Wire Transfer (requests an invoice for admin review). With wire, the upgrade shows as a “Convert to Unlimited, Pending” card until the admin approves it; nothing changes on your plan until approval.',
   },
   {
     for: 'both',
     q: 'What happens to my plan if a payment fails?',
-    a: 'Nothing changes. A failed or cancelled payment never activates a plan, never converts it, and never generates an invoice — your subscription stays exactly as it was. Only a confirmed, successful payment updates your plan and creates an invoice.',
+    a: 'Nothing changes. A failed or cancelled payment never activates a plan, never converts it, and never generates an invoice, your subscription stays exactly as it was. Only a confirmed, successful payment updates your plan and creates an invoice.',
   },
   {
     for: 'both',
     q: 'Can I upgrade a plan that has already expired?',
-    a: 'No. Once a plan expires you must renew it first, then upgrade. The Upgrade / Convert button is hidden on expired plans — use Renew to bring the plan back, after which the upgrade option returns.',
+    a: 'No. Once a plan expires you must renew it first, then upgrade. The Upgrade / Convert button is hidden on expired plans, use Renew to bring the plan back, after which the upgrade option returns.',
   },
   {
     for: 'individual',
@@ -125,8 +126,8 @@ const makeFaqs = () => [
 
 function YourAccountBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wide px-2 py-0.5 mb-2">
-      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Your account
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-wide px-2.5 py-0.5 mb-2">
+      Your account
     </span>
   )
 }
@@ -136,7 +137,7 @@ function Section({ step, title, children }) {
     <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
       <div className="flex items-center gap-3 mb-3">
         {step != null && (
-          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-black flex items-center justify-center">{step}</span>
+          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-slate-900 text-white text-xs font-black flex items-center justify-center">{step}</span>
         )}
         <h2 className="text-base sm:text-lg font-extrabold text-slate-900">{title}</h2>
       </div>
@@ -162,19 +163,61 @@ function FlowStep({ n, title, desc }) {
 
 function FaqItem({ q, a, open, onToggle }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div
+      className={`rounded-2xl border transition-all duration-200 overflow-hidden ${open
+          ? 'border-slate-800 bg-white shadow-sm ring-1 ring-slate-900/5'
+          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]'
+        }`}
+    >
       <button
+        type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 transition"
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left select-none outline-none group cursor-pointer"
       >
-        <span className="text-sm font-bold text-slate-800">{q}</span>
-        <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <span className={`text-sm sm:text-[15px] font-bold transition-colors duration-150 ${open ? 'text-slate-900' : 'text-slate-800 group-hover:text-slate-900'}`}>
+          {q}
+        </span>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-150 ${open ? 'bg-slate-900 text-white' : 'text-slate-400 group-hover:text-slate-600 group-hover:bg-slate-100'}`}>
+          <svg
+            className={`w-4 h-4 transition-transform duration-300 ease-[0.16,1,0.3,1] ${open ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </button>
-      {open && (
-        <div className="px-4 pb-4 text-[13px] text-slate-600 leading-relaxed border-t border-slate-100 pt-3">{a}</div>
-      )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="faq-content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              transition: {
+                height: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.22, delay: 0.04 }
+              }
+            }}
+            exit={{
+              height: 0,
+              opacity: 0,
+              transition: {
+                height: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.12 }
+              }
+            }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 text-[13.5px] sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3.5">
+              {a}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -207,10 +250,10 @@ function UnitControl({ title, color, count, setCount, min, plan, setPlan }) {
       </div>
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setCount(Math.max(min, count - 1))}
-          className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600 font-bold flex items-center justify-center transition">−</button>
+          className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900 font-bold flex items-center justify-center transition">−</button>
         <span className="text-xl font-black text-slate-900 w-9 text-center tabular-nums">{count}</span>
         <button type="button" onClick={() => setCount(Math.min(20, count + 1))}
-          className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600 font-bold flex items-center justify-center transition">+</button>
+          className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900 font-bold flex items-center justify-center transition">+</button>
         <span className="text-[11px] text-slate-400">holders</span>
       </div>
       <PlanToggle value={plan} set={setPlan} />
@@ -229,8 +272,8 @@ function HolderFlowPlayground() {
 
   const basePpc = airlinePricePerCert(basePlan, Math.max(3, base))
   const baseCost = base * basePpc
-  // Upgrade stacks on the base (count-wise) — tier read at the cumulative top
-  // position — but it is priced from ITS OWN plan's rate table.
+  // Upgrade stacks on the base (count-wise), tier read at the cumulative top
+  // position, but it is priced from ITS OWN plan's rate table.
   const upPpc = airlinePricePerCert(upPlan, Math.max(3, base + upgrade))
   const upCost = upgrade * upPpc
   const grandTotal = baseCost + upCost
@@ -256,17 +299,17 @@ function HolderFlowPlayground() {
     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-4">
       <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Try it yourself</p>
 
-      {/* Base + Upgrade — each with its own count AND plan type */}
+      {/* Base + Upgrade, each with its own count AND plan type */}
       <div className="flex flex-wrap gap-3">
-        <UnitControl title="Base plan" color="bg-blue-300" count={base} setCount={setBase} min={1} plan={basePlan} setPlan={setBasePlan} />
-        <UnitControl title="Expand holders (0 = none)" color="bg-emerald-300" count={upgrade} setCount={setUpgrade} min={0} plan={upPlan} setPlan={setUpPlan} />
+        <UnitControl title="Base plan" color="bg-slate-400" count={base} setCount={setBase} min={1} plan={basePlan} setPlan={setBasePlan} />
+        <UnitControl title="Expand holders (0 = none)" color="bg-[#34E06E]" count={upgrade} setCount={setUpgrade} min={0} plan={upPlan} setPlan={setUpPlan} />
       </div>
 
       {/* Presets */}
       <div className="flex flex-wrap gap-1.5">
         {presets.map(p => (
           <button key={p.label} type="button" onClick={() => applyPreset(p)}
-            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-600 transition">{p.label}</button>
+            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:border-slate-400 hover:text-slate-900 transition">{p.label}</button>
         ))}
       </div>
 
@@ -274,19 +317,19 @@ function HolderFlowPlayground() {
       <div>
         <div className="flex flex-wrap gap-1">
           {Array.from({ length: shownBase }, (_, i) => i + 1).map(n => (
-            <span key={`b${n}`} className="w-7 h-7 rounded-md bg-blue-100 text-blue-700 text-[11px] font-bold flex items-center justify-center">{n}</span>
+            <span key={`b${n}`} className="w-7 h-7 rounded-md bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center">{n}</span>
           ))}
           {Array.from({ length: shownUp }, (_, i) => shownBase + i + 1).map(n => (
-            <span key={`u${n}`} className="w-7 h-7 rounded-md bg-emerald-100 text-emerald-700 text-[11px] font-bold flex items-center justify-center">{n}</span>
+            <span key={`u${n}`} className="w-7 h-7 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold flex items-center justify-center">{n}</span>
           ))}
           {hidden > 0 && (
             <span className="h-7 px-2 rounded-md bg-slate-200 text-slate-600 text-[11px] font-bold flex items-center justify-center">+{hidden}</span>
           )}
         </div>
         <p className="text-[12px] text-slate-500 mt-2">
-          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-200 align-middle mr-1" />Base {base}
+          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-slate-300 align-middle mr-1" />Base {base}
           <span className="text-slate-300 mx-1">+</span>
-          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-200 align-middle mr-1" />Upgrade {upgrade}
+          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400 align-middle mr-1" />Upgrade {upgrade}
           <span className="text-slate-300 mx-1">=</span>
           <strong className="text-slate-800">{total} total holders</strong>
         </p>
@@ -319,8 +362,8 @@ function HolderFlowPlayground() {
 
       {/* Insight: mixed plan types billed independently */}
       {mixed && (
-        <p className="text-[12px] text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-          ℹ️ Your base and upgrade are <strong>different plan types</strong>, so they are billed and renewed independently on their own terms — the {basePlan === 'Unlimited Plan' ? 'Unlimited base is one-time' : '1-Year base renews yearly'}, while the {upPlan === 'Unlimited Plan' ? 'Unlimited upgrade is one-time' : '1-Year upgrade renews yearly'}. Each still uses its own rate table, priced at the stacked tier.
+        <p className="text-[12px] text-emerald-800 bg-emerald-50/70 border border-emerald-100 rounded-lg px-3 py-2">
+          ℹ️ Your base and upgrade are <strong>different plan types</strong>, so they are billed and renewed independently on their own terms, the {basePlan === 'Unlimited Plan' ? 'Unlimited base is one-time' : '1-Year base renews yearly'}, while the {upPlan === 'Unlimited Plan' ? 'Unlimited upgrade is one-time' : '1-Year upgrade renews yearly'}. Each still uses its own rate table, priced at the stacked tier.
         </p>
       )}
     </div>
@@ -339,10 +382,10 @@ export default function FaqPage() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-8 space-y-6">
       {/* Header */}
       <div>
-        <p className="text-[11px] font-black uppercase tracking-widest text-blue-600">Help &amp; FAQ</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-[#34E06E]">Help &amp; FAQ</p>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">Subscriptions, Plans &amp; Renewals</h1>
         <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-          A clear walkthrough of how plans, certificate-holder counts, and renewals work — so you always know what you are paying for and when.
+          A clear walkthrough of how plans, certificate-holder counts, and renewals work, so you always know what you are paying for and when.
         </p>
       </div>
 
@@ -357,7 +400,7 @@ export default function FaqPage() {
           >
             {lbl}
             {user && ((val === 'airline') === isAirline) && (
-              <span className={`ml-1.5 text-[9px] font-black uppercase tracking-wide ${view === val ? 'text-blue-300' : 'text-blue-500'}`}>You</span>
+              <span className={`ml-1.5 text-[9px] font-black uppercase tracking-wide ${view === val ? 'text-[#34E06E]' : 'text-[#34E06E]'}`}>You</span>
             )}
           </button>
         ))}
@@ -368,7 +411,7 @@ export default function FaqPage() {
         <>
           <Section title="Individual plan types">
             {user && !isAirline && <YourAccountBadge />}
-            <p>Individuals choose one fixed plan — no per-holder pricing, no tiers, no upgrades:</p>
+            <p>Individuals choose one fixed plan, no per-holder pricing, no tiers, no upgrades:</p>
             <div className="mt-3 grid sm:grid-cols-3 gap-2">
               {buildIndividualPlanRows().map(p => (
                 <div key={p.plan} className="rounded-xl border border-slate-200 p-3">
@@ -385,23 +428,23 @@ export default function FaqPage() {
               <FlowStep n="1" title="Your plan nears expiry" desc="Within 60 days of expiry (or once expired), a “Renewal Due” button appears on your subscription card." />
               <FlowStep n="2" title="You open the renewal" desc="Clicking it expands the card and highlights the plan that needs renewing." />
               <FlowStep n="3" title="Confirm or change your plan" desc="Keep your current plan, or switch to a different one (e.g. 1 Year → Unlimited) for the new term." />
-              <FlowStep n="4" title="Queued or immediate" desc="If still active, the renewal QUEUES and activates automatically at expiry (no gap, no double charge). If already expired, it activates immediately. Unlimited never expires — nothing to renew." />
+              <FlowStep n="4" title="Queued or immediate" desc="If still active, the renewal QUEUES and activates automatically at expiry (no gap, no double charge). If already expired, it activates immediately. Unlimited never expires, nothing to renew." />
             </div>
           </Section>
 
           <Section title="Upgrading a plan (with credit)">
-            <p>On an <strong>active</strong> 1-Year or Multiple-Years plan you can upgrade at any time — no need to wait for renewal. Open <strong>“Upgrade Plan”</strong> on your subscription and pick the target: <strong>Multiple Years</strong> (choose the number of years) or <strong>Unlimited</strong>. Unused time on your current plan is credited toward the new one.</p>
+            <p>On an <strong>active</strong> 1-Year or Multiple-Years plan you can upgrade at any time, no need to wait for renewal. Open <strong>“Upgrade Plan”</strong> on your subscription and pick the target: <strong>Multiple Years</strong> (choose the number of years) or <strong>Unlimited</strong>. Unused time on your current plan is credited toward the new one.</p>
             <div className="mt-1">
-              <FlowStep n="1" title="Click “Upgrade Plan”" desc="Pick Multiple Years or Unlimited. The modal shows your current price, the unused-time credit, the new-plan price, and the net amount — all live as you change the target." />
+              <FlowStep n="1" title="Click “Upgrade Plan”" desc="Pick Multiple Years or Unlimited. The modal shows your current price, the unused-time credit, the new-plan price, and the net amount, all live as you change the target." />
               <FlowStep n="2" title="You only pay the difference" desc="Charge = new-plan price − credit for the time left on your current term. A plan with lots of time left earns a bigger credit; one near expiry earns little." />
-              <FlowStep n="3" title="Confirm the invoice" desc="The invoice is shown right there — generate the number and edit the line items if needed (the unused-time credit appears as its own line)." />
-              <FlowStep n="4" title="Plan upgrades in place" desc="It activates immediately and a new invoice is added to your history — your old invoice is preserved, never overwritten." />
+              <FlowStep n="3" title="Confirm the invoice" desc="The invoice is shown right there, generate the number and edit the line items if needed (the unused-time credit appears as its own line)." />
+              <FlowStep n="4" title="Plan upgrades in place" desc="It activates immediately and a new invoice is added to your history, your old invoice is preserved, never overwritten." />
             </div>
-            <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-[13px] text-slate-600">
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-[13px] text-slate-600">
               <p className="font-bold text-slate-800 mb-1">Credit example</p>
-<p>A Multiple-Years plan billed <strong>{usd(individualPrice('Multiple Years Subscription Plan', 3))}</strong> (3 years @ {usd(perYearRate())}) with about <strong>two-thirds</strong> of the term left → credit ≈ <strong>{usd(perYearRate() * 2)}</strong>. Upgrading to Unlimited (<strong>{usd(individualPrice('Unlimited Plan'))}</strong>) you pay <strong>{usd(individualPrice('Unlimited Plan'))} − {usd(perYearRate() * 2)} = {usd(individualPrice('Unlimited Plan') - perYearRate() * 2)}</strong>. The invoice shows both lines so the math is transparent.</p>
+              <p>A Multiple-Years plan billed <strong>{usd(individualPrice('Multiple Years Subscription Plan', 3))}</strong> (3 years @ {usd(perYearRate())}) with about <strong>two-thirds</strong> of the term left → credit ≈ <strong>{usd(perYearRate() * 2)}</strong>. Upgrading to Unlimited (<strong>{usd(individualPrice('Unlimited Plan'))}</strong>) you pay <strong>{usd(individualPrice('Unlimited Plan'))} − {usd(perYearRate() * 2)} = {usd(individualPrice('Unlimited Plan') - perYearRate() * 2)}</strong>. The invoice shows both lines so the math is transparent.</p>
             </div>
-            <p className="mt-3 text-[13px] text-slate-500"><strong className="text-slate-700">Credit is based on your plan’s price and dates</strong> — it’s the price you paid prorated by the time remaining (days left ÷ full term). A just-started plan credits almost the full price; one near expiry credits little. A failed or cancelled payment changes nothing — the plan upgrades and the invoice is created only after the upgrade is confirmed.</p>
+            <p className="mt-3 text-[13px] text-slate-500"><strong className="text-slate-700">Credit is based on your plan’s price and dates</strong>, it’s the price you paid prorated by the time remaining (days left ÷ full term). A just-started plan credits almost the full price; one near expiry credits little. A failed or cancelled payment changes nothing, the plan upgrades and the invoice is created only after the upgrade is confirmed.</p>
           </Section>
         </>
       )}
@@ -436,7 +479,7 @@ export default function FaqPage() {
           </Section>
 
           <Section title="How the holder count flows">
-            <p>Airlines can hold several plans at once — a Base plan plus optional Upgrades. Think of your holders as seats in a row that fill up left to right. The <strong>Base plan</strong> books the first block of seats; each <strong>Upgrade</strong> adds more seats right after — it never restarts at seat&nbsp;1. Change the numbers below to see how the count, tier, and cost react.</p>
+            <p>Airlines can hold several plans at once, a Base plan plus optional Upgrades. Think of your holders as seats in a row that fill up left to right. The <strong>Base plan</strong> books the first block of seats; each <strong>Upgrade</strong> adds more seats right after, it never restarts at seat&nbsp;1. Change the numbers below to see how the count, tier, and cost react.</p>
 
             <HolderFlowPlayground />
 
@@ -449,29 +492,29 @@ export default function FaqPage() {
             <div className="mt-1">
               <FlowStep n="1" title="A plan nears expiry" desc="Within 60 days of expiry (or once expired), the plan becomes renewable and a “Renewal Due” button appears on your subscription card." />
               <FlowStep n="2" title="You open the renewal" desc="Clicking it expands the card and highlights exactly which plan needs renewing. Each highlighted plan has its own Renew action." />
-              <FlowStep n="3" title="Adjust holders (optional)" desc="Raise or lower the holder count. If you lower it, pick which holders to keep — the rest are dropped from the renewed term." />
+              <FlowStep n="3" title="Adjust holders (optional)" desc="Raise or lower the holder count. If you lower it, pick which holders to keep, the rest are dropped from the renewed term." />
               <FlowStep n="4" title="Queued or immediate" desc="If the plan is still active, the renewal QUEUES and activates automatically at expiry (no gap, no double charge). If already expired, it activates immediately from today." />
             </div>
           </Section>
 
           <Section title="Upgrading a plan to Unlimited (with credit)">
-            <p>Any <strong>active</strong> plan — your <strong>base</strong> or any <strong>add-on</strong> — can be converted to <strong>Unlimited</strong> in place, at any time. Click <strong>“Convert to Unlimited”</strong> (or “To Unlimited” on an add-on row). Expired plans must be renewed first — the button is hidden once a plan lapses.</p>
+            <p>Any <strong>active</strong> plan, your <strong>base</strong> or any <strong>add-on</strong>, can be converted to <strong>Unlimited</strong> in place, at any time. Click <strong>“Convert to Unlimited”</strong> (or “To Unlimited” on an add-on row). Expired plans must be renewed first, the button is hidden once a plan lapses.</p>
             <div className="mt-1">
-              <FlowStep n="1" title="Tier-priced for your holders" desc="You pay the Unlimited per-cert rate × that plan’s holders, at your volume tier — the same tiers used everywhere else." />
+              <FlowStep n="1" title="Tier-priced for your holders" desc="You pay the Unlimited per-cert rate × that plan’s holders, at your volume tier, the same tiers used everywhere else." />
               <FlowStep n="2" title="Minus an unused-time credit" desc="The time left on the plan’s current term is credited back, prorated by days. Net charge = Unlimited price − credit." />
-              <FlowStep n="3" title="Card or wire" desc="Card activates instantly; wire requests an invoice the admin approves. The pending request shows as “Convert to Unlimited — Pending” until approved." />
-              <FlowStep n="4" title="In place, history kept" desc="The plan becomes Unlimited (no expiry) and keeps its holders/slots. The upgrade adds a new invoice — your earlier invoice is preserved, never overwritten." />
+              <FlowStep n="3" title="Card or wire" desc="Card activates instantly; wire requests an invoice the admin approves. The pending request shows as “Convert to Unlimited, Pending” until approved." />
+              <FlowStep n="4" title="In place, history kept" desc="The plan becomes Unlimited (no expiry) and keeps its holders/slots. The upgrade adds a new invoice, your earlier invoice is preserved, never overwritten." />
             </div>
-            <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-[13px] text-slate-600">
+            <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/30 p-3 text-[13px] text-slate-600">
               <p className="font-bold text-slate-800 mb-1">Example (4 holders, 1-Year @ $60)</p>
-<p>Unlimited tier = {usd(airlinePricePerCert('Unlimited Plan', 4))}/cert × 4 = <strong>{usd(airlinePricePerCert('Unlimited Plan', 4) * 4)}</strong>. Half the year left on a {usd(airlinePricePerCert('1 Year Subscription Plan', 4) * 4)} term → credit ≈ <strong>{usd(airlinePricePerCert('1 Year Subscription Plan', 4) * 4 / 2)}</strong>. You pay <strong>{usd(airlinePricePerCert('Unlimited Plan', 4) * 4 - airlinePricePerCert('1 Year Subscription Plan', 4) * 4 / 2)}</strong>. The invoice itemises the Unlimited line and the credit line.</p>
+              <p>Unlimited tier = {usd(airlinePricePerCert('Unlimited Plan', 4))}/cert × 4 = <strong>{usd(airlinePricePerCert('Unlimited Plan', 4) * 4)}</strong>. Half the year left on a {usd(airlinePricePerCert('1 Year Subscription Plan', 4) * 4)} term → credit ≈ <strong>{usd(airlinePricePerCert('1 Year Subscription Plan', 4) * 4 / 2)}</strong>. You pay <strong>{usd(airlinePricePerCert('Unlimited Plan', 4) * 4 - airlinePricePerCert('1 Year Subscription Plan', 4) * 4 / 2)}</strong>. The invoice itemises the Unlimited line and the credit line.</p>
             </div>
-            <p className="mt-3 text-[13px] text-slate-500">A failed or cancelled payment converts nothing and generates no invoice — your plans stay as they were.</p>
+            <p className="mt-3 text-[13px] text-slate-500">A failed or cancelled payment converts nothing and generates no invoice, your plans stay as they were.</p>
           </Section>
         </>
       )}
 
-      {/* FAQ accordion — filtered to the selected audience */}
+      {/* FAQ accordion, filtered to the selected audience */}
       <div>
         <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mb-3">
           Frequently asked questions <span className="text-slate-400 font-bold">· {view === 'airline' ? 'Airline' : 'Individual'}</span>

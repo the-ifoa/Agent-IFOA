@@ -5,7 +5,7 @@
  *
  * Pricing components call the synchronous helpers in services/pricing.js, which
  * require the config to be present. Gating render here means those helpers can
- * stay simple and can never quote a stale or missing price — and, because the
+ * stay simple and can never quote a stale or missing price, and, because the
  * tables come from the server, can never quote a price the server disagrees with.
  */
 import { createContext, useContext, useEffect, useState } from 'react'
@@ -26,7 +26,7 @@ export function PricingProvider({ children }) {
   }, [])
 
   // Only reached when the server is unreachable AND no tables have ever been
-  // cached — a first-ever visit against a down backend, where nothing else in the
+  // cached, a first-ever visit against a down backend, where nothing else in the
   // app (login, dashboard, payments) would work either. Once a single successful
   // load has happened, loadPricing() falls back to the cached tables instead and
   // the app keeps running, so one endpoint can never blank the whole UI.
@@ -39,7 +39,7 @@ export function PricingProvider({ children }) {
           <p className="mt-1 text-xs text-slate-500">
             {offline
               ? 'You appear to be offline. Reconnect and try again.'
-              : 'The application server is not responding, so plan prices could not be loaded. It may be starting up — try again in a moment.'}
+              : 'The application server is not responding, so plan prices could not be loaded. It may be starting up, try again in a moment.'}
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -55,7 +55,7 @@ export function PricingProvider({ children }) {
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin" />
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-[#34E06E] animate-spin" />
       </div>
     )
   }

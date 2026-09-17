@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Hanken+Grotesk:ital,wght@0,400..900;1,400..900&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,32 +6,40 @@
 
 @layer base {
   :root {
-    /* ── Light Theme Base ── */
-    --page-bg:          #f8fafc;
-    --surface:          #ffffff;
-    --surface-soft:     #f1f5f9;
-    --text-main:        #0f172a;
-    --text-muted:       #475569;
-    --text-light:       #94a3b8;
-    --border:           #e2e8f0;
+    /* ── Typography Tokens ── */
+    --font-sans:     'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display:  'Hanken Grotesk', sans-serif;
+    --font-heading:  'Hanken Grotesk', sans-serif;
+    --font-mono:     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    /* ── Primary: Blue ── */
-    --brand-primary:        #0000ff;
-    --brand-primary-dark:   #0000e6;
-    --brand-primary-light:  #3333ff;
-    --brand-primary-xlight: #d6d6ff;
-    --brand-primary-muted:  #f0f0ff;
+    /* ── Brand & Accent Colors ── */
+    --brand-primary:        #34E06E; /* rgb(52, 224, 110) */
+    --brand-primary-hover:  #34E06E;
+    --brand-primary-dark:   #34E06E;
+    --brand-primary-light:  #34E06E;
+    --brand-primary-xlight: #e8fbf0;
+    --brand-primary-muted:  #f0fdf4;
+    --brand-glow:           rgba(52, 224, 110, 0.40);
 
-    /* ── Secondary: Red ── */
-    --brand-secondary:        #dc2626;
-    --brand-secondary-dark:   #b91c1c;
-    --brand-secondary-light:  #ef4444;
-    --brand-secondary-xlight: #fecaca;
-    --brand-secondary-muted:  #fef2f2;
+    /* ── Neutral & Surface Colors ── */
+    --midnight:             #020617; /* Deep Aviation Midnight / Slate 950 */
+    --midnight-alt:         #000021;
+    --page-bg:              #ffffff;
+    --surface:              #ffffff;
+    --surface-soft:         #f8f9fa; /* Slate 50 */
+    --surface-muted:        #f1f5f9; /* Slate 100 */
 
-    /* ── Accent: Black ── */
-    --brand-accent:       #0f172a;
-    --brand-accent-soft:  #1e293b;
+    /* ── Text Palette ── */
+    --text-main:            #020617; /* Slate 950 */
+    --text-muted:           #475569; /* Slate 600 */
+    --text-sub:             #64748B; /* Slate 500 */
+    --text-light:           #94a3b8; /* Slate 400 */
+
+    /* ── Borders ── */
+    --border:               #e2e8f0;
+    --border-light:         rgba(2, 6, 23, 0.08);
+    --border-slate:         #e2e8f0;
+    --border-dark:          rgba(255, 255, 255, 0.10);
   }
 
   * {
@@ -41,16 +49,22 @@
   html {
     scroll-behavior: smooth;
     scrollbar-gutter: stable;
+    font-family: var(--font-sans);
   }
 
   body {
     margin: 0;
-    font-family: 'Manrope', system-ui, sans-serif;
+    font-family: var(--font-sans);
     background: var(--page-bg);
     color: var(--text-main);
-    line-height: 1.6;
+    line-height: 1.625;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    color: var(--text-main);
   }
 
   a {
@@ -59,44 +73,135 @@
   }
 }
 
-/* ── Slate/Charcoal utility overrides for clean/professional monochrome highlights ── */
-.bg-blue-600 { background-color: var(--brand-primary) !important; }
-.hover\:bg-blue-700:hover { background-color: var(--brand-primary-dark) !important; }
-.text-blue-600 { color: #1e293b !important; }
-.text-blue-700 { color: #0f172a !important; }
-.border-blue-100 { border-color: #e2e8f0 !important; }
-.border-blue-200 { border-color: #cbd5e1 !important; }
-.border-blue-300 { border-color: #94a3b8 !important; }
-.border-blue-500 { border-color: var(--brand-primary-light) !important; }
-.bg-blue-50 { background-color: #f1f5f9 !important; }
-.bg-blue-100 { background-color: #e2e8f0 !important; }
-.bg-blue-500 { background-color: var(--brand-primary-light) !important; }
-.focus\:border-blue-500:focus { border-color: var(--brand-primary) !important; }
+/* ── Material Symbols Helper ── */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
 
-/* ── Remove focus glow/ring on date inputs — keep it clean ── */
+/* ── Typography Utility Classes ── */
+.font-display {
+  font-family: var(--font-display) !important;
+}
+
+.font-heading {
+  font-family: var(--font-heading) !important;
+}
+
+.font-body {
+  font-family: var(--font-sans) !important;
+}
+
+.font-mono-tag {
+  font-family: var(--font-mono) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+
+.btn-typography {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+}
+
+/* ── Glassmorphism and UI Tokens ── */
+.sticky-glass-header {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background-color: rgba(2, 6, 23, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.sticky-glass-header-light {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background-color: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(2, 6, 23, 0.08);
+}
+
+.glass-card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(2, 6, 23, 0.08);
+}
+
+.glass-card-dark {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* ── Buttons & Hover Glow ── */
+.btn-aviation-green {
+  background-color: var(--brand-primary);
+  color: #020617;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-aviation-green:hover {
+  background-color: var(--brand-primary-hover);
+  box-shadow: 0 0 24px var(--brand-glow);
+}
+
+.btn-midnight {
+  background-color: var(--midnight);
+  color: #ffffff;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-midnight:hover {
+  background-color: #0f172a;
+}
+
+/* ── Remove focus glow/ring on date inputs ── */
 input[type="date"]:focus {
   outline: none !important;
   box-shadow: none !important;
   --tw-ring-shadow: none !important;
   --tw-ring-color: transparent !important;
 }
-/* Also suppress Tailwind ring utilities on date inputs */
+
 input[type="date"].focus\:ring-3:focus,
 input[type="date"].focus\:ring-2:focus,
-input[type="date"].focus\:ring-blue-100:focus,
-input[type="date"].focus\:ring-blue-500\/20:focus {
+input[type="date"].focus\:ring-brand\/20:focus {
   --tw-ring-offset-shadow: none !important;
   --tw-ring-shadow: none !important;
   box-shadow: none !important;
 }
 
-/* ─── Global modal / popup animations ───────────────────────────────────────
-   Apply .animate-modal-backdrop to overlay divs (fixed inset-0).
-   Apply .animate-modal-panel   to the white card inside.
-   Both are CSS-only enter animations — no JS required.
-   For components using framer-motion the motion.div handles enter + exit;
-   these classes are the fallback for inline JSX modals.
-─────────────────────────────────────────────────────────────────────────── */
+/* ── Image loading skeleton ── */
+@keyframes ifoa-shimmer {
+  from { background-position: -300px 0; }
+  to   { background-position: 300px 0; }
+}
+.ifoa-skeleton {
+  background: #eef1f4;
+  background-image: linear-gradient(90deg, #eef1f4 0%, #eef1f4 35%, #e1e5e9 50%, #eef1f4 65%, #eef1f4 100%);
+  background-size: 600px 100%;
+  background-repeat: no-repeat;
+  animation: ifoa-shimmer 1.6s ease-in-out infinite;
+}
+
+/* ── Global modal / popup animations ── */
 @keyframes ifoa-backdrop-in {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -124,10 +229,7 @@ input[type="date"].focus\:ring-blue-500\/20:focus {
   animation: ifoa-panel-in-sm 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ── Layout: ensure register page left column always fills and scrolls ── */
-/* The register page uses position:fixed on the outer wrapper.
-   We make sure the left scrollable column stretches to fill the remaining
-   height and the right sidebar never collapses the left content. */
+/* ── Layout: register page left column ── */
 .register-layout {
   display: flex;
   height: 100vh;
@@ -155,141 +257,196 @@ input[type="date"].focus\:ring-blue-500\/20:focus {
   position: relative;
 }
 
-/* ── Responsive dashboard & Layout helpers ── */
-@media (max-width: 767px) {
-  aside[class*='fixed'] {
-    transition: transform 0.3s ease, width 0.3s ease;
-  }
-}
-
-/* ── Phone Input ── */
+/* ── Modern Phone Input & Country Dropdown ── */
 .react-tel-input {
-  width: 100%;
+  width: 100% !important;
+  font-family: var(--font-sans) !important;
 }
 
 .react-tel-input .flag-dropdown {
-  border: 1px solid var(--border) !important;
+  border: 1px solid #e2e8f0 !important;
   border-right: none !important;
-  border-radius: 1rem 0 0 1rem !important;
-  background: var(--surface-soft) !important;
-}
-
-.react-tel-input .selected-flag {
-  border-radius: 1rem 0 0 1rem !important;
-  padding-left: 12px !important;
-  background: transparent !important;
-}
-
-.react-tel-input .selected-flag:hover,
-.react-tel-input .selected-flag:focus {
-  background: var(--brand-primary-muted) !important;
-}
-
-.react-tel-input .form-control {
-  width: 100% !important;
-  height: 50px !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 1rem !important;
-  font-size: 14px !important;
-  padding-left: 56px !important;
-  color: var(--text-main) !important;
-  background: var(--surface) !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-}
-
-.react-tel-input .form-control:focus {
-  border-color: var(--brand-primary) !important;
-  box-shadow: 0 0 0 3px rgba(0, 0, 255, 0.08) !important;
-  outline: none !important;
-}
-
-.react-tel-input .form-control.error-field {
-  border-color: var(--brand-secondary-light) !important;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08) !important;
-}
-
-.react-tel-input .country-list {
-  border-radius: 10px !important;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06) !important;
-  border: 1px solid #e2e8f0 !important;
-  max-height: 340px !important;
-  min-width: 300px !important;
-  width: 300px !important;
-  left: 0 !important;
-  z-index: 9999 !important;
-  background: #ffffff !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-
-.react-tel-input .country-list .search {
-  padding: 10px 10px 8px !important;
-  background: #ffffff !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 1 !important;
-  border-bottom: 1px solid #f1f5f9 !important;
-}
-
-.react-tel-input .country-list .search-box {
-  width: 100% !important;
-  padding: 7px 11px !important;
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 7px !important;
-  font-size: 13px !important;
-  outline: none !important;
+  border-radius: 0.75rem 0 0 0.75rem !important;
   background: #f8fafc !important;
-  color: #1e293b !important;
-  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
 }
 
-.react-tel-input .country-list .search-box:focus,
-.react-tel-input .country-list .form-control:focus {
-  border-color: #94a3b8 !important;
-  background: #ffffff !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-.react-tel-input .country-list .search-emoji {
-  display: none !important;
-}
-
-.react-tel-input .country-list .country {
-  padding: 8px 12px !important;
-  font-size: 13px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 9px !important;
-  color: #1e293b !important;
-  transition: background 0.1s !important;
-}
-
-.react-tel-input .country-list .country:hover,
-.react-tel-input .country-list .country.highlight {
-  background: #f8fafc !important;
-}
-
-.react-tel-input .country-list .country .country-name,
-.react-tel-input .country-list .country:hover .country-name,
-.react-tel-input .country-list .country.highlight .country-name,
-.react-tel-input .country-list .country.highlight span,
-.react-tel-input .country-list li span {
-  font-size: 13px !important;
-  color: #1e293b !important;
-  font-weight: 400 !important;
-}
-
-.react-tel-input .country-list .country .dial-code {
-  color: #94a3b8 !important;
-  font-size: 12px !important;
+.react-tel-input .flag-dropdown:hover {
+  background: #f1f5f9 !important;
 }
 
 .react-tel-input .flag-dropdown.open {
   z-index: 9999 !important;
+  background: #ffffff !important;
+  border-color: #020617 !important;
 }
 
-/* ── Custom Sleek Scrollbars for Panels and Modals ── */
+.react-tel-input .selected-flag {
+  border-radius: 0.75rem 0 0 0.75rem !important;
+  padding: 0 12px 0 14px !important;
+  background: transparent !important;
+  width: 52px !important;
+}
+
+.react-tel-input .selected-flag:hover,
+.react-tel-input .selected-flag:focus {
+  background: transparent !important;
+}
+
+.react-tel-input .selected-flag .arrow {
+  border-top-color: #64748b !important;
+  margin-top: -2px !important;
+  transition: transform 0.2s ease !important;
+}
+
+.react-tel-input .selected-flag .arrow.up {
+  border-bottom-color: #020617 !important;
+  border-top-color: transparent !important;
+}
+
+.react-tel-input .form-control {
+  width: 100% !important;
+  height: 44px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0.75rem !important;
+  font-family: var(--font-sans) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding-left: 60px !important;
+  color: #020617 !important;
+  background: #ffffff !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.react-tel-input .form-control:focus {
+  border-color: #020617 !important;
+  box-shadow: 0 0 0 3px rgba(2, 6, 23, 0.06) !important;
+  outline: none !important;
+}
+
+.react-tel-input .form-control.error-field,
+.react-tel-input .form-control.invalid-number {
+  border-color: #f87171 !important;
+  background: #fef2f2 !important;
+}
+
+.react-tel-input .form-control.error-field:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+}
+
+/* ── Floating Country List Popup ── */
+.react-tel-input .country-list {
+  border-radius: 1rem !important;
+  box-shadow: 0 20px 35px -5px rgba(2, 6, 23, 0.16), 0 10px 15px -5px rgba(2, 6, 23, 0.08) !important;
+  border: 1px solid #e2e8f0 !important;
+  max-height: 300px !important;
+  min-width: 320px !important;
+  width: 320px !important;
+  margin-top: 6px !important;
+  left: 0 !important;
+  z-index: 99999 !important;
+  background: #ffffff !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 6px 0 !important;
+}
+
+/* Sticky search input container inside country list */
+.react-tel-input .country-list .search {
+  padding: 8px 10px !important;
+  background: #ffffff !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  margin: -6px 0 6px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Completely hide the default emoji/icon rendered outside the input */
+.react-tel-input .country-list .search-emoji,
+.react-tel-input .country-list .search-icon {
+  display: none !important;
+}
+
+/* Beautiful modern search input with embedded SVG search icon */
+.react-tel-input .country-list .search-box {
+  width: 100% !important;
+  height: 38px !important;
+  padding: 8px 12px 8px 36px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0.75rem !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  font-family: var(--font-sans) !important;
+  outline: none !important;
+  background-color: #f8fafc !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: 11px center !important;
+  background-size: 15px 15px !important;
+  color: #020617 !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  transition: all 0.15s ease !important;
+}
+
+.react-tel-input .country-list .search-box:focus {
+  border-color: #020617 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(2, 6, 23, 0.05) !important;
+  outline: none !important;
+}
+
+.react-tel-input .country-list .search-box::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+}
+
+/* Country items in dropdown list */
+.react-tel-input .country-list .country {
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  color: #020617 !important;
+  cursor: pointer !important;
+  transition: background 0.12s ease !important;
+}
+
+.react-tel-input .country-list .country:hover,
+.react-tel-input .country-list .country.highlight {
+  background: #f1f5f9 !important;
+}
+
+.react-tel-input .country-list .country.active {
+  background: #f8fafc !important;
+  font-weight: 600 !important;
+}
+
+.react-tel-input .country-list .country .country-name {
+  font-size: 13px !important;
+  color: #0f172a !important;
+  font-weight: 500 !important;
+  flex: 1 !important;
+}
+
+.react-tel-input .country-list .country .dial-code {
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  margin-left: auto !important;
+}
+
+.react-tel-input .country-list .divider {
+  border-bottom: 1px solid #f1f5f9 !important;
+  margin: 6px 0 !important;
+  padding: 0 !important;
+}
+
+/* ── Custom Sleek Scrollbars ── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -300,11 +457,129 @@ input[type="date"].focus\:ring-blue-500\/20:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* slate-300 */
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; /* slate-400 */
+  background: #94a3b8;
 }
+
+/* ── Cosmic Parallax Background (Matching TMS Hero) ── */
+.cosmic-parallax-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at bottom, #0f172a 0%, #020617 100%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Liquid Fill Hover Button (Matching TMS Hero) ── */
+@keyframes liquidSpin {
+  0% {
+    transform: translateX(-50%) translateY(0%) rotate(0deg);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-3%) rotate(180deg);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0%) rotate(360deg);
+  }
+}
+
+.liquid-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 2.25rem;
+  border-radius: 1.25rem;
+  background-color: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-weight: 800;
+  overflow: hidden;
+  z-index: 1;
+  backdrop-filter: blur(12px);
+  transition: color 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease, transform 0.25s ease;
+}
+
+.liquid-btn::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 320%;
+  height: 320%;
+  border-radius: 42%;
+  background: #ffffff;
+  transform: translateX(-50%) rotate(0deg);
+  transition: top 0.65s cubic-bezier(0.25, 1, 0.5, 1), transform 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.liquid-btn:hover {
+  color: #020617 !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 35px rgba(255, 255, 255, 0.45);
+  transform: scale(1.02);
+}
+
+.liquid-btn:hover::before {
+  top: -70%;
+  animation: liquidSpin 5s linear infinite;
+}
+
+.liquid-btn span,
+.liquid-btn svg {
+  position: relative;
+  z-index: 10;
+  transition: color 0.4s ease;
+}
+
+/* ── Waving Hand Animation ── */
+@keyframes wave-hand {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-8deg); }
+  45% { transform: rotate(14deg); }
+  60% { transform: rotate(-4deg); }
+  75% { transform: rotate(10deg); }
+  90% { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-waving-hand {
+  display: inline-block;
+  transform-origin: 70% 70%;
+  animation: wave-hand 1.8s ease-in-out 2 forwards;
+  cursor: default;
+}
+
+.animate-waving-hand:hover {
+  animation: wave-hand 1.8s ease-in-out 1 forwards;
+}
+
+/* ── Global Select & Option styling ── */
+select option {
+  background-color: #ffffff;
+  color: #020617;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: #020617 !important;
+  color: #ffffff !important;
+}
+
 

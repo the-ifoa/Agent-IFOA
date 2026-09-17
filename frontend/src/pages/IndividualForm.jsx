@@ -11,16 +11,17 @@ import SuccessPage from '../components/individual/SuccessPage'
 import { createIndividual } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
-import { Plane, Lock, ShieldCheck, MapPin, Zap } from 'lucide-react'
+import { PlaneTakeoff, Lock, ShieldCheck, MapPin, Zap } from 'lucide-react'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const C = {
-  blue:      '#0000ff',
-  blueDark:  '#0000e6',
-  blueMuted: '#eff6ff',
-  blueLight: '#dbeafe',
-  dark:      '#0f172a',
+  blue:      '#020617',
+  blueDark:  '#0f172a',
+  blueMuted: '#f8fafc',
+  blueLight: '#e2e8f0',
+  brand:     '#34E06E',
+  dark:      '#020617',
   white:     '#ffffff',
   gray50:    '#f8fafc',
   gray100:   '#f1f5f9',
@@ -139,7 +140,7 @@ async function fetchLivePaymentStatus(user, token) {
 // Merges a live DB Individual record into the current formData state.
 // For multi-year plans, year count is ALWAYS derived from price ($55/yr)
 // because the DB's multiYearCount field defaults to 3 regardless of the
-// actual plan the user chose — only price is always saved correctly.
+// actual plan the user chose, only price is always saved correctly.
 function mergeDbRecord(rec, prev) {
   const priceNum = Number(rec.price || 0)
   const dbYears = rec.subscriptionPlan === 'Multiple Years Subscription Plan' && priceNum >= 110
@@ -173,7 +174,7 @@ function WrongRoleBanner() {
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-black mb-1" style={{ color: C.dark }}>Airlines Account Detected — Form Submission Disabled</p>
+          <p className="text-sm font-black mb-1" style={{ color: C.dark }}>Airlines Account Detected, Form Submission Disabled</p>
           <p className="text-xs leading-relaxed" style={{ color: C.gray600 }}>
             You are signed in with an <strong>Airlines account</strong>. This form requires an <strong>Individual account</strong>.
           </p>
@@ -183,7 +184,7 @@ function WrongRoleBanner() {
             Create Individual Account
           </Link>
           <Link to="/airlines/register" className="inline-flex items-center gap-1.5 font-semibold px-4 py-2 rounded-lg text-xs hover:bg-white transition-all whitespace-nowrap" style={{ border: `1px solid ${C.blueLight}`, color: C.blue }}>
-            <Plane className="w-3.5 h-3.5" /> Airlines Form
+            <PlaneTakeoff className="w-3.5 h-3.5" /> Airlines Form
           </Link>
         </div>
       </div>
@@ -217,7 +218,7 @@ function AuthModal({ onClose }) {
           <p className="text-sm leading-relaxed mb-2" style={{ color: C.gray500 }}>
             Sign in or create a free account to continue to the next step.
           </p>
-          <p className="text-xs mb-7" style={{ color: C.gray400 }}>Your form data is saved — you won't lose any progress.</p>
+          <p className="text-xs mb-7" style={{ color: C.gray400 }}>Your form data is saved, you won't lose any progress.</p>
           <div className="flex flex-col gap-3">
             <button onClick={() => navigate('/signup', { state: { from: location } })}
               className="w-full inline-flex items-center justify-center gap-2 text-white font-bold px-6 py-3.5 rounded-xl text-sm transition-all"
@@ -288,9 +289,9 @@ export default function IndividualForm() {
   // 'paid'    = payment confirmed            → BLUE banner in Step 4
   //
   // Always fetched LIVE from the DB via registrationId/subscriptionIds first,
-  // then by email as a fallback — never relies on the stale JWT.
+  // then by email as a fallback, never relies on the stale JWT.
   const [existingPaymentStatus, setExistingPaymentStatus] = useState(null)
-  // The actual saved registration record from DB — used to show real plan/price in the summary
+  // The actual saved registration record from DB, used to show real plan/price in the summary
   const [existingRecord, setExistingRecord] = useState(null)
 
   // Block if user already has an active (paid) individual subscription.
@@ -392,7 +393,7 @@ export default function IndividualForm() {
         msg.toLowerCase().includes('already submitted') ||
         msg.toLowerCase().includes('already registered')
       ) {
-        // Re-fetch LIVE record — do NOT assume 'pending', user may have already paid
+        // Re-fetch LIVE record, do NOT assume 'pending', user may have already paid
         const token = localStorage.getItem('ifoa_token') || ''
         const { status: liveStatus, record: liveRecord } = await fetchLiveRegistration(user, token)
         setExistingPaymentStatus(liveStatus ?? 'pending')
@@ -409,7 +410,7 @@ export default function IndividualForm() {
   }
 
   // Payment success callback. The server already activated the subscription via
-  // /payments/confirm (Stripe webhook as backup) — mark-paid is admin-only, so the
+  // /payments/confirm (Stripe webhook as backup), mark-paid is admin-only, so the
   // old client call here always 403'd. Just transition the UI.
   const handleMarkPaidAndFinish = async () => {
     setExistingPaymentStatus('paid')
@@ -513,8 +514,8 @@ export default function IndividualForm() {
           </span>
           <div className="w-px h-5 hidden sm:block" style={{ background: C.blueLight }} />
           <p className="text-sm leading-relaxed" style={{ color: C.dark }}>
-            <strong>02 Apr 2025</strong> — New applicants with non-U.S. addresses must appoint a U.S. Agent. &nbsp;
-            <strong>07 Jul 2025</strong> — Existing certificate holders must designate an Agent to maintain FAA certification.
+            <strong>02 Apr 2025</strong>, New applicants with non-U.S. addresses must appoint a U.S. Agent. &nbsp;
+            <strong>07 Jul 2025</strong>, Existing certificate holders must designate an Agent to maintain FAA certification.
           </p>
         </div>
       </div>
@@ -525,7 +526,7 @@ export default function IndividualForm() {
       <section style={{ background: C.white, borderBottom: `1px solid ${C.gray100}` }}>
         <div className="max-w-6xl mx-auto px-6 py-16">
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-12">
-            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.blue }}>Get Started — Step by Step</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.blue }}>Get Started, Step by Step</p>
             <h2 className="text-3xl font-black" style={{ color: C.dark }}>Before You Register</h2>
             <p className="text-sm mt-2 max-w-lg mx-auto leading-relaxed" style={{ color: C.gray500 }}>
               Watch our short video and register on the two FAA portals first, then complete the form below.
@@ -580,7 +581,7 @@ export default function IndividualForm() {
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-10">
             <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.blue }}>Secure Registration</p>
             <h2 className="text-3xl font-black mb-3" style={{ color: C.dark }}>Complete Your Registration</h2>
-            <p className="text-sm max-w-md mx-auto leading-relaxed" style={{ color: C.gray500 }}>A guided 4-step form — takes less than 5 minutes. Your data is encrypted and handled securely.</p>
+            <p className="text-sm max-w-md mx-auto leading-relaxed" style={{ color: C.gray500 }}>A guided 4-step form, takes less than 5 minutes. Your data is encrypted and handled securely.</p>
             {!user && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold" style={{ background: C.blueMuted, border: `1px solid ${C.blueLight}`, color: C.blue }}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -681,7 +682,7 @@ export default function IndividualForm() {
               style={{ background: C.dark }}
               onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
               onMouseLeave={e => e.currentTarget.style.background = C.dark}>
-              <Plane className="w-4 h-4" /> Airlines Plan
+              <PlaneTakeoff className="w-4 h-4" /> Airlines Plan
             </Link>
           </motion.div>
         </div>

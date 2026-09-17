@@ -1,7 +1,7 @@
 /**
  * expiryStatus.js
  *
- * Single source of truth for "is this plan expired / about to expire?" — used on
+ * Single source of truth for "is this plan expired / about to expire?", used on
  * both the client subscription page and the admin dashboard so the wording and
  * thresholds are identical everywhere.
  *

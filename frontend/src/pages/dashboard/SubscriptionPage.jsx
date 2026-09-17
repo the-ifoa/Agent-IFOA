@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useLayoutEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { holderRangeFromCount, airlinePricePerCert, individualPrice } from '../../services/pricing'
 
 import { useAuth } from '../../context/AuthContext'
@@ -10,6 +11,7 @@ import axios from 'axios'
 import PaymentModal from '../../components/payment/PaymentModal'
 import InvoiceModal, { downloadInvoicePDF } from '../../components/payment/InvoiceModal'
 import { buildInvoice, serverPaymentToInvoice } from '../../components/payment/PaymentModal'
+import CustomSelect from '../../components/ui/CustomSelect'
 import { getAirlineTotal, isActiveHolderGroup, isCurrentBaseGroup, activeGroupSlots, allGroupSlots, activeCoverageAnchor } from '../../utils/airlineTotal'
 import { getExpiryStatus } from '../../utils/expiryStatus'
 import { getInvoiceStatus } from '../../utils/invoiceStatus'
@@ -17,61 +19,7 @@ import PhoneInputLib from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
 const PhoneInput = PhoneInputLib.default || PhoneInputLib
 
-// ── Shared country data + dropdown (mirrors Step1PersonalInfo) ────────────────
-const COUNTRY_TO_ISO2 = {
-  'Afghanistan': 'af', 'Albania': 'al', 'Algeria': 'dz', 'American Samoa': 'as', 'Andorra': 'ad',
-  'Angola': 'ao', 'Anguilla': 'ai', 'Antigua and Barbuda': 'ag', 'Argentina': 'ar', 'Armenia': 'am',
-  'Aruba': 'aw', 'Australia': 'au', 'Austria': 'at', 'Azerbaijan': 'az', 'Bahamas': 'bs',
-  'Bahrain': 'bh', 'Bangladesh': 'bd', 'Barbados': 'bb', 'Belarus': 'by', 'Belgium': 'be',
-  'Belize': 'bz', 'Benin': 'bj', 'Bermuda': 'bm', 'Bhutan': 'bt', 'Bolivia': 'bo',
-  'Bosnia and Herzegovina': 'ba', 'Botswana': 'bw', 'Brazil': 'br', 'Brunei': 'bn', 'Bulgaria': 'bg',
-  'Burkina Faso': 'bf', 'Burundi': 'bi', 'Cabo Verde': 'cv', 'Cambodia': 'kh', 'Cameroon': 'cm',
-  'Canada': 'ca', 'Cayman Islands': 'ky', 'Central African Republic': 'cf', 'Chad': 'td', 'Chile': 'cl',
-  'China': 'cn', 'Colombia': 'co', 'Comoros': 'km', 'Congo': 'cg', 'Costa Rica': 'cr',
-  'Croatia': 'hr', 'Cuba': 'cu', 'Cyprus': 'cy', 'Czech Republic': 'cz', 'Denmark': 'dk',
-  'Dominican Republic': 'do', 'Ecuador': 'ec', 'Egypt': 'eg', 'El Salvador': 'sv', 'Eritrea': 'er',
-  'Estonia': 'ee', 'Ethiopia': 'et', 'Finland': 'fi', 'France': 'fr', 'Germany': 'de',
-  'Ghana': 'gh', 'Greece': 'gr', 'Guatemala': 'gt', 'Haiti': 'ht', 'Honduras': 'hn',
-  'Hong Kong': 'hk', 'Hungary': 'hu', 'Iceland': 'is', 'India': 'in', 'Indonesia': 'id',
-  'Iraq': 'iq', 'Ireland': 'ie', 'Israel': 'il', 'Italy': 'it', 'Jamaica': 'jm',
-  'Japan': 'jp', 'Jordan': 'jo', 'Kazakhstan': 'kz', 'Kenya': 'ke', 'Korea (Republic of)': 'kr',
-  'Kuwait': 'kw', 'Kyrgyzstan': 'kg', 'Latvia': 'lv', 'Lebanon': 'lb', 'Libya': 'ly',
-  'Lithuania': 'lt', 'Luxembourg': 'lu', 'Malaysia': 'my', 'Maldives': 'mv', 'Mali': 'ml',
-  'Malta': 'mt', 'Mexico': 'mx', 'Moldova': 'md', 'Monaco': 'mc', 'Mongolia': 'mn',
-  'Morocco': 'ma', 'Mozambique': 'mz', 'Myanmar': 'mm', 'Nepal': 'np', 'Netherlands': 'nl',
-  'New Zealand': 'nz', 'Nicaragua': 'ni', 'Nigeria': 'ng', 'Norway': 'no', 'Oman': 'om',
-  'Pakistan': 'pk', 'Palestine': 'ps', 'Panama': 'pa', 'Paraguay': 'py', 'Peru': 'pe',
-  'Philippines': 'ph', 'Poland': 'pl', 'Portugal': 'pt', 'Puerto Rico': 'pr', 'Qatar': 'qa',
-  'Romania': 'ro', 'Russian Federation': 'ru', 'Rwanda': 'rw', 'Saudi Arabia': 'sa', 'Senegal': 'sn',
-  'Serbia': 'rs', 'Singapore': 'sg', 'Slovakia': 'sk', 'Slovenia': 'si', 'Somalia': 'so',
-  'South Africa': 'za', 'Spain': 'es', 'Sri Lanka': 'lk', 'Sudan': 'sd', 'Sweden': 'se',
-  'Switzerland': 'ch', 'Syria': 'sy', 'Taiwan': 'tw', 'Tanzania': 'tz', 'Thailand': 'th',
-  'Tunisia': 'tn', 'Turkey': 'tr', 'Uganda': 'ug', 'Ukraine': 'ua', 'United Arab Emirates': 'ae',
-  'United Kingdom': 'gb', 'United States of America': 'us', 'Uruguay': 'uy', 'Uzbekistan': 'uz',
-  'Venezuela': 've', 'Vietnam': 'vn', 'Yemen': 'ye', 'Zambia': 'zm', 'Zimbabwe': 'zw',
-}
-
-const COUNTRY_LIST = [
-  'Afghanistan', 'Albania', 'Algeria', 'American Samoa', 'Andorra', 'Angola', 'Anguilla', 'Antarctica',
-  'Antigua and Barbuda', 'Argentina', 'Armenia', 'Aruba', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas',
-  'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bermuda', 'Bhutan',
-  'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
-  'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Cayman Islands', 'Central African Republic', 'Chad',
-  'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus',
-  'Czech Republic', 'Denmark', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Eritrea',
-  'Estonia', 'Ethiopia', 'Finland', 'France', 'Germany', 'Ghana', 'Greece', 'Guatemala', 'Haiti',
-  'Honduras', 'Hong Kong', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iraq', 'Ireland', 'Israel',
-  'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Korea (Republic of)', 'Kuwait',
-  'Kyrgyzstan', 'Latvia', 'Lebanon', 'Libya', 'Lithuania', 'Luxembourg', 'Malaysia', 'Maldives', 'Mali',
-  'Malta', 'Mexico', 'Moldova', 'Monaco', 'Mongolia', 'Morocco', 'Mozambique', 'Myanmar', 'Nepal',
-  'Netherlands', 'New Zealand', 'Nicaragua', 'Nigeria', 'Norway', 'Oman', 'Pakistan', 'Palestine',
-  'Panama', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Puerto Rico', 'Qatar', 'Romania',
-  'Russian Federation', 'Rwanda', 'Saudi Arabia', 'Senegal', 'Serbia', 'Singapore', 'Slovakia', 'Slovenia',
-  'Somalia', 'South Africa', 'Spain', 'Sri Lanka', 'Sudan', 'Sweden', 'Switzerland', 'Syria', 'Taiwan',
-  'Tanzania', 'Thailand', 'Tunisia', 'Turkey', 'Uganda', 'Ukraine', 'United Arab Emirates',
-  'United Kingdom', 'United States of America', 'Uruguay', 'Uzbekistan', 'Venezuela', 'Vietnam',
-  'Yemen', 'Zambia', 'Zimbabwe',
-]
+import CountrySelect, { COUNTRY_TO_ISO2 } from '../../components/ui/CountrySelect'
 
 // Reverse map (iso2 → full name) so stored codes like "CZ" display as "Czech Republic".
 const ISO2_TO_COUNTRY = Object.fromEntries(
@@ -82,41 +30,6 @@ function countryDisplayName(val) {
   const s = String(val).trim()
   if (s.length === 2) return ISO2_TO_COUNTRY[s.toLowerCase()] || s.toUpperCase()
   return s
-}
-
-function EditCountrySelect({ value, onChange }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const filtered = COUNTRY_LIST.filter(c => c.toLowerCase().includes(search.toLowerCase()))
-  return (
-    <div className="relative">
-      <button type="button" onClick={() => { setOpen(v => !v); setSearch('') }}
-        className={`w-full text-left px-3 py-2 border rounded-lg text-sm bg-white outline-none transition flex items-center justify-between ${open ? 'border-slate-400 ring-2 ring-slate-100' : 'border-slate-200 hover:border-slate-300'
-          } ${value ? 'text-slate-900' : 'text-slate-500'}`}>
-        <span>{value || '— Select country —'}</span>
-        <svg className={`w-3.5 h-3.5 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-slate-100">
-            <input autoFocus type="text" placeholder="Search country…" value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg outline-none focus:border-slate-400 bg-slate-50 text-slate-800 placeholder:text-slate-500" />
-          </div>
-          <div className="max-h-48 overflow-y-auto">
-            {filtered.length === 0 && <div className="px-4 py-3 text-sm text-slate-500">No results</div>}
-            {filtered.map(c => (
-              <div key={c} onClick={() => { onChange(c); setOpen(false); setSearch('') }}
-                className={`px-4 py-2 text-sm cursor-pointer transition-colors ${c === value ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}>
-                {c}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
 
 const EMPTY_HOLDER = {
@@ -169,21 +82,44 @@ async function fetchPaymentRecord(registrationId, token, preferredInvoiceNumber,
 }
 
 function PlanBadge({ plan }) {
-  return <span className='text-sm font-bold' style={{ color: 'rgba(255,255,255,0.92)' }}>{plan || 'Unknown Plan'}</span>
+  return (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-extrabold bg-slate-900 text-white tracking-wide shadow-sm">
+      {plan || 'Unknown Plan'}
+    </span>
+  )
 }
 
 function PayBadge({ status }) {
   const s = (status || '').toLowerCase()
-  const color = (s === 'paid' || s === 'active') ? '#047857' : (s === 'failed' || s === 'inactive') ? '#dc2626' : '#b45309'
-  const label = (s === 'paid' || s === 'active') ? 'Paid' : (s === 'failed' || s === 'inactive') ? status : 'Pending'
-  return <span className='text-sm font-semibold' style={{ color }}>{label}</span>
+  const isPaid = s === 'paid' || s === 'active'
+  const isInactive = s === 'failed' || s === 'inactive' || s === 'expired'
+
+  if (isPaid) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+        Paid
+      </span>
+    )
+  }
+  if (isInactive) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/80">
+        {status || 'Inactive'}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
+      Pending
+    </span>
+  )
 }
 
 function Row({ label, value }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 py-3 border-b border-slate-100 last:border-0">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 sm:w-52 flex-shrink-0">{label}</span>
-      <span className="text-sm font-medium text-slate-800 break-words min-w-0">{value ?? '—'}</span>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
+      <span className="text-xs font-semibold text-slate-500 sm:w-56 flex-shrink-0">{label}</span>
+      <span className="text-xs font-bold text-slate-900 break-words text-left sm:text-right">{value ?? '—'}</span>
     </div>
   )
 }
@@ -222,7 +158,7 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
   const [limitWarning, setLimitWarning] = useState('')
   const modalRef = useRef(null)
 
-  // Phone country flag — init from existing country value
+  // Phone country flag, init from existing country value
   const [phoneCountry, setPhoneCountry] = useState(() => {
     const existing = sub.country || ''
     return COUNTRY_TO_ISO2[existing] || 'us'
@@ -315,7 +251,7 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
   const addHolder = () => {
     const current = form.certificateHolders?.length || 0
     if (effectiveMax > 0 && current >= effectiveMax) {
-      setLimitWarning(`Holder limit reached — you have used all ${effectiveMax} committed slot${effectiveMax !== 1 ? 's' : ''}. To add more certificate holders, increase your committed count first using "Expand Holder Count".`)
+      setLimitWarning(`Holder limit reached, you have used all ${effectiveMax} committed slot${effectiveMax !== 1 ? 's' : ''}. To add more certificate holders, increase your committed count first using "Expand Holder Count".`)
       setError('')
       modalRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
       return
@@ -436,8 +372,9 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
   }
 
   /* input / select shared style */
-  const inp = 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition w-full'
-  const inpSm = 'rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition w-full'
+  const inp = 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 transition w-full'
+  const inpSm = 'rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 transition w-full'
+  const lbl = 'block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1'
 
   const handleChangePlan = () => {
     onClose?.()
@@ -455,18 +392,18 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
     return () => { document.body.style.overflow = '' }
   }, [])
 
-  return (
+  return createPortal(
     /* Backdrop */
-    <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 overflow-hidden animate-modal-backdrop">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 overflow-hidden animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal card — scrollable internally */}
+      {/* Modal card, scrollable internally */}
       <div ref={modalRef} className="relative z-10 w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl flex flex-col max-h-[calc(100vh-104px)] sm:max-h-[calc(100vh-120px)] overflow-y-auto animate-modal-panel">
 
         {/* Header */}
         <div className="px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-t-2xl sticky top-0 z-10">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Edit Form Details</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Edit Form Details</p>
             <h3 className="text-base sm:text-lg font-black text-slate-900 truncate">
               {isAirline ? 'Airline Registration Data' : 'Individual Registration Data'}
             </h3>
@@ -509,7 +446,7 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
               <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Subscription Plan {isAirline ? '& Holder Count' : ''}</p>
               {isAirline ? (
                 <div className="space-y-3">
-                  {/* Current plan — read-only, changed via registration form */}
+                  {/* Current plan, read-only, changed via registration form */}
                   <div className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Plan</p>
@@ -518,7 +455,7 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
                     <button
                       type="button"
                       onClick={handleChangePlan}
-                      className="text-[10px] font-bold text-blue-600 hover:underline whitespace-nowrap flex-shrink-0"
+                      className="text-[10px] font-bold text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-2 hover:opacity-80 whitespace-nowrap flex-shrink-0"
                     >
                       Change plan ↗
                     </button>
@@ -549,7 +486,7 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
                     <button
                       type="button"
                       onClick={handleChangePlan}
-                      className="text-[10px] font-bold text-blue-600 hover:underline whitespace-nowrap flex-shrink-0"
+                      className="text-[10px] font-bold text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-2 hover:opacity-80 whitespace-nowrap flex-shrink-0"
                     >
                       Change plan ↗
                     </button>
@@ -632,7 +569,7 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Country</label>
-                    <EditCountrySelect
+                    <CountrySelect
                       value={form.country}
                       onChange={(val) => {
                         setField('country', val)
@@ -710,7 +647,7 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Country</label>
-                    <EditCountrySelect
+                    <CountrySelect
                       value={form.country}
                       onChange={(val) => {
                         setField('country', val)
@@ -728,17 +665,26 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Airman Certificate Status</label>
-                    <select className={inp + ' cursor-pointer'} value={form.primaryAirmanCertificate} onChange={(e) => setField('primaryAirmanCertificate', e.target.value)}>
-                      <option value="EXISTING">EXISTING</option>
-                      <option value="NEW">NEW</option>
-                    </select>
+                    <CustomSelect
+                      value={form.primaryAirmanCertificate}
+                      onChange={(val) => setField('primaryAirmanCertificate', val)}
+                      options={[
+                        { value: 'EXISTING', label: 'EXISTING' },
+                        { value: 'NEW', label: 'NEW' },
+                      ]}
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Primary Certificate Type</label>
-                    <select className={inp + ' cursor-pointer'} value={form.primaryCertificate} onChange={(e) => setField('primaryCertificate', e.target.value)}>
-                      <option value="">Select certificate…</option>
-                      {INDIVIDUAL_CERT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    <CustomSelect
+                      value={form.primaryCertificate}
+                      onChange={(val) => setField('primaryCertificate', val)}
+                      placeholder="Select certificate…"
+                      options={[
+                        { value: '', label: 'Select certificate…' },
+                        ...INDIVIDUAL_CERT_TYPES.map((t) => ({ value: t, label: t })),
+                      ]}
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">FAA Certificate Number</label>
@@ -751,15 +697,15 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
                 </div>
 
                 {/* Secondary certificate toggle */}
-                <label className={`flex items-center gap-2.5 cursor-pointer p-3 rounded-lg border select-none transition-all ${form.hasSecondaryCertificate ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-blue-200 bg-white'
+                <label className={`flex items-center gap-2.5 cursor-pointer p-3 rounded-lg border select-none transition-all ${form.hasSecondaryCertificate ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 hover:border-emerald-200 bg-white'
                   }`}>
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${form.hasSecondaryCertificate ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${form.hasSecondaryCertificate ? 'bg-[#34E06E] border-[#34E06E]' : 'bg-white border-slate-300'
                     }`}>
-                    {form.hasSecondaryCertificate && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
+                  {form.hasSecondaryCertificate && (
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                   </div>
                   <input
                     type="checkbox"
@@ -770,20 +716,21 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
                   <span className="text-sm font-semibold text-slate-700">Has secondary FAA certificate</span>
                 </label>
 
-                {/* Secondary fields — rendered inline, never clipped */}
+                {/* Secondary fields, rendered inline, never clipped */}
                 {form.hasSecondaryCertificate && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3 space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Secondary Certificate</p>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Secondary Certificate</p>
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Secondary Certificate Type</label>
-                      <select
-                        className={inp + ' cursor-pointer'}
+                      <CustomSelect
                         value={form.secondaryCertificate}
-                        onChange={(e) => setField('secondaryCertificate', e.target.value)}
-                      >
-                        <option value="">Select certificate…</option>
-                        {INDIVIDUAL_CERT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                        onChange={(val) => setField('secondaryCertificate', val)}
+                        placeholder="Select certificate…"
+                        options={[
+                          { value: '', label: 'Select certificate…' },
+                          ...INDIVIDUAL_CERT_TYPES.map((t) => ({ value: t, label: t })),
+                        ]}
+                      />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1">
@@ -813,13 +760,14 @@ export function EditSubscriptionFormModal({ sub, role, onClose, onSaved }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 px-4 py-2 text-sm font-bold text-white w-full sm:w-auto"
+            className="rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 px-4 py-2 text-sm font-bold text-white w-full sm:w-auto"
           >
             {saving ? 'Saving...' : 'Save Form Data'}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -875,7 +823,7 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
   const [submitting, setSubmitting] = useState(false)
   const [apiError, setApiError] = useState('')
 
-  // Re-scope the form whenever the target plan changes — only show holders that
+  // Re-scope the form whenever the target plan changes, only show holders that
   // belong to the selected plan (blank row when it has none yet).
   useEffect(() => {
     setHolders(buildRows(targetGroupId))
@@ -887,7 +835,7 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
   // as the first rows; only rows beyond this are genuinely new).
   const existingCount = holdersForTarget(targetGroupId).length
   const newMembersCount = Math.max(0, holders.length - existingCount)
-  // Live remaining slots — based on rows currently in the form, so removing a holder
+  // Live remaining slots, based on rows currently in the form, so removing a holder
   // frees a slot and re-enables "Add Certificate Holder".
   const remainingSlots = Math.max(0, targetCapacity - holders.length)
   const atLimit = holders.length >= targetCapacity
@@ -900,7 +848,7 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
   }
 
   const removeRow = (i) => {
-    // Allow removing any holder — existing members too. Saving the form persists the
+    // Allow removing any holder, existing members too. Saving the form persists the
     // remaining list, so a removed holder is dropped from the airline's record.
     if (holders.length > 1) setHolders(prev => prev.filter((_, idx) => idx !== i))
   }
@@ -977,25 +925,26 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
     }
   }
 
-  const inp = (err) => `w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white outline-none focus:ring-2 focus:ring-blue-600/15 ${err ? 'border-red-300 bg-red-50/30' : 'border-gray-200 focus:border-blue-600'}`
+  const inp = (err) => `w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white outline-none focus:ring-2 focus:ring-slate-900/10 ${err ? 'border-red-300 bg-red-50/30' : 'border-gray-200 focus:border-slate-900'}`
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/50 px-4 pt-[88px] sm:pt-[96px] pb-4 animate-modal-backdrop">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col animate-modal-panel max-h-[calc(100vh-104px)] sm:max-h-[calc(100vh-120px)]">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl sm:max-w-3xl flex flex-col animate-modal-panel h-[85vh] max-h-[780px] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0 bg-white">
           <div>
-            <h2 className="text-base font-black text-gray-900">Certificate Holders</h2>
+            <h2 className="text-lg font-black text-gray-900">Certificate Holders</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               {remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} remaining · already covered by your committed plan
             </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-600 transition-all flex-shrink-0">
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all flex-shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        {/* Cost banner — fixed below header */}
+        {/* Cost banner, fixed below header */}
         <div className="px-4 sm:px-6 py-2.5 border-b border-slate-100 bg-slate-50/70 flex-shrink-0">
           <span className="text-sm text-slate-700 font-semibold">
             {existingCount > 0
@@ -1004,9 +953,9 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
           </span>
         </div>
 
-        {/* Group price summary — shown when scoped to a specific upgrade plan */}
+        {/* Group price summary, shown when scoped to a specific upgrade plan */}
         {targetGroup && (
-          <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-blue-50/40 flex-shrink-0">
+          <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-emerald-50/30 flex-shrink-0">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="text-sm font-black text-slate-900">{planShortLabel(targetGroup.plan, targetGroup.multiYearCount)} upgrade</span>
               <span className="text-sm font-black text-slate-900 tabular-nums">${Number(targetGroup.amount || 0).toFixed(2)}</span>
@@ -1016,23 +965,25 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
               <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">Slots</span>{filledInTarget} / {targetGroup.count} filled</div>
               <div><span className="block text-[9px] font-bold uppercase tracking-wide text-slate-500">Expiry</span>{targetGroup.plan === 'Unlimited Plan' ? 'Never' : (targetGroup.expirationDate ? fmtYMD(targetGroup.expirationDate) : '—')}</div>
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">These slots are already paid for — fill them with certificate holders below at no extra charge.</p>
+            <p className="mt-2 text-[11px] text-slate-500">These slots are already paid for, fill them with certificate holders below at no extra charge.</p>
           </div>
         )}
 
-        {/* Plan batch selector — assign new holders to a paid upgrade group */}
+        {/* Plan batch selector, assign new holders to a paid upgrade group */}
         {holderGroups.length > 0 && (
           <div className="px-4 sm:px-6 py-2.5 border-b border-slate-100 flex-shrink-0">
             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Fill into plan</label>
-            <select value={targetGroupId} onChange={e => setTargetGroupId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition">
-              <option value="">Base plan — {planShortLabel(sub.subscriptionPlan, sub.multiYearCount)} ({baseCommitted} slots)</option>
-              {holderGroups.map((g, gi) => (
-                <option key={String(g._id || gi)} value={String(g._id)}>
-                  {planShortLabel(g.plan, g.multiYearCount)} upgrade ({g.count} slots)
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={targetGroupId}
+              onChange={val => setTargetGroupId(val)}
+              options={[
+                { value: '', label: `Base plan, ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)} (${baseCommitted} slots)` },
+                ...holderGroups.map((g, gi) => ({
+                  value: String(g._id),
+                  label: `${planShortLabel(g.plan, g.multiYearCount)} upgrade (${g.count} slots)`
+                }))
+              ]}
+            />
           </div>
         )}
 
@@ -1065,10 +1016,16 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Certificate Type *</label>
-                  <select value={h.certificateType} data-field="certificateType" onChange={e => onChange(i, 'certificateType', e.target.value)} className={inp(errors[i]?.certificateType) + ' cursor-pointer'}>
-                    <option value="">Select…</option>
-                    {CERTIFICATE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={h.certificateType}
+                    onChange={val => onChange(i, 'certificateType', val)}
+                    placeholder="Select…"
+                    error={!!errors[i]?.certificateType}
+                    options={[
+                      { value: '', label: 'Select…' },
+                      ...CERTIFICATE_TYPES.map(t => ({ value: t, label: t }))
+                    ]}
+                  />
                   {errors[i]?.certificateType && <p className="text-red-500 text-xs mt-0.5">{errors[i].certificateType}</p>}
                 </div>
                 <div>
@@ -1104,9 +1061,9 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
               </div>
 
               {/* Secondary Certificate Toggle */}
-              <label className={`flex items-center gap-3 cursor-pointer p-3 rounded-xl border transition-all ${h.hasSecondaryCertificate ? 'border-blue-200 bg-blue-50/50' : 'border-gray-200 hover:border-blue-200 bg-white'
+              <label className={`flex items-center gap-3 cursor-pointer p-3 rounded-xl border transition-all ${h.hasSecondaryCertificate ? 'border-emerald-200 bg-emerald-50/60/50' : 'border-gray-200 hover:border-emerald-200 bg-white'
                 }`}>
-                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${h.hasSecondaryCertificate ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${h.hasSecondaryCertificate ? 'bg-[#34E06E] border-[#34E06E]' : 'bg-white border-gray-300'
                   }`}>
                   {h.hasSecondaryCertificate && (
                     <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -1118,15 +1075,18 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
               </label>
 
               {h.hasSecondaryCertificate && (
-                <div className="ml-2 pl-3 border-l-2 border-blue-200 space-y-3 mt-2">
+                <div className="ml-2 pl-3 border-l-2 border-emerald-300 space-y-3 mt-2">
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Secondary Certificate Type *</label>
-                    <select value={h.secondaryCertificateType || ''}
-                      onChange={e => onChange(i, 'secondaryCertificateType', e.target.value)}
-                      className={inp(false) + ' cursor-pointer'}>
-                      <option value="">Select…</option>
-                      {CERTIFICATE_TYPES.filter(t => t !== h.certificateType).map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    <CustomSelect
+                      value={h.secondaryCertificateType || ''}
+                      onChange={val => onChange(i, 'secondaryCertificateType', val)}
+                      placeholder="Select…"
+                      options={[
+                        { value: '', label: 'Select…' },
+                        ...CERTIFICATE_TYPES.filter(t => t !== h.certificateType).map(t => ({ value: t, label: t }))
+                      ]}
+                    />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -1146,7 +1106,7 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
           ))}
 
           <button onClick={addRow} disabled={atLimit}
-            className={`w-full py-2.5 rounded-xl border-2 border-dashed text-sm font-semibold transition-all ${atLimit ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400'
+            className={`w-full py-2.5 rounded-xl border-2 border-dashed text-sm font-semibold transition-all ${atLimit ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50/50 hover:border-emerald-400'
               }`}>
             + Add Certificate Holder {atLimit ? `(max ${targetCapacity})` : `(${holders.length}/${targetCapacity})`}
           </button>
@@ -1157,18 +1117,17 @@ function AddHoldersModal({ sub, token, onClose, onSuccess, initialGroupId = '' }
         </div>
 
         {/* Footer */}
-        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 sm:px-6 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-all">Cancel</button>
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all shadow-sm">Cancel</button>
           <button onClick={handleSubmit} disabled={submitting}
-            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50"
-            style={{ background: '#0000ff' }}
-            onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.background = '#0000e6' }}
-            onMouseLeave={e => e.currentTarget.style.background = '#0000ff'}>
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 hover:bg-slate-800 shadow-sm"
+            style={{ background: '#020617' }}>
             {submitting ? 'Saving…' : 'Save Holders'}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -1196,7 +1155,7 @@ function planShortLabel(plan, years) {
   return plan || '—'
 }
 
-// Modern plan summary card — dark header strip + clean white body. Shared by the
+// Modern plan summary card, dark header strip + clean white body. Shared by the
 // base plan and each added holder-upgrade plan on the airline Subscription page.
 function PlanCard({
   accent = false, clickable = false, onClick, title, tag, name, amount,
@@ -1213,7 +1172,7 @@ function PlanCard({
       onClick={handleClick}
       onKeyDown={handleClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick() } } : undefined}
       title={clickable ? title : undefined}
-      className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition ${accent ? 'border-slate-900/10 ring-1 ring-blue-500/20' : 'border-slate-200'} ${clickable ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300' : ''}`}
+      className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition ${accent ? 'border-slate-900/10 ring-1 ring-emerald-500/20' : 'border-slate-200'} ${clickable ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300' : ''}`}
     >
       {/* Dark header strip */}
       <div className={`relative flex items-center justify-between gap-3 px-4 py-3 ${accent ? 'bg-gradient-to-r from-slate-900 to-slate-800' : 'bg-slate-900'}`}>
@@ -1245,7 +1204,7 @@ function PlanCard({
           <span className="text-slate-500 font-bold tabular-nums">{clampedPct}%</span>
         </div>
         <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-          <div className={`h-full rounded-full transition-all ${filled >= total ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${clampedPct}%` }} />
+          <div className="h-full rounded-full transition-all bg-[#34E06E]" style={{ width: `${clampedPct}%` }} />
         </div>
 
         {/* Meta row */}
@@ -1265,7 +1224,7 @@ function PlanCard({
             <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span className="truncate">{planShortLabel(nextRenewal.plan)} queued — activates {nextRenewal.activationDate ? fmtYMD(nextRenewal.activationDate) : 'at expiry'}</span>
+            <span className="truncate">{planShortLabel(nextRenewal.plan)} queued, activates {nextRenewal.activationDate ? fmtYMD(nextRenewal.activationDate) : 'at expiry'}</span>
           </div>
         )}
 
@@ -1313,7 +1272,7 @@ function AttachedPlanRow({ s, g, active, onManageGroup, onRenewGroup, onConvertG
       onClick={onManageGroup ? () => onManageGroup(g) : undefined}
       onKeyDown={onManageGroup ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onManageGroup(g) } } : undefined}
       title={onManageGroup ? 'View holders & manage this plan' : undefined}
-      className={`rounded-xl border bg-white px-3.5 py-3 transition ${onManageGroup ? 'cursor-pointer hover:border-slate-300 hover:shadow-sm' : ''} ${g.isActive === false ? 'border-slate-300 bg-slate-50 opacity-75' : highlight && gCanRenew ? 'border-blue-400 ring-2 ring-blue-400/40 bg-blue-50/40 shadow-sm' : gExpired ? 'border-red-200' : 'border-slate-200'}`}
+      className={`rounded-xl border bg-white px-3.5 py-3 transition ${onManageGroup ? 'cursor-pointer hover:border-slate-300 hover:shadow-sm' : ''} ${g.isActive === false ? 'border-slate-300 bg-slate-50 opacity-75' : highlight && gCanRenew ? 'border-emerald-300 ring-2 ring-emerald-300/30 bg-emerald-50/20 shadow-sm' : gExpired ? 'border-red-200' : 'border-slate-200'}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1354,7 +1313,7 @@ function AttachedPlanRow({ s, g, active, onManageGroup, onRenewGroup, onConvertG
           {onConvertGroupUnlimited && active && !isUnlimited && !gQueued && !gExpired && (
             <button
               onClick={(e) => { e.stopPropagation(); onConvertGroupUnlimited(g) }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/60 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 11l7-7 7 7M5 19l7-7 7 7" /></svg>
               To Unlimited
@@ -1373,14 +1332,14 @@ function AttachedPlanRow({ s, g, active, onManageGroup, onRenewGroup, onConvertG
       {gQueued && (
         <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600">
           <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          Renewal queued — activates {g.nextRenewal.activationDate ? fmtYMD(g.nextRenewal.activationDate) : 'at expiry'}
+          Renewal queued, activates {g.nextRenewal.activationDate ? fmtYMD(g.nextRenewal.activationDate) : 'at expiry'}
         </div>
       )}
     </div>
   )
 }
 
-// The base/main plan rendered as a uniform card — same visual language as
+// The base/main plan rendered as a uniform card, same visual language as
 // AttachedPlanRow so every plan in the expanded view reads consistently.
 function BasePlanRow({ s, active, baseCommitted, onAddHolders, onRenew, onConvertUnlimited, highlight = false, onCancelPlan, wirePending = false }) {
   const baseFilled = (s.certificateHolders || []).filter(h => !h.holderGroupId).length
@@ -1398,7 +1357,7 @@ function BasePlanRow({ s, active, baseCommitted, onAddHolders, onRenew, onConver
     ? new Date(s.wirePaymentRequestedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : null
   return (
-    <div className={`rounded-xl border bg-white px-3.5 py-3 transition ${wirePending ? 'border-blue-300 ring-2 ring-blue-300/40 bg-blue-50/30' : highlight && baseCanRenew ? 'border-blue-400 ring-2 ring-blue-400/40 bg-blue-50/40 shadow-sm' : baseExpired ? 'border-red-200' : 'border-slate-200'}`}>
+    <div className={`rounded-xl border bg-white px-3.5 py-3 transition ${wirePending ? 'border-emerald-200 ring-2 ring-emerald-200/40 bg-emerald-50/20' : highlight && baseCanRenew ? 'border-emerald-300 ring-2 ring-emerald-300/30 bg-emerald-50/20 shadow-sm' : baseExpired ? 'border-red-200' : 'border-slate-200'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -1410,8 +1369,7 @@ function BasePlanRow({ s, active, baseCommitted, onAddHolders, onRenew, onConver
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 border border-red-200 text-[9px] font-bold text-red-700 uppercase tracking-wide">Cancellation requested</span>
             )}
             {wirePending && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-100 border border-blue-200 text-[9px] font-bold text-blue-700 uppercase tracking-wide">
-                <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse inline-block" />
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[9px] font-bold text-emerald-700 uppercase tracking-wide">
                 Pending
               </span>
             )}
@@ -1428,8 +1386,8 @@ function BasePlanRow({ s, active, baseCommitted, onAddHolders, onRenew, onConver
           </p>
           <p className="mt-1 flex items-center gap-2 text-[10px] text-slate-400">
             {wirePending
-              ? <><span className="font-semibold text-blue-500">Wire transfer under review</span>{wireAmt && <span>{wireAmt}</span>}{wireSubmitted && <span>Submitted {wireSubmitted}</span>}</>
-              : <><span className="font-semibold">Main plan — drives holder capacity</span>{invNum && <span className="font-mono">Invoice {invNum}</span>}</>
+              ? <><span className="font-semibold text-emerald-600">Wire transfer under review</span>{wireAmt && <span>{wireAmt}</span>}{wireSubmitted && <span>Submitted {wireSubmitted}</span>}</>
+              : <><span className="font-semibold">Main plan, drives holder capacity</span>{invNum && <span className="font-mono">Invoice {invNum}</span>}</>
             }
           </p>
         </div>
@@ -1449,7 +1407,7 @@ function BasePlanRow({ s, active, baseCommitted, onAddHolders, onRenew, onConver
           {onConvertUnlimited && active && !baseUnlimited && !baseQueued && !baseExpired && (
             <button
               onClick={(e) => { e.stopPropagation(); onConvertUnlimited() }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/60 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 11l7-7 7 7M5 19l7-7 7 7" /></svg>
               Convert to Unlimited
@@ -1476,14 +1434,14 @@ function BasePlanRow({ s, active, baseCommitted, onAddHolders, onRenew, onConver
       {baseQueued && (
         <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600">
           <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          Renewal queued — activates {s.nextRenewal.activationDate ? fmtYMD(s.nextRenewal.activationDate) : 'at expiry'}
+          Renewal queued, activates {s.nextRenewal.activationDate ? fmtYMD(s.nextRenewal.activationDate) : 'at expiry'}
         </div>
       )}
     </div>
   )
 }
 
-// Pending wire-transfer request rendered as a uniform plan card — same visual
+// Pending wire-transfer request rendered as a uniform plan card, same visual
 // language as BasePlanRow / AttachedPlanRow so it reads like a plan awaiting
 // approval rather than a banner stuck on the header.
 function WirePendingRow({ s }) {
@@ -1500,15 +1458,14 @@ function WirePendingRow({ s }) {
   const invNum = String(wd.invoiceNumber || s.wireRequestInvoiceNumber || '').replace(/^invoice\s+/i, '')
   const title = isHolderUpgrade ? 'Holder Upgrade' : isConversion ? 'Convert to Unlimited' : 'Renewal'
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/40 px-3.5 py-3 transition">
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60/40 px-3.5 py-3 transition">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[13px] font-bold text-slate-900">
               {title}
             </span>
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-100 border border-blue-200 text-[9px] font-bold text-blue-700 uppercase tracking-wide">
-              <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse inline-block" />
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[9px] font-bold text-emerald-700 uppercase tracking-wide">
               Pending
             </span>
           </div>
@@ -1516,7 +1473,7 @@ function WirePendingRow({ s }) {
             {isHolderUpgrade
               ? <>+<span className="font-semibold text-slate-700">{addCount != null ? addCount : '?'} holder{addCount !== 1 ? 's' : ''}</span> requested</>
               : isConversion
-                ? <><span className="font-semibold text-slate-700">{isGroupConversion ? 'Add-on plan' : 'Base plan'}</span> → <span className="font-semibold text-blue-700">Unlimited</span></>
+                ? <><span className="font-semibold text-slate-700">{isGroupConversion ? 'Add-on plan' : 'Base plan'}</span> → <span className="font-semibold text-emerald-700">Unlimited</span></>
                 : <>Plan <span className="font-semibold text-slate-700">{plan}</span></>
             }
             {amt && <><span className="text-slate-300"> · </span><span className="font-semibold text-slate-700">{amt}</span></>}
@@ -1532,7 +1489,7 @@ function WirePendingRow({ s }) {
   )
 }
 
-// Consolidated "current active subscription" — preview header summarises the active
+// Consolidated "current active subscription", preview header summarises the active
 // plan (and how many plans total); expanding reveals every plan (base + attached)
 // as uniform detail cards.
 function ActiveSubscriptionBlock({ s, active, onAddHolders, onManageGroup, onRenew, onRenewGroup, onCancelPlan, onConvertUnlimited, onConvertGroupUnlimited, onShowCredits, forceExpandKey }) {
@@ -1601,8 +1558,8 @@ function ActiveSubscriptionBlock({ s, active, onAddHolders, onManageGroup, onRen
   )
 
   return (
-    <motion.div layout className={`rounded-2xl border bg-white shadow-sm overflow-hidden transition-shadow duration-500 ${highlightBlock ? 'border-blue-400 ring-2 ring-blue-400/40 shadow-blue-100' : 'border-slate-200'}`} transition={{ layout: { duration: 0.25, ease: [0.4, 0, 0.2, 1] } }}>
-      {/* ── Preview header — always visible, click to expand/collapse ── */}
+    <motion.div layout className={`rounded-2xl border bg-white shadow-sm overflow-hidden transition-shadow duration-500 ${highlightBlock ? 'border-emerald-300 ring-2 ring-emerald-300/30 shadow-emerald-100/50' : 'border-slate-200'}`} transition={{ layout: { duration: 0.25, ease: [0.4, 0, 0.2, 1] } }}>
+      {/* ── Preview header, always visible, click to expand/collapse ── */}
       <div
         role="button"
         tabIndex={0}
@@ -1661,7 +1618,7 @@ function ActiveSubscriptionBlock({ s, active, onAddHolders, onManageGroup, onRen
             <span className={`font-bold tabular-nums ${totalPct >= 100 ? 'text-emerald-600' : 'text-slate-400'}`}>{totalPct}%</span>
           </div>
           <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${totalFilled >= totalCommitted ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${totalPct}%` }} />
+            <div className="h-full rounded-full transition-all bg-[#34E06E]" style={{ width: `${totalPct}%` }} />
           </div>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
             <span className="inline-flex items-center gap-1 text-[10px] text-slate-500">
@@ -1691,7 +1648,7 @@ function ActiveSubscriptionBlock({ s, active, onAddHolders, onManageGroup, onRen
         </div>
       </div>
 
-      {/* ── Expanded details — every plan as a uniform card ── */}
+      {/* ── Expanded details, every plan as a uniform card ── */}
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
@@ -1721,7 +1678,7 @@ function ActiveSubscriptionBlock({ s, active, onAddHolders, onManageGroup, onRen
   )
 }
 
-// Individual-side "Current Subscription" block — mirrors the airline
+// Individual-side "Current Subscription" block, mirrors the airline
 // ActiveSubscriptionBlock but for a single person (no holders/groups). Shows the
 // active plan clearly and, when a renewal is queued, the upcoming plan below it.
 function IndividualSubscriptionBlock({ s, active, onUpgrade, onShowCredits, onRenew, onEditCert, forceExpandKey }) {
@@ -1758,7 +1715,7 @@ function IndividualSubscriptionBlock({ s, active, onUpgrade, onShowCredits, onRe
       : exp ? <span className="text-[9px] font-black uppercase tracking-wide text-amber-300">{exp.label}</span> : null
 
   return (
-    <motion.div layout className={`rounded-2xl border bg-white shadow-sm overflow-hidden transition-shadow duration-500 ${highlightBlock ? 'border-blue-400 ring-2 ring-blue-400/40 shadow-blue-100' : 'border-slate-200'}`} transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}>
+    <motion.div layout className={`rounded-2xl border bg-white shadow-sm overflow-hidden transition-shadow duration-500 ${highlightBlock ? 'border-emerald-300 ring-2 ring-emerald-300/30 shadow-emerald-100/50' : 'border-slate-200'}`} transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}>
       <div
         role="button"
         tabIndex={0}
@@ -1831,7 +1788,7 @@ function IndividualSubscriptionBlock({ s, active, onUpgrade, onShowCredits, onRe
             className="overflow-hidden"
           >
             <div className="px-4 sm:px-5 py-4 space-y-3 border-t border-slate-100">
-              {/* Active plan card — click to edit certificate details */}
+              {/* Active plan card, click to edit certificate details */}
               <div
                 role={onEditCert ? 'button' : undefined}
                 tabIndex={onEditCert ? 0 : undefined}
@@ -1857,7 +1814,7 @@ function IndividualSubscriptionBlock({ s, active, onUpgrade, onShowCredits, onRe
                   {canUpgrade && onUpgrade && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onUpgrade() }}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition flex-shrink-0"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition flex-shrink-0"
                     >
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 11l7-7 7 7M5 19l7-7 7 7" /></svg>
                       Upgrade Plan
@@ -1906,19 +1863,19 @@ function holderPlanInfo(h, sub) {
   return { label: planShortLabel(sub.subscriptionPlan, sub.multiYearCount), isGroup: false, expiry: sub.expirationDate }
 }
 
-// ─── Payment method chooser (airlines) — Card vs Wire Transfer ────────────────
+// ─── Payment method chooser (airlines), Card vs Wire Transfer ────────────────
 // Shown before any airline payment (renewal / holder expansion). Card continues
 // to the Stripe modal as before; Wire submits an invoice request carrying the
-// full requested change — admin approves (activates exactly what was requested)
+// full requested change, admin approves (activates exactly what was requested)
 // or declines it.
 function PaymentMethodStep({ amountLabel, summary, onCard, onWire, onBack, submitting, error }) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-modal-backdrop">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-modal-backdrop" style={{ zIndex: 9999 }}>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={submitting ? undefined : onBack} />
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel">
         <div className="px-5 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">Choose Payment Method</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Choose Payment Method</p>
             <h3 className="text-lg font-black text-slate-900">How would you like to pay?</h3>
             {summary && <p className="text-xs text-slate-500 mt-1">{summary}</p>}
           </div>
@@ -1931,23 +1888,23 @@ function PaymentMethodStep({ amountLabel, summary, onCard, onWire, onBack, submi
           {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 font-semibold">{error}</div>}
 
           <button onClick={onCard} disabled={submitting}
-            className="w-full text-left rounded-2xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 px-4 py-3.5 transition group disabled:opacity-60">
+            className="w-full text-left rounded-2xl border-2 border-slate-200 hover:border-slate-900 hover:bg-slate-50/50 px-4 py-3.5 transition group disabled:opacity-60">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h2m4 0h2M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-black text-slate-900">Credit / Debit Card</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Pay {amountLabel} now — activates instantly.</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Pay {amountLabel} now, activates instantly.</p>
               </div>
-              <svg className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              <svg className="w-4 h-4 text-slate-300 group-hover:text-slate-900 transition flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
             </div>
           </button>
 
           <button onClick={onWire} disabled={submitting}
-            className="w-full text-left rounded-2xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 px-4 py-3.5 transition group disabled:opacity-60">
+            className="w-full text-left rounded-2xl border-2 border-slate-200 hover:border-slate-900 hover:bg-slate-50/50 px-4 py-3.5 transition group disabled:opacity-60">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1956,34 +1913,35 @@ function PaymentMethodStep({ amountLabel, summary, onCard, onWire, onBack, submi
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-black text-slate-900">{submitting ? 'Sending request…' : 'Wire Transfer'}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Request an invoice for {amountLabel} — admin reviews and activates your requested plan on approval.</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Request an invoice for {amountLabel}, admin reviews and activates your requested plan on approval.</p>
               </div>
-              <svg className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              <svg className="w-4 h-4 text-slate-300 group-hover:text-slate-900 transition flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
             </div>
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
-// Wire request submitted — confirmation with bank details (mirrors registration Step 4).
+// Wire request submitted, confirmation with bank details (mirrors registration Step 4).
 function WireRequestSentView({ onClose }) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-modal-backdrop">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-modal-backdrop" style={{ zIndex: 9999 }}>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel">
         <div className="flex flex-col items-center justify-center px-6 py-9 text-center">
-          <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200 mb-5">
-            <svg className="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+          <div className="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200 mb-5">
+            <svg className="w-9 h-9 text-[#34E06E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-600 mb-2">Request Sent to Admin</p>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-[#34E06E] mb-2">Request Sent to Admin</p>
           <h3 className="text-xl font-black text-slate-900 mb-2">Wire Request Submitted!</h3>
           <p className="text-sm text-slate-500 mb-4 max-w-xs leading-relaxed">Our team will review your request. Once approved, your requested plan activates automatically.</p>
-          <div className="w-full max-w-xs rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 mb-6 text-left space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-3">Bank Details for Wire Transfer</p>
+          <div className="w-full max-w-xs rounded-2xl border border-slate-200 bg-slate-50/80 px-5 py-4 mb-6 text-left space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Bank Details for Wire Transfer</p>
             {[['Bank', 'Banque Revolut Bank UAB'], ['Account Owner', 'International Flight Operations Academy GmbH'], ['BIC', 'REVOLT21'], ['Intermediary BIC', 'CHASGB2L'], ['Account #', 'LT04 3250 0415 2968 6697']].map(([k, v]) => (
               <div key={k} className="flex items-start justify-between gap-3 text-sm">
                 <span className="text-slate-400 font-medium whitespace-nowrap">{k}</span>
@@ -1992,19 +1950,20 @@ function WireRequestSentView({ onClose }) {
             ))}
           </div>
           <button type="button" onClick={onClose}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-blue-200">
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-8 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-slate-200">
             Done
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
 function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
   // "Current slots" = holders already covered by EVERY currently-active plan (base if
   // live + all active add-ons). Added holders stack on top, so the tier reads at
-  // currentCount + additionalCount. SINGLE SOURCE activeCoverageAnchor — same anchor
+  // currentCount + additionalCount. SINGLE SOURCE activeCoverageAnchor, same anchor
   // the backend charges with, so the displayed price equals what's billed.
   const currentCount = activeCoverageAnchor(sub, {})
   // Min holders to add: when active coverage already exists the airline 3-holder floor
@@ -2014,7 +1973,7 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
 
   const [additionalCount, setAdditionalCount] = useState(minAdditional)
   // Plan this batch of holders will be on (independent of the base plan).
-  // Airlines only offer 1 Year / Unlimited — default to a valid option.
+  // Airlines only offer 1 Year / Unlimited, default to a valid option.
   const [batchPlan, setBatchPlan] = useState(
     HOLDER_PLAN_OPTIONS.some(o => o.value === sub.subscriptionPlan) ? sub.subscriptionPlan : '1 Year Subscription Plan'
   )
@@ -2031,11 +1990,11 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
 
   const isMultiYear = batchPlan === 'Multiple Years Subscription Plan'
 
-  // Existing plans the added holders can merge INTO — must be the same plan type.
+  // Existing plans the added holders can merge INTO, must be the same plan type.
   const mergeTargets = useMemo(() => {
     const list = []
     if (sub.subscriptionPlan === batchPlan)
-      list.push({ id: 'base', label: `Base plan — ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}`, expiry: sub.expirationDate })
+      list.push({ id: 'base', label: `Base plan, ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}`, expiry: sub.expirationDate })
         ; (sub.holderGroups || []).forEach((g) => {
           if (g.plan === batchPlan)
             list.push({ id: String(g._id), label: `${planShortLabel(g.plan, g.multiYearCount)} plan`, expiry: g.expirationDate })
@@ -2054,7 +2013,7 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
   const totalCount = currentCount + additionalCount
   const newPpc = airlineTierPpc(batchPlan, totalCount)
   const currentPpc = airlineTierPpc(sub.subscriptionPlan, currentCount) // base-plan rate (display)
-  // Tier comparison must stay within the SAME (batch) plan — otherwise a plan
+  // Tier comparison must stay within the SAME (batch) plan, otherwise a plan
   // switch (e.g. 1 Year → Unlimited) falsely reads as a tier change.
   const batchPpcAtCurrent = airlineTierPpc(batchPlan, currentCount)
   const tierChanged = newPpc !== batchPpcAtCurrent
@@ -2147,7 +2106,7 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
     return (
       <PaymentMethodStep
         amountLabel={`$${dueAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-        summary={`Expand holders — +${additionalCount} on ${planShortLabel(batchPlan, isMultiYear ? batchYears : null)}`}
+        summary={`Expand holders, +${additionalCount} on ${planShortLabel(batchPlan, isMultiYear ? batchYears : null)}`}
         submitting={wireSubmitting}
         error={wireErr}
         onBack={() => { setWireErr(''); setShowMethodStep(false) }}
@@ -2182,10 +2141,10 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
     )
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 animate-modal-backdrop">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel flex flex-col max-h-[calc(100vh-104px)] sm:max-h-[calc(100vh-120px)]">
+      <div className="relative z-10 w-full max-w-xl sm:max-w-2xl h-[85vh] max-h-[780px] rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel flex flex-col">
 
         {/* Accent bar */}
         <div className="h-0.5 w-full bg-slate-200 flex-shrink-0" />
@@ -2219,7 +2178,7 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
             </div>
           </div>
 
-          {/* Plan picker — this batch of holders gets its own plan */}
+          {/* Plan picker, this batch of holders gets its own plan */}
           <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 space-y-2.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Plan for these holders</p>
             <div className="grid grid-cols-2 gap-2">
@@ -2229,7 +2188,7 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
                   type="button"
                   onClick={() => setBatchPlan(opt.value)}
                   className={`rounded-lg border px-2 py-2 text-xs font-bold transition ${batchPlan === opt.value
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
                     : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                     }`}
                 >{opt.short}</button>
@@ -2249,24 +2208,24 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
             )}
           </div>
 
-          {/* Merge vs separate — only when an existing plan of the same type exists */}
+          {/* Merge vs separate, only when an existing plan of the same type exists */}
           {mergeTargets.length > 0 && (
             <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 space-y-2">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Attach these holders to</p>
-              <label className={`flex items-start gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition ${mergeTarget === '' ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
-                <input type="radio" className="mt-0.5 accent-blue-600" checked={mergeTarget === ''} onChange={() => setMergeTarget('')} />
+              <label className={`flex items-start gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition ${mergeTarget === '' ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-200 hover:border-slate-300'}`}>
+                <input type="radio" className="mt-0.5 accent-[#34E06E]" checked={mergeTarget === ''} onChange={() => setMergeTarget('')} />
                 <span>
                   <span className="block text-xs font-bold text-slate-800">New separate plan</span>
-                  <span className="block text-[10px] text-slate-500">Independent — full-length term starting today, its own expiry.</span>
+                  <span className="block text-[10px] text-slate-500">Independent, full-length term starting today, its own expiry.</span>
                 </span>
               </label>
               {mergeTargets.map((t) => (
-                <label key={t.id} className={`flex items-start gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition ${mergeTarget === t.id ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
-                  <input type="radio" className="mt-0.5 accent-blue-600" checked={mergeTarget === t.id} onChange={() => setMergeTarget(t.id)} />
+                <label key={t.id} className={`flex items-start gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition ${mergeTarget === t.id ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-200 hover:border-slate-300'}`}>
+                  <input type="radio" className="mt-0.5 accent-[#34E06E]" checked={mergeTarget === t.id} onChange={() => setMergeTarget(t.id)} />
                   <span>
                     <span className="block text-xs font-bold text-slate-800">Merge into {t.label}</span>
                     <span className="block text-[10px] text-slate-500">
-                      Shares that plan's dates{t.expiry ? ` — expires ${fmtYMD(t.expiry)}` : (batchPlan === 'Unlimited Plan' ? ' — no expiry' : '')}. Separate invoice.
+                      Shares that plan's dates{t.expiry ? `, expires ${fmtYMD(t.expiry)}` : (batchPlan === 'Unlimited Plan' ? ', no expiry' : '')}. Separate invoice.
                     </span>
                   </span>
                 </label>
@@ -2327,18 +2286,19 @@ function UpgradeHoldersModal({ sub, token, onClose, onSaved }) {
             Cancel
           </button>
           <button onClick={() => setShowMethodStep(true)}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold text-white transition"
-            style={{ background: '#0000ff' }}>
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold text-white transition hover:bg-slate-800 shadow-sm"
+            style={{ background: '#020617' }}>
             Proceed to Payment →
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  CancelPlanModal — airline permanently deletes one of its plans               */
+/*  CancelPlanModal, airline permanently deletes one of its plans               */
 /*  Flow: (optional) move holders to an active plan → confirm → confirm again    */
 /* ─────────────────────────────────────────────────────────────────────────── */
 function CancelPlanModal({ sub, planRef, role, token, onClose, onDone }) {
@@ -2346,8 +2306,8 @@ function CancelPlanModal({ sub, planRef, role, token, onClose, onDone }) {
   const isBase = planRef === 'base'
   const grp = isBase ? null : (sub.holderGroups || []).find(g => String(g._id) === String(planRef))
   const planLabel = isBase
-    ? `Base Plan — ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}`
-    : `${grp?.plan === 'Unlimited Plan' ? 'Lifetime' : 'Upgrade'} — ${planShortLabel(grp?.plan, grp?.multiYearCount)}`
+    ? `Base Plan, ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}`
+    : `${grp?.plan === 'Unlimited Plan' ? 'Lifetime' : 'Upgrade'}, ${planShortLabel(grp?.plan, grp?.multiYearCount)}`
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   useEffect(() => {
@@ -2365,52 +2325,50 @@ function CancelPlanModal({ sub, planRef, role, token, onClose, onDone }) {
       setBusy(false)
     }
   }
-  return (
-    <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-sm" onClick={busy ? undefined : onClose} />
-      <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4">
-        <motion.div initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
-          className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-            <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-red-50 text-red-600">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-widest text-red-600">Cancel Plan</p>
-              <p className="text-sm font-extrabold text-slate-900 truncate">{planLabel}</p>
-            </div>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={busy ? undefined : onClose} />
+      <motion.div initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
+        className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-modal-panel">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+          <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-red-50 text-red-600">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-widest text-red-600">Cancel Plan</p>
+            <p className="text-sm font-extrabold text-slate-900 truncate">{planLabel}</p>
           </div>
-          <div className="px-5 py-4 space-y-3">
-            {err && <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">{err}</div>}
-            <p className="text-xs text-slate-600">
-              This sends a <strong className="text-slate-900">cancellation request</strong> to the admin. Your plan stays
-              active and nothing is deleted until the admin reviews it — they may keep, edit, or remove it.
-            </p>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[11px] text-slate-600">
-              Requesting cancellation of: <strong className="text-slate-800">{planLabel}</strong>
-            </div>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          {err && <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">{err}</div>}
+          <p className="text-xs text-slate-600">
+            This sends a <strong className="text-slate-900">cancellation request</strong> to the admin. Your plan stays
+            active and nothing is deleted until the admin reviews it, they may keep, edit, or remove it.
+          </p>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[11px] text-slate-600">
+            Requesting cancellation of: <strong className="text-slate-800">{planLabel}</strong>
           </div>
-          <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-            <button onClick={onClose} disabled={busy} className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50">Keep plan</button>
-            <button onClick={doCancel} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-2 text-[12px] font-bold text-white transition disabled:opacity-60">
-              {busy ? 'Requesting…' : 'Request cancellation'}
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </>
+        </div>
+        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button onClick={onClose} disabled={busy} className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50">Keep plan</button>
+          <button onClick={doCancel} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 px-3.5 py-2 text-[12px] font-bold text-white transition disabled:opacity-60">
+            {busy ? 'Requesting…' : 'Request cancellation'}
+          </button>
+        </div>
+      </motion.div>
+    </div>,
+    document.body
   )
 }
 
-// (legacy hard-cancel modal with holder-move — retained, not rendered)
+// (legacy hard-cancel modal with holder-move, retained, not rendered)
 function _LegacyCancelPlanModal({ sub, planRef, token, onClose, onDone }) {
   const groups = sub.holderGroups || []
   const isBase = planRef === 'base'
   const grp = isBase ? null : groups.find(g => String(g._id) === String(planRef))
   const planLabel = isBase
-    ? `Base Plan — ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}`
-    : `${grp?.plan === 'Unlimited Plan' ? 'Lifetime' : 'Upgrade'} — ${planShortLabel(grp?.plan, grp?.multiYearCount)}`
+    ? `Base Plan, ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}`
+    : `${grp?.plan === 'Unlimited Plan' ? 'Lifetime' : 'Upgrade'}, ${planShortLabel(grp?.plan, grp?.multiYearCount)}`
 
   const planHolders = (sub.certificateHolders || []).filter(h =>
     isBase ? !h.holderGroupId : String(h.holderGroupId || '') === String(planRef))
@@ -2421,11 +2379,11 @@ function _LegacyCancelPlanModal({ sub, planRef, token, onClose, onDone }) {
 
   // Move targets = currently-active plans other than the one being cancelled.
   const targets = []
-  if (!isBase && baseActive) targets.push({ ref: 'base', label: `Base Plan — ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}` })
+  if (!isBase && baseActive) targets.push({ ref: 'base', label: `Base Plan, ${planShortLabel(sub.subscriptionPlan, sub.multiYearCount)}` })
   groups.forEach(g => {
     if (String(g._id) === String(planRef)) return
     if (!isActiveHolderGroup(g)) return
-    targets.push({ ref: String(g._id), label: `${g.plan === 'Unlimited Plan' ? 'Lifetime' : 'Upgrade'} — ${planShortLabel(g.plan, g.multiYearCount)}` })
+    targets.push({ ref: String(g._id), label: `${g.plan === 'Unlimited Plan' ? 'Lifetime' : 'Upgrade'}, ${planShortLabel(g.plan, g.multiYearCount)}` })
   })
 
   // Free slots on a target = its fixed capacity − holders already on it.
@@ -2520,9 +2478,9 @@ function _LegacyCancelPlanModal({ sub, planRef, token, onClose, onDone }) {
                   {targets.map(t => {
                     const free = targetFreeFor(t.ref)
                     return (
-                      <label key={t.ref} className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition ${holderTarget === t.ref ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
+                      <label key={t.ref} className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition ${holderTarget === t.ref ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-200 hover:border-slate-300'}`}>
                         <span className="flex items-center gap-2.5 min-w-0">
-                          <input type="radio" className="accent-blue-600" checked={holderTarget === t.ref} onChange={() => pickTarget(t.ref)} />
+                          <input type="radio" className="accent-[#34E06E]" checked={holderTarget === t.ref} onChange={() => pickTarget(t.ref)} />
                           <span className="text-xs font-semibold text-slate-800 truncate">{t.label}</span>
                         </span>
                         <span className={`text-[10px] font-bold flex-shrink-0 ${free >= planHolders.length ? 'text-emerald-600' : 'text-amber-600'}`}>{free} free</span>
@@ -2536,7 +2494,7 @@ function _LegacyCancelPlanModal({ sub, planRef, token, onClose, onDone }) {
                 </div>
                 {needsSelection && (
                   <p className="text-[11px] font-semibold text-amber-700">
-                    “{targetLabel}” has only {chosenFree} free slot{chosenFree !== 1 ? 's' : ''} — you'll choose which {chosenFree} of {planHolders.length} holders to move next.
+                    “{targetLabel}” has only {chosenFree} free slot{chosenFree !== 1 ? 's' : ''}, you'll choose which {chosenFree} of {planHolders.length} holders to move next.
                   </p>
                 )}
               </>
@@ -2554,8 +2512,8 @@ function _LegacyCancelPlanModal({ sub, planRef, token, onClose, onDone }) {
                     const checked = selectedIds.has(hid)
                     const disabled = !checked && selectedIds.size >= chosenFree
                     return (
-                      <label key={hid} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border transition ${checked ? 'border-blue-500 bg-blue-50/60' : disabled ? 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed' : 'border-slate-200 hover:border-slate-300 cursor-pointer'}`}>
-                        <input type="checkbox" className="accent-blue-600" checked={checked} disabled={disabled} onChange={() => toggleHolder(hid)} />
+                      <label key={hid} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border transition ${checked ? 'border-emerald-400 bg-emerald-50/40' : disabled ? 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed' : 'border-slate-200 hover:border-slate-300 cursor-pointer'}`}>
+                        <input type="checkbox" className="accent-[#34E06E]" checked={checked} disabled={disabled} onChange={() => toggleHolder(hid)} />
                         <span className="text-xs font-semibold text-slate-800 truncate">{holderName(h)}</span>
                       </label>
                     )
@@ -2620,7 +2578,7 @@ function _LegacyCancelPlanModal({ sub, planRef, token, onClose, onDone }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  CreditsModal — per-plan unused-time credit (value toward an upgrade)         */
+/*  CreditsModal, per-plan unused-time credit (value toward an upgrade)         */
 /* ─────────────────────────────────────────────────────────────────────────── */
 function CreditsModal({ sub, role, token, onClose }) {
   const [loading, setLoading] = useState(true)
@@ -2656,11 +2614,11 @@ function CreditsModal({ sub, role, token, onClose }) {
   const fmtD = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
   const planLbl = (p) => p === 'Unlimited Plan' ? 'Unlimited' : p === 'Multiple Years Subscription Plan' ? 'Multi-Year' : '1 Year'
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
-        className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+        className="relative z-10 w-full max-w-xl sm:max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-100 animate-modal-panel">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Plan Credits</p>
@@ -2676,7 +2634,7 @@ function CreditsModal({ sub, role, token, onClose }) {
           {err && <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">{err}</div>}
           {!loading && !err && credits.length === 0 && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-6 text-center text-sm text-slate-500">
-              No credits available — plans are Unlimited or already expired.
+              No credits available, plans are Unlimited or already expired.
             </div>
           )}
           {!loading && !err && credits.map((c) => (
@@ -2704,12 +2662,13 @@ function CreditsModal({ sub, role, token, onClose }) {
           <button onClick={onClose} className="rounded-lg bg-slate-900 hover:bg-slate-800 px-4 py-2 text-[12px] font-bold text-white transition">Close</button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  CertificateEditModal — focused edit of the holder's certificate details      */
+/*  CertificateEditModal, focused edit of the holder's certificate details      */
 /* ─────────────────────────────────────────────────────────────────────────── */
 function CertificateEditModal({ sub, onClose, onSaved }) {
   const [form, setForm] = useState({
@@ -2749,17 +2708,17 @@ function CertificateEditModal({ sub, onClose, onSaved }) {
     }
   }
 
-  const inp = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition'
+  const inp = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 transition'
   const lbl = 'block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1'
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={saving ? undefined : onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={saving ? undefined : onClose} />
       <motion.div initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
-        className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
+        className="relative z-10 w-full max-w-xl sm:max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-100 animate-modal-panel">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Certificate Information</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Certificate Information</p>
             <p className="text-sm font-extrabold text-slate-900">Edit your certificate details</p>
           </div>
           <button onClick={onClose} disabled={saving} className="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center disabled:opacity-50">✕</button>
@@ -2768,15 +2727,28 @@ function CertificateEditModal({ sub, onClose, onSaved }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Airman Certificate Status</label>
-              <select value={form.primaryAirmanCertificate} onChange={e => set('primaryAirmanCertificate', e.target.value)} className={inp}>
-                <option value="">— Select —</option><option value="NEW">NEW</option><option value="EXISTING">EXISTING</option>
-              </select>
+              <CustomSelect
+                value={form.primaryAirmanCertificate}
+                onChange={val => set('primaryAirmanCertificate', val)}
+                placeholder="— Select —"
+                options={[
+                  { value: '', label: '— Select —' },
+                  { value: 'NEW', label: 'NEW' },
+                  { value: 'EXISTING', label: 'EXISTING' }
+                ]}
+              />
             </div>
             <div>
               <label className={lbl}>Primary Certificate Type</label>
-              <select value={form.primaryCertificate} onChange={e => set('primaryCertificate', e.target.value)} className={inp}>
-                <option value="">— Select —</option>{CERT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <CustomSelect
+                value={form.primaryCertificate}
+                onChange={val => set('primaryCertificate', val)}
+                placeholder="— Select —"
+                options={[
+                  { value: '', label: '— Select —' },
+                  ...CERT_TYPES.map(t => ({ value: t, label: t }))
+                ]}
+              />
             </div>
             <div>
               <label className={lbl}>FAA Certificate Number</label>
@@ -2789,16 +2761,22 @@ function CertificateEditModal({ sub, onClose, onSaved }) {
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <input type="checkbox" checked={form.hasSecondaryCertificate} onChange={e => set('hasSecondaryCertificate', e.target.checked)} className="w-4 h-4 rounded accent-blue-600" />
+            <input type="checkbox" checked={form.hasSecondaryCertificate} onChange={e => set('hasSecondaryCertificate', e.target.checked)} className="w-4 h-4 rounded accent-[#34E06E]" />
             <span className="text-sm font-semibold text-slate-700">Has secondary FAA certificate</span>
           </label>
           {form.hasSecondaryCertificate && (
-            <div className="grid grid-cols-1 gap-3 ml-1 pl-3 border-l-2 border-blue-200">
+            <div className="grid grid-cols-1 gap-3 ml-1 pl-3 border-l-2 border-emerald-300">
               <div>
                 <label className={lbl}>Secondary Certificate Type</label>
-                <select value={form.secondaryCertificate} onChange={e => set('secondaryCertificate', e.target.value)} className={inp}>
-                  <option value="">— Select —</option>{CERT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <CustomSelect
+                  value={form.secondaryCertificate}
+                  onChange={val => set('secondaryCertificate', val)}
+                  placeholder="— Select —"
+                  options={[
+                    { value: '', label: '— Select —' },
+                    ...CERT_TYPES.map(t => ({ value: t, label: t }))
+                  ]}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className={lbl}>Secondary FAA #</label><input value={form.secondaryFaaCertificateNumber} onChange={e => set('secondaryFaaCertificateNumber', e.target.value)} className={inp} /></div>
@@ -2810,10 +2788,11 @@ function CertificateEditModal({ sub, onClose, onSaved }) {
         </div>
         <div className="px-5 py-3.5 border-t border-slate-100 flex justify-end gap-2 bg-slate-50">
           <button onClick={onClose} disabled={saving} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 transition disabled:opacity-50">Cancel</button>
-          <button onClick={save} disabled={saving} className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-sm font-bold text-white transition disabled:opacity-50">{saving ? 'Saving…' : 'Save Details'}</button>
+          <button onClick={save} disabled={saving} className="rounded-lg bg-slate-900 hover:bg-slate-800 px-5 py-2 text-sm font-bold text-white transition disabled:opacity-50">{saving ? 'Saving…' : 'Save Details'}</button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -2821,7 +2800,7 @@ function CertificateEditModal({ sub, onClose, onSaved }) {
 /*  ConvertToUnlimitedModal                                                      */
 /*  In-place conversion of the BASE plan to Unlimited. No new plan/group; the    */
 /*  unused portion of the current term is credited. Backend (purpose=            */
-/*  'convert-unlimited') computes the authoritative charge — PaymentModal shows   */
+/*  'convert-unlimited') computes the authoritative charge, PaymentModal shows   */
 /*  the exact amount it returns.                                                  */
 /* ─────────────────────────────────────────────────────────────────────────── */
 function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) {
@@ -2861,7 +2840,7 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
   const unitExpiry = isGroup ? group.expirationDate : sub.expirationDate
   const expiryLabel = unitExpiry ? fmt(unitExpiry) : '—'
 
-  // ── Price of this upgrade — quoted by the server ────────────────────────────
+  // ── Price of this upgrade, quoted by the server ────────────────────────────
   // This used to be recomputed here, duplicating compute(Group)ConversionCharge()
   // and carrying its own copy of the plan prices. That is precisely how the figure
   // shown to the customer drifted away from the figure they were charged. The
@@ -2873,23 +2852,28 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
 
   useEffect(() => {
     let cancelled = false
+    // Debounced, and the previous quote stays on screen while the new one
+    // loads (see quoteLoading use below) — tab/year changes used to blank
+    // the whole price box to a spinner on every click, which read as stutter.
     setQuoteLoading(true)
     setQuoteErr('')
-    API.get('/payments/upgrade-quote', {
-      params: {
-        registrationId:        sub._id,
-        registrationModel:     isAirline ? 'Airlines' : 'Individual',
-        ...(isGroup ? { holderGroupId: String(group._id) } : {}),
-        targetPlan:            effTarget,
-        targetMultiYearCount:  effTarget === 'Multiple Years Subscription Plan' ? tYears : undefined,
-      },
-    })
-      .then((res) => { if (!cancelled) setQuote(res.data?.quote || null) })
-      .catch((e) => {
-        if (!cancelled) setQuoteErr(e?.response?.data?.message || 'Could not load the upgrade price.')
+    const t = setTimeout(() => {
+      API.get('/payments/upgrade-quote', {
+        params: {
+          registrationId:        sub._id,
+          registrationModel:     isAirline ? 'Airlines' : 'Individual',
+          ...(isGroup ? { holderGroupId: String(group._id) } : {}),
+          targetPlan:            effTarget,
+          targetMultiYearCount:  effTarget === 'Multiple Years Subscription Plan' ? tYears : undefined,
+        },
       })
-      .finally(() => { if (!cancelled) setQuoteLoading(false) })
-    return () => { cancelled = true }
+        .then((res) => { if (!cancelled) setQuote(res.data?.quote || null) })
+        .catch((e) => {
+          if (!cancelled) setQuoteErr(e?.response?.data?.message || 'Could not load the upgrade price.')
+        })
+        .finally(() => { if (!cancelled) setQuoteLoading(false) })
+    }, 150)
+    return () => { cancelled = true; clearTimeout(t) }
   }, [sub._id, isAirline, isGroup, group?._id, effTarget, tYears])
 
   const unlimitedPpc   = Number(quote?.unlimitedPpc   || 0)
@@ -2957,18 +2941,17 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
     )
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div initial={{ opacity: 0, scale: 0.97, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 8 }}
-        className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-          <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+        className="relative z-10 w-full max-w-xl sm:max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-100 animate-modal-panel">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2.5 bg-slate-50">
+          <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-slate-900 text-[#34E06E]">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 11l7-7 7 7M5 19l7-7 7 7" /></svg>
           </span>
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Upgrade Plan</p>
-            <p className="text-sm font-extrabold text-slate-900 truncate">{individualUpgrade ? 'Upgrade your plan' : 'Switch to Unlimited'}</p>
+            <h3 className="text-sm font-extrabold text-slate-900 truncate">{individualUpgrade ? 'Upgrade your plan' : 'Switch to Unlimited'}</h3>
           </div>
         </div>
 
@@ -2979,13 +2962,13 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
             term is credited toward the price.
           </p>
 
-          {/* Individual target picker — Multiple Years or Unlimited */}
+          {/* Individual target picker, Multiple Years or Unlimited */}
           {individualUpgrade && (
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 {[['Multiple Years Subscription Plan', 'Multiple Years'], ['Unlimited Plan', 'Unlimited']].map(([val, lbl]) => (
                   <button key={val} type="button" onClick={() => setTargetPlan(val)}
-                    className={`rounded-xl border-2 px-3 py-2 text-[12px] font-bold transition ${targetPlan === val ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
+                    className={`rounded-xl border-2 px-3 py-2 text-[12px] font-bold transition ${targetPlan === val ? 'border-slate-900 bg-slate-900 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
                     {lbl}
                   </button>
                 ))}
@@ -3009,12 +2992,15 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
             <div className="flex justify-between"><span className="text-slate-500">Current {unitLabel}</span><span className="font-semibold text-slate-800">{currentPlanLabel}</span></div>
             {isAirline && <div className="flex justify-between"><span className="text-slate-500">{isGroup ? 'Plan holders' : 'Base holders'}</span><span className="font-semibold text-slate-800">{baseCount}</span></div>}
             <div className="flex justify-between"><span className="text-slate-500">Expires</span><span className="font-semibold text-slate-800">{expiryLabel}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">After upgrade</span><span className="font-semibold text-blue-700">{effTarget === 'Unlimited Plan' ? 'Unlimited — no expiry' : `${targetLabel}`}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">After upgrade</span><span className="font-semibold text-emerald-700">{effTarget === 'Unlimited Plan' ? 'Unlimited, no expiry' : `${targetLabel}`}</span></div>
           </div>
-          {/* Price breakdown — quoted by the server, not computed here */}
-          {quoteLoading ? (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-6 flex justify-center">
-              <div className="w-5 h-5 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin" />
+          {/* Price breakdown, quoted by the server, not computed here.
+              The previous quote stays visible (just dimmed) while a new one
+              loads instead of being replaced by a spinner, so switching the
+              plan tab or the years stepper doesn't jump/flicker. */}
+          {quoteLoading && !quote ? (
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 px-3.5 py-6 flex justify-center">
+              <div className="w-5 h-5 rounded-full border-2 border-emerald-200 border-t-emerald-500 animate-spin" />
             </div>
           ) : quoteErr ? (
             <div className="rounded-xl border border-red-100 bg-red-50 px-3.5 py-3 text-[11px] text-red-600">
@@ -3022,10 +3008,10 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
             </div>
           ) : (
             <>
-              <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-3 space-y-1.5 text-[11px]">
+              <div className={`rounded-xl border border-emerald-100 bg-emerald-50/40 px-3.5 py-3 space-y-1.5 text-[11px] transition-opacity duration-150 ${quoteLoading ? 'opacity-50' : 'opacity-100'}`}>
                 <div className="flex justify-between"><span className="text-slate-500">{targetLabel}{isAirline ? ` (${money(unlimitedPpc)} × ${baseCount})` : ''}</span><span className="font-semibold text-slate-800">{money(unlimitedTotal)}</span></div>
-                {credit > 0 && <div className="flex justify-between"><span className="text-slate-500">Credit — unused {currentPlanLabel}</span><span className="font-semibold text-emerald-600">−{money(credit)}</span></div>}
-                <div className="flex justify-between border-t border-blue-100 pt-1.5"><span className="font-bold text-slate-700">Total</span><span className="font-extrabold text-blue-700">{money(estCharge)}</span></div>
+                {credit > 0 && <div className="flex justify-between"><span className="text-slate-500">Credit, unused {currentPlanLabel}</span><span className="font-semibold text-emerald-600">−{money(credit)}</span></div>}
+                <div className="flex justify-between border-t border-emerald-100 pt-1.5"><span className="font-bold text-slate-700">Total</span><span className="font-extrabold text-emerald-700">{money(estCharge)}</span></div>
               </div>
               <p className="text-[10px] text-slate-400">
                 Priced by the server using the same calculation applied at checkout.
@@ -3040,12 +3026,13 @@ function ConvertToUnlimitedModal({ sub, role, group = null, onClose, onSaved }) 
             Cancel
           </button>
           <button onClick={() => (isAirline ? setShowMethodStep(true) : setShowPayment(true))}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 px-3.5 py-2 text-[12px] font-bold text-white transition">
+            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-[12px] font-bold text-white transition">
             Continue
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -3059,17 +3046,35 @@ const makeIndividualPlans = () => {
   const oneYear = individualPrice('1 Year Subscription Plan')
   const unlimited = individualPrice('Unlimited Plan')
   return [
-    { value: '1 Year Subscription Plan',         label: `1 Year — $${oneYear}`,            price: oneYear },
-    { value: 'Multiple Years Subscription Plan', label: `Multiple Years — $${perYear}/yr`, price: null },
-    { value: 'Unlimited Plan',                   label: `Unlimited — $${unlimited}`,       price: unlimited },
+    {
+      value: '1 Year Subscription Plan',
+      title: '1 Year Coverage',
+      desc: 'Standard 12-month extension from expiry date',
+      price: `$${oneYear.toFixed(2)}`,
+      badge: null,
+    },
+    {
+      value: 'Multiple Years Subscription Plan',
+      title: 'Multiple Years',
+      desc: `$${perYear.toFixed(2)}/yr · Select 2 to 10 years duration`,
+      price: `$${perYear.toFixed(2)}/yr`,
+      badge: 'Discounted Rate',
+    },
+    {
+      value: 'Unlimited Plan',
+      title: 'Unlimited Lifetime Coverage',
+      desc: 'One-time payment · Never expires',
+      price: `$${unlimited.toFixed(2)}`,
+      badge: 'No Expiry',
+    },
   ]
 }
 const AIRLINE_PLANS = [
-  { value: '1 Year Subscription Plan', label: '1 Year Plan' },
-  { value: 'Unlimited Plan', label: 'Unlimited Plan' },
+  { value: '1 Year Subscription Plan', title: '1 Year Plan', desc: 'Standard 12-month certificate holder renewal', badge: null },
+  { value: 'Unlimited Plan', title: 'Unlimited Plan', desc: 'Permanent lifetime certificate holder coverage', badge: 'No Expiry' },
 ]
 
-// Renewal tier pricing — the same server tables as the registration form, so a
+// Renewal tier pricing, the same server tables as the registration form, so a
 // renewal quote and a new-signup quote cannot drift apart.
 const airlineRenewRange = holderRangeFromCount
 
@@ -3108,7 +3113,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
   const anyCoverageLive = tierAnchor > 0
   const countMin = anyCoverageLive ? 1 : 3
 
-  // Merge option — a same-plan upgrade group can fold back into the live base plan:
+  // Merge option, a same-plan upgrade group can fold back into the live base plan:
   // its holders become base holders (inherit base plan + expiry) and its slots fold
   // into the base committed count. Offered only when the base is active AND shares
   // the group's plan type. Default is "keep separate" (renew as its own plan).
@@ -3121,7 +3126,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
   // on top of it (see renewTierAnchor) rather than defaulting to it.
   const baseOwnCount = Math.max(0, Number(sub.committedCount || sub.holderCountValue || 0) - allGroupSlots(sub.holderGroups))
 
-  // Airline: committed holder count — user can adjust at renewal time.
+  // Airline: committed holder count, user can adjust at renewal time.
   // A group renewal starts from THIS plan's own holder count and grows dynamically as the
   // user increases it; it is NOT pre-filled to the base coverage.
   const [exactCount, setExactCount] = useState(
@@ -3156,10 +3161,8 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
 
   const isDecreasingHolders = isAirline && exactCount < currentHolderCount
   const holdersToRemove = isDecreasingHolders
-    ? unitHolders
-      .filter(h => !selectedHolderIds.has(String(h._id)))
-      .map(h => String(h._id))
-    : null
+    ? unitHolders.filter(h => !selectedHolderIds.has(String(h._id))).map(h => String(h._id))
+    : []
   const selectionValid = !isDecreasingHolders || selectedHolderIds.size >= 1
 
   useEffect(() => {
@@ -3167,20 +3170,10 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
     return () => { document.body.style.overflow = '' }
   }, [])
 
-  // ── Airline tier-based PPC — recalculated live from exactCount + plan ──
-  // This mirrors the logic in AirlinesStep1PlanAndDetails.jsx exactly.
-  // We never read the stored pricePerCertificate here because the count may
-  // have changed, which means the tier (and therefore the rate) may change too.
-  //
-  // tierAnchor (computed above, single source) stacks this renewal on top of the
-  // active coverage, so its tier is read at the cumulative position (anchor + count).
-  // Example: active coverage = 6, renew 3 → holders sit at positions 7-9, tier read
-  // at 9 ("5 to 10"), not 3. With no active coverage the anchor is 0 (tier from 1).
+  // ── Airline tier-based PPC, recalculated live from exactCount + plan ──
   const tierCount = Math.max(1, tierAnchor + exactCount)
   const renewPpc = isAirline ? getRenewPpc(plan, tierCount) : 0
   const renewRange = isAirline ? airlineRenewRange(tierCount) : null
-  // "Tier updated" flag: the renewal rate differs from the rate this plan currently
-  // carries (volume tier shifted because of the stacked position / new count).
   const renewPrevRate = Number(isGroup ? (group.pricePerCert || 0) : (sub.pricePerCertificate || sub.pricePerCert || 0))
   const renewRateChanged = isAirline && renewPrevRate > 0 && renewPpc !== renewPrevRate
   const newTotalHolders = tierAnchor + exactCount
@@ -3194,7 +3187,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
     if (isAirline) {
       return renewPpc * Math.max(1, exactCount) * airlineRenewYears
     }
-    // Individual plans — no certificate holders; priced from the server's tables.
+    // Individual plans, no certificate holders; priced from the server's tables.
     return individualPrice(plan, multiYearRenewCount)
   })()
 
@@ -3269,7 +3262,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
     return (
       <PaymentMethodStep
         amountLabel={`$${renewalPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-        summary={`Renewal — ${planShortLabel(plan, multiYearRenewCount)}${isAirline ? ` · ${exactCount} holder${exactCount !== 1 ? 's' : ''}` : ''}`}
+        summary={`Renewal, ${planShortLabel(plan, multiYearRenewCount)}${isAirline ? ` · ${exactCount} holder${exactCount !== 1 ? 's' : ''}` : ''}`}
         submitting={wireSubmitting}
         error={wireErr}
         onBack={() => { setWireErr(''); setShowMethodStep(false) }}
@@ -3301,62 +3294,72 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
     )
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 animate-modal-backdrop overflow-y-auto">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 flex flex-col lg:flex-row items-start gap-3">
-        <div className="w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden shadow-2xl shadow-black/20 border border-slate-200 bg-white flex flex-col max-h-[calc(100vh-104px)] sm:max-h-[calc(100vh-120px)] animate-modal-panel">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-md" onClick={onClose} />
+      <div className="relative z-10 flex flex-col lg:flex-row items-start gap-4 w-full max-w-lg sm:max-w-xl justify-center">
+        <div className="w-full max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl shadow-slate-950/40 border border-slate-200 bg-white flex flex-col animate-modal-panel">
 
-          {/* Clean light header */}
-          <div className="bg-white px-5 pt-5 pb-4 flex-shrink-0 border-b border-slate-100">
-            <div className="flex items-start justify-between mb-3.5">
+          {/* Clean modern header */}
+          <div className="bg-white px-6 sm:px-8 pt-7 pb-5 flex-shrink-0 border-b border-slate-100">
+            <div className="flex items-start justify-between gap-4 mb-4">
               <div>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <svg className="w-3 h-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[11px] font-bold uppercase tracking-wider mb-2">
+                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Renew Subscription</span>
+                  Renew Subscription
                 </div>
-                <h3 className="text-xl font-black text-slate-900 leading-tight">Extend Your Coverage</h3>
+                <div>
+                  <div className="inline-block">
+                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Extend Your Coverage</h3>
+                    <div className="w-full h-0.5 bg-emerald-500 rounded-full mt-1.5 mb-1" />
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Select your preferred renewal plan to continue official IFOA coverage without interruption.</p>
+                </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-600 flex items-center justify-center transition"
+                aria-label="Close modal"
+                className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition shadow-2xs flex-shrink-0 mt-1"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            {/* Expiry chip — light, urgency-coloured */}
+            {/* Expiry status banner */}
             {(() => {
               const expired = daysLeft !== null && daysLeft <= 0
               const urgent = daysLeft !== null && daysLeft > 0 && daysLeft <= 7
-              const chipCls = expired ? 'bg-red-50 border-red-100' : urgent ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-100'
-              const iconCls = expired ? 'text-red-500' : urgent ? 'text-amber-500' : 'text-slate-500'
-              const titleCls = expired ? 'text-red-700' : urgent ? 'text-amber-800' : 'text-slate-800'
+              const chipCls = expired
+                ? 'bg-red-50/80 border-red-200 text-red-700'
+                : urgent
+                  ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                  : 'bg-slate-50 border-slate-200 text-slate-800'
+              const iconCls = expired ? 'text-red-600 bg-red-100' : urgent ? 'text-amber-600 bg-amber-100' : 'text-slate-600 bg-slate-200'
+              const titleCls = expired ? 'text-red-800' : urgent ? 'text-amber-900' : 'text-slate-800'
               return (
-                <div className={`flex items-center gap-2 rounded-xl px-3.5 py-2 border ${chipCls}`}>
-                  <svg className={`w-4 h-4 flex-shrink-0 ${iconCls}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                  <div>
-                    {expired ? (
-                      <>
-                        <p className={`text-sm font-semibold ${titleCls}`}>Expired — {currentExpiry}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Renewing starts a fresh period from today</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className={`text-sm font-semibold leading-tight ${titleCls}`}>
-                          {daysLeft !== null
-                            ? `Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — ${currentExpiry}`
-                            : `Expires: ${currentExpiry}`}
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Renewing extends from current expiry date</p>
-                      </>
-                    )}
+                <div className={`flex items-center gap-3.5 rounded-2xl px-4 py-3 border ${chipCls}`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconCls}`}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-bold leading-tight ${titleCls}`}>
+                      {expired
+                        ? `Coverage Expired · ${currentExpiry}`
+                        : daysLeft !== null
+                          ? `Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} (${currentExpiry})`
+                          : `Expires: ${currentExpiry}`}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {expired
+                        ? 'Renewing begins a fresh coverage term starting from today.'
+                        : 'Renewing extends from your current expiration date without loss of days.'}
+                    </p>
                   </div>
                 </div>
               )
@@ -3365,72 +3368,109 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
 
           <div className="bg-white overflow-y-auto flex-1 min-h-0">
             {/* Credentials slim row */}
-            <div className="px-5 py-2.5 flex items-center justify-between border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                </svg>
-                <div>
-                  <p className="text-xs font-semibold text-slate-700">Registered details</p>
-                  <p className="text-[10px] text-slate-500">Verify credentials before renewing</p>
+            <div className="px-6 sm:px-8 py-3.5 flex items-center justify-between border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 truncate">
+                    {currentSub.fullName || currentSub.companyName || currentSub.airlineName || 'Registered Account Details'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {currentSub.faaAirmanCertificateNumber ? `FAA Cert: ${currentSub.faaAirmanCertificateNumber}` : (currentSub.email || 'Verify credentials before renewing')}
+                  </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowEditDetails(true)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-emerald-700 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 px-3 py-1.5 rounded-xl transition shadow-2xs flex-shrink-0"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
                 </svg>
-                Edit
+                Edit Details
               </button>
             </div>
 
-            <div className="px-5 pt-2.5 pb-3.5 space-y-2">
+            <div className="px-6 sm:px-8 py-5 space-y-5">
               {/* Plan selector */}
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Select Renewal Plan</p>
-                {plans.map((p) => (
-                  <label key={p.value} className={`flex items-center gap-3 px-3.5 py-2 rounded-xl border-2 cursor-pointer transition-all ${plan === p.value
-                    ? 'border-blue-500 bg-blue-50/70'
-                    : 'border-slate-100 hover:border-slate-200 bg-white'
-                    }`}>
-                    <div className={`w-4.5 h-4.5 w-[18px] h-[18px] rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${plan === p.value ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
-                      }`}>
-                      {plan === p.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </div>
-                    <input type="radio" className="sr-only" value={p.value} checked={plan === p.value} onChange={() => setPlan(p.value)} />
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
-                      <span className={`text-sm font-bold ${plan === p.value ? 'text-blue-900' : 'text-slate-700'}`}>{p.label}</span>
-                      {p.value === 'Unlimited Plan' && (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-700">No expiry</span>
-                      )}
-                    </div>
-                  </label>
-                ))}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Select Renewal Plan</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {plans.map((p) => {
+                    const isSelected = plan === p.value
+                    return (
+                      <label
+                        key={p.value}
+                        className={`group relative flex items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-500/10 shadow-sm'
+                            : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                          <div className={`w-5 h-5 mt-0.5 sm:mt-0 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                            isSelected ? 'border-slate-900 bg-slate-900' : 'border-slate-300 bg-white group-hover:border-slate-400'
+                          }`}>
+                            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                          </div>
+                          <input type="radio" className="sr-only" value={p.value} checked={isSelected} onChange={() => setPlan(p.value)} />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-sm sm:text-base font-bold ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
+                                {p.title || p.label}
+                              </span>
+                              {p.badge && (
+                                <span className="rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                                  {p.badge}
+                                </span>
+                              )}
+                            </div>
+                            {p.desc && (
+                              <p className="text-xs text-slate-500 mt-0.5">{p.desc}</p>
+                            )}
+                          </div>
+                        </div>
+                        {p.price && (
+                          <div className="text-right flex-shrink-0">
+                            <span className={`text-base sm:text-lg font-black tracking-tight tabular-nums ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
+                              {p.price}
+                            </span>
+                          </div>
+                        )}
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
 
-              {/* Participants renewed with the selected plan — compact, scrollable */}
+              {/* Participants renewed with the selected plan, compact, scrollable */}
               {isAirline && unitHolders.length > 0 && (
-                <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Participants renewed</p>
-                    <span className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 rounded-full px-2 py-0.5">{unitHolders.length}</span>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Participants renewed</p>
+                    <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-md px-2 py-0.5">{unitHolders.length}</span>
                   </div>
-                  <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white max-h-[120px] overflow-y-auto">
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white max-h-[140px] overflow-y-auto">
                     {unitHolders.map((h, i) => {
                       const willRemove = holdersToRemove && holdersToRemove.includes(String(h._id))
                       const initials = (h.fullName || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
                       return (
-                        <div key={String(h._id || i)} className={`flex items-center gap-2 px-2.5 py-1.5 ${willRemove ? 'bg-red-50/50' : ''}`}>
-                          <span className={`w-6 h-6 rounded-full text-[9px] font-black flex items-center justify-center flex-shrink-0 ${willRemove ? 'bg-red-100 text-red-500' : 'bg-slate-100 text-slate-500'}`}>{initials || (i + 1)}</span>
+                        <div key={String(h._id || i)} className={`flex items-center gap-2.5 px-3 py-2 ${willRemove ? 'bg-red-50/50' : ''}`}>
+                          <span className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 ${willRemove ? 'bg-red-100 text-red-500' : 'bg-slate-100 text-slate-700'}`}>{initials || (i + 1)}</span>
                           <div className="min-w-0 flex-1">
                             <p className={`text-xs font-semibold truncate ${willRemove ? 'text-red-600 line-through' : 'text-slate-800'}`}>{h.fullName || '(unnamed)'}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{h.certificateType || '—'} · FTN {h.iacraFtnNumber || '—'}</p>
+                            <p className="text-[11px] text-slate-400 truncate">{h.certificateType || '—'} · FTN {h.iacraFtnNumber || '—'}</p>
                           </div>
                           {willRemove
-                            ? <span className="text-[9px] font-bold uppercase tracking-wide text-red-600 flex-shrink-0">Removed</span>
-                            : <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>}
+                            ? <span className="text-[10px] font-bold uppercase tracking-wide text-red-600 flex-shrink-0">Removed</span>
+                            : <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>}
                         </div>
                       )
                     })}
@@ -3440,48 +3480,48 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
 
               {/* Airline: holder count */}
               {isAirline && (
-                <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-2.5 space-y-2.5">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Certificate Holders</p>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Certificate Holders</p>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setExactCount(c => Math.max(countMin, c - 1))}
-                      className="w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600 font-bold text-lg flex items-center justify-center transition"
+                      className="w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 font-bold text-lg flex items-center justify-center transition shadow-2xs"
                     >−</button>
-                    <span className="text-2xl font-black text-slate-900 w-10 text-center tabular-nums">{exactCount}</span>
+                    <span className="text-2xl font-black text-slate-900 w-12 text-center tabular-nums">{exactCount}</span>
                     <button
                       type="button"
                       onClick={() => setExactCount(c => c + 1)}
-                      className="w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600 font-bold text-lg flex items-center justify-center transition"
+                      className="w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-slate-300 font-bold text-lg flex items-center justify-center transition shadow-2xs"
                     >+</button>
-                    <span className="text-xs text-slate-500 ml-1">holders</span>
+                    <span className="text-xs font-semibold text-slate-600 ml-1">holders</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">
-                      {isGroup ? 'This plan' : 'Current'}: <strong className="text-slate-700">{currentHolderCount}</strong>
+                      {isGroup ? 'This plan' : 'Current'}: <strong className="text-slate-800">{currentHolderCount}</strong>
                       {exactCount !== currentHolderCount && (
-                        <span className="text-blue-600"> → <strong>{exactCount}</strong></span>
+                        <span className="text-emerald-700 font-bold"> → {exactCount}</span>
                       )}
                       {isGroup && baseLiveNow && (
-                        <span className="text-slate-400"> · Base: <strong className="text-slate-600">{baseOwnCount}</strong></span>
+                        <span className="text-slate-400"> · Base: <strong className="text-slate-700">{baseOwnCount}</strong></span>
                       )}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 font-semibold">
+                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
                     {tierAnchor > 0
-                      ? `Stacks on your active coverage (${tierAnchor}) — these are holders ${tierAnchor + 1}–${tierAnchor + exactCount} (total ${tierAnchor + exactCount}). Tier priced at ${tierCount}.`
-                      : 'No active plan — renews independently (min 3 holders).'}
+                      ? `Stacks on your active coverage (${tierAnchor}), these are holders ${tierAnchor + 1}–${tierAnchor + exactCount} (total ${tierAnchor + exactCount}). Tier priced at ${tierCount}.`
+                      : 'No active plan, renews independently (min 3 holders).'}
                   </p>
-                  <div className="border-t border-slate-100 pt-2 mt-1 space-y-1">
+                  <div className="border-t border-slate-200/80 pt-2.5 mt-2 space-y-1.5">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500">New total</span>
-                      <span className="font-bold text-slate-800">{newTotalHolders} holder{newTotalHolders !== 1 ? 's' : ''}</span>
+                      <span className="font-bold text-slate-900">{newTotalHolders} holder{newTotalHolders !== 1 ? 's' : ''}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500">New rate</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-900">
                         ${renewPpc}/cert
-                        {renewRateChanged && <span className="ml-1.5 text-[9px] font-black text-emerald-600 uppercase tracking-wider">Tier updated</span>}
+                        {renewRateChanged && <span className="ml-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 uppercase tracking-wider">Tier updated</span>}
                       </span>
                     </div>
                   </div>
@@ -3490,35 +3530,37 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
 
               {/* Group renewal: merge into base, or keep as a separate plan */}
               {isAirline && canMergeToBase && (
-                <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 space-y-1.5">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">How to renew this upgrade</p>
-                  <label className={`flex items-start gap-2.5 px-3 py-1.5 rounded-lg border cursor-pointer transition ${!mergeMode ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
-                    <input type="radio" className="mt-0.5 accent-blue-600" checked={!mergeMode} onChange={() => setMergeMode(false)} />
-                    <span className="min-w-0">
-                      <span className="block text-xs font-bold text-slate-800">Keep as a separate plan</span>
-                      <span className="block text-[10px] text-slate-500">Renews as its own upgrade with a fresh term.</span>
-                    </span>
-                  </label>
-                  <label className={`flex items-start gap-2.5 px-3 py-1.5 rounded-lg border cursor-pointer transition ${mergeMode ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 hover:border-slate-300'}`}>
-                    <input type="radio" className="mt-0.5 accent-blue-600" checked={mergeMode} onChange={() => setMergeMode(true)} />
-                    <span className="min-w-0">
-                      <span className="block text-xs font-bold text-slate-800">Merge into base plan</span>
-                      <span className="block text-[10px] text-slate-500">Folds these holders into the base — they take its expiry ({baseExpiryLabel}).</span>
-                    </span>
-                  </label>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-600">How to renew this upgrade</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${!mergeMode ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/20' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                      <input type="radio" className="mt-0.5 accent-slate-900" checked={!mergeMode} onChange={() => setMergeMode(false)} />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-bold text-slate-900">Keep as separate plan</span>
+                        <span className="block text-[11px] text-slate-500 mt-0.5">Renews as its own upgrade.</span>
+                      </span>
+                    </label>
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${mergeMode ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/20' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                      <input type="radio" className="mt-0.5 accent-slate-900" checked={mergeMode} onChange={() => setMergeMode(true)} />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-bold text-slate-900">Merge into base plan</span>
+                        <span className="block text-[11px] text-slate-500 mt-0.5">Folds into base ({baseExpiryLabel}).</span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
               )}
 
-              {/* Holder decrease — compact trigger opens side panel */}
+              {/* Holder decrease */}
               {isDecreasingHolders && (
                 <button
                   type="button"
                   onClick={() => setShowHolderSelector(v => !v)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl border-2 transition-all ${showHolderSelector
-                    ? 'border-blue-500 bg-blue-50'
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all ${showHolderSelector
+                    ? 'border-emerald-500 bg-emerald-50/30'
                     : selectionValid
-                      ? 'border-emerald-300 bg-emerald-50/70'
-                      : 'border-amber-300 bg-amber-50/70'
+                      ? 'border-emerald-300 bg-emerald-50/60'
+                      : 'border-amber-300 bg-amber-50/60'
                     }`}
                 >
                   <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -3526,18 +3568,18 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
                   </svg>
                   <div className="flex-1 text-left">
                     <p className="text-xs font-bold text-slate-800">Select Holders to Keep</p>
-                    <p className={`text-[10px] mt-0.5 ${selectionValid ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <p className={`text-[11px] mt-0.5 ${selectionValid ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold'}`}>
                       {selectedHolderIds.size} of {exactCount} selected
-                      {!selectionValid && ` — select at least 1`}
+                      {!selectionValid && `, select at least 1`}
                     </p>
                   </div>
                   {selectionValid && (
-                    <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
                   )}
                   <svg
-                    className={`w-4 h-4 flex-shrink-0 transition-transform ${showHolderSelector ? 'rotate-180 text-blue-500' : 'text-slate-500'}`}
+                    className={`w-4 h-4 flex-shrink-0 transition-transform ${showHolderSelector ? 'rotate-180 text-emerald-600' : 'text-slate-500'}`}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -3547,54 +3589,58 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
 
               {/* Multi-year */}
               {!isAirline && plan === 'Multiple Years Subscription Plan' && (
-                <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3 space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Number of Years</p>
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Number of Years</p>
                   <input
                     type="number"
                     min="2"
                     max="10"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-100 transition"
                     value={multiYearRenewCount}
                     onChange={(e) => setMultiYearRenewCount(Math.max(2, Number(e.target.value) || 2))}
                   />
-                  <p className="text-xs text-slate-500">$55 × {multiYearRenewCount} years</p>
+                  <p className="text-xs text-slate-500 font-medium">$55 × {multiYearRenewCount} years</p>
                 </div>
               )}
 
-              {/* Renewal total — clean accent card */}
-              <div className="rounded-xl border-2 border-blue-100 bg-blue-50/60 px-4 py-3 flex items-center justify-between">
+              {/* Renewal total, clean accent card */}
+              <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/20 p-4 sm:p-5 flex items-center justify-between shadow-2xs">
                 <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Renewal Total</p>
-                  {pricingLabel && <p className="text-[10px] text-slate-500 mt-1 tabular-nums">{pricingLabel}</p>}
+                  <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Renewal Total</p>
+                  <p className="text-xs text-slate-500 mt-0.5 tabular-nums">
+                    {pricingLabel || (plan === 'Unlimited Plan' ? 'One-time payment for lifetime protection' : 'Billed securely · Instant certificate renewal')}
+                  </p>
                 </div>
                 <div className="text-right">
                   {plan === 'Unlimited Plan' && !isAirline ? (
                     <>
-                      <p className="text-xl font-black text-emerald-600 tabular-nums">${individualPrice('Unlimited Plan').toFixed(2)}</p>
-                      <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider leading-none">Lifetime</p>
+                      <p className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">${individualPrice('Unlimited Plan').toFixed(2)}</p>
+                      <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider mt-0.5">Lifetime Coverage</p>
                     </>
                   ) : (
-                    <p className="text-xl font-black text-slate-900 tabular-nums">${(renewalAmountCents / 100).toFixed(2)}</p>
+                    <p className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">${(renewalAmountCents / 100).toFixed(2)}</p>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Footer — sticky at bottom */}
-          <div className="bg-white border-t border-slate-100 px-5 py-3 flex-shrink-0">
+          {/* Footer, sticky at bottom */}
+          <div className="bg-slate-50/60 border-t border-slate-100 px-6 sm:px-8 py-4 flex-shrink-0">
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={onClose}
-                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100/80 transition shadow-2xs"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => isAirline ? setShowMethodStep(true) : setShowPayment(true)}
                 disabled={chargedCents <= 0 || !selectionValid}
                 title={!selectionValid ? `Select at least 1 holder to keep` : undefined}
-                className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:hover:bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition-all"
+                className="flex-[2] inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 px-6 py-3 text-sm font-bold text-white shadow-sm transition"
               >
                 Proceed to Payment
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -3605,7 +3651,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* Side holder selector panel — always mounted when decreasing so CSS can animate */}
+        {/* Side holder selector panel, always mounted when decreasing so CSS can animate */}
         {isDecreasingHolders && (
           <div
             className="flex-shrink-0 overflow-hidden rounded-2xl transition-all duration-300 ease-out"
@@ -3632,7 +3678,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
                   </svg>
                 </button>
               </div>
-              {/* Holder list — scrollable */}
+              {/* Holder list, scrollable */}
               <div className="divide-y divide-slate-100 overflow-y-auto flex-1 min-h-0">
                 {(currentSub.certificateHolders || []).map((h) => {
                   const id = String(h._id)
@@ -3675,7 +3721,7 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
               <div className={`px-3.5 py-2.5 border-t border-slate-100 flex-shrink-0 ${selectedHolderIds.size >= 1 ? 'bg-emerald-50' : 'bg-amber-50'}`}>
                 {selectedHolderIds.size >= 1 ? (
                   <p className="text-[10px] font-semibold text-emerald-700">
-                    {selectedHolderIds.size === exactCount ? 'Selection complete — ready to proceed' : `${selectedHolderIds.size} selected — remaining ${exactCount - selectedHolderIds.size} slot${exactCount - selectedHolderIds.size !== 1 ? 's' : ''} can be filled later`}
+                    {selectedHolderIds.size === exactCount ? 'Selection complete, ready to proceed' : `${selectedHolderIds.size} selected, remaining ${exactCount - selectedHolderIds.size} slot${exactCount - selectedHolderIds.size !== 1 ? 's' : ''} can be filled later`}
                   </p>
                 ) : (
                   <p className="text-[10px] text-amber-700">Select at least 1 holder to continue</p>
@@ -3686,7 +3732,8 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -3695,10 +3742,12 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 export default function SubscriptionPage() {
   const { user, token, linkRegistration } = useAuth()
-  const { getOrFetch, set: cacheSet, invalidate } = useDataCache()
-  const [subs, setSubs] = useState([])
-  const [sub, setSub] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { getOrFetch, get, set: cacheSet, invalidate } = useDataCache()
+  const cacheKey = `subs_${user?.id || user?.email}`
+  const cachedSubs = get(cacheKey)
+  const [subs, setSubs] = useState(cachedSubs || [])
+  const [sub, setSub] = useState(cachedSubs?.[0] || null)
+  const [loading, setLoading] = useState(!cachedSubs)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [showPayModal, setShowPayModal] = useState(false)
@@ -3717,7 +3766,7 @@ export default function SubscriptionPage() {
   const [creditsTarget, setCreditsTarget] = useState(null) // show per-plan credits
   const [certTarget, setCertTarget] = useState(null) // focused certificate edit
 
-  // ?highlight=<subscriptionId> — set when arriving from a notification "View →".
+  // ?highlight=<subscriptionId>, set when arriving from a notification "View →".
   // The matching SubscriptionCard scrolls into view and pulses a ring once.
   const [searchParams, setSearchParams] = useSearchParams()
   const highlightId = searchParams.get('highlight') || null
@@ -3761,9 +3810,6 @@ export default function SubscriptionPage() {
     const isAirline = user.role === 'airline'
     const basePath = isAirline ? '/airlines' : '/individuals'
     const modelName = isAirline ? 'Airlines' : 'Individual'
-    const cacheKey = `subs_${user.id || user.email}`
-
-    invalidate(cacheKey)
 
     const mergeAndSort = (...groups) => {
       const seen = new Set()
@@ -3899,171 +3945,64 @@ export default function SubscriptionPage() {
 
     const isAirline = user?.role === 'airline'
     const hasQueuedRenewal = !!(s.nextRenewal?.paidAt && s.nextRenewal?.activationDate && new Date(s.nextRenewal.activationDate) > new Date())
-    const currentInvoiceNum = s.invoiceNumber || null
-    const subscriptionStart = s.subscriptionDate ? new Date(s.subscriptionDate) : null
-    const invoiceTotal = docs
-      .filter(doc => {
-        if (hasQueuedRenewal && doc.purpose === 'renewal') return false
-        if (currentInvoiceNum && doc.invoiceNumber === currentInvoiceNum) return true
-        if (doc.purpose === 'holder-upgrade' && (!subscriptionStart || (doc.paidAt && new Date(doc.paidAt) >= subscriptionStart))) return true
-        if (!currentInvoiceNum && doc.purpose !== 'renewal') return true
-        return false
-      })
-      .reduce((sum, doc) => sum + (Number(doc.totalAmount) || 0), 0)
 
-    const _groups = s.holderGroups || []
-    const _groupCounts = (g) => isActiveHolderGroup(g)
-    const _groupsAmount = _groups
-      .filter(_groupCounts)
-      .reduce((a, g) => a + Number(g.amount || 0), 0)
-    const _basePpc = Number(s.pricePerCertificate ?? s.pricePerCert ?? 0)
-    const _baseCommitted = Math.max(0, Number(s.committedCount ?? s.holderCountValue ?? 0) - allGroupSlots(_groups))
-    const _isMultiYear = (s.subscriptionPlan || '').includes('Multiple Year') && Number(s.multiYearCount) > 1
-    const _baseYears = _isMultiYear ? Number(s.multiYearCount) : 1
-    const _baseTotal = _basePpc > 0 && _baseCommitted > 0 ? _basePpc * _baseCommitted * _baseYears : 0
-    const computedPlanTotal = isAirline
-      ? (_baseTotal > 0 ? _baseTotal + _groupsAmount : getAirlineTotal(s))
-      : 0
-    const displayTotal = isAirline
-      ? (computedPlanTotal > 0 ? computedPlanTotal : (invoiceTotal > 0 ? invoiceTotal : 0))
-      : (s.price || s.totalServiceFees || 0)
-
-    if (s.invoiceDraft && typeof s.invoiceDraft === 'object' &&
-      (s.invoiceDraft.lineItems?.length || s.invoiceDraft.invoiceNumber)) {
-      const draft = s.invoiceDraft
-      setViewInvoice({
-        invoiceNumber: s.invoiceNumber || draft.invoiceNumber,
-        paidAt: s.subscriptionDate || s.updatedAt,
-        subscriptionPlan: s.subscriptionPlan,
-        expirationDate: s.expirationDate || null,
-        amount: draft.lineItems?.reduce((sum, it) => sum + (Number(it.totalPrice) || 0), 0) || displayTotal,
-        name: draft.recipientCompany || draft.recipientName || s.airlineName || `${s.firstName || ''} ${s.lastName || ''}`.trim(),
-        email: s.email || '',
-        address: draft.recipientAddress1 || s.addressLine1 || '',
-        isAirline,
-        airlineName: s.airlineName || '',
-        pricePerCert: s.pricePerCertificate || s.pricePerCert || null,
-        holderCount: s.certificateHolders?.length || s.committedCount || null,
-        invoiceDraft: { ...draft, invoiceNumber: draft.invoiceNumber || s.invoiceNumber },
-      })
+    if (hasQueuedRenewal && queuedInvoice && activeInvoice && queuedInvoice !== activeInvoice) {
+      setSelectedInvoiceReg(s)
       return
     }
 
-    try {
-      const paymentDoc = await fetchPaymentRecord(s._id, token, activeInvoice, queuedInvoice)
-      if (paymentDoc?.isPaid) {
-        setViewInvoice(serverPaymentToInvoice(paymentDoc))
-        return
-      }
-    } catch { /* fall through */ }
-
-    try {
-      const paidDate = s.subscriptionDate || s.updatedAt || s.createdAt
-      setViewInvoice(buildInvoice(
-        s,
-        isAirline ? 'Airlines' : 'Individual',
-        Math.round(displayTotal * 100),
-        { id: s.stripePaymentIntentId || s.invoiceNumber || '—' },
-        paidDate ? new Date(paidDate) : new Date()
-      ))
-    } catch (err) {
-      console.error('Invoice build failed:', err)
-    }
+    setInvoiceSub({
+      plan: s.plan,
+      isAirline,
+      airlineName: s.airlineName,
+      fullName: s.fullName,
+      email: s.email,
+      phone: s.phone,
+      totalHolders: s.totalHolders || 0,
+      slots: s.slots || [],
+      price: s.price,
+      pricing: s.pricing,
+      paymentStatus: s.paymentStatus,
+      paidAt: s.paidAt,
+      startDate: s.startDate,
+      endDate: s.endDate,
+      invoiceNumber: s.invoiceNumber,
+      createdAt: s.createdAt,
+      state: s.state,
+      address: s.address,
+      zipCode: s.zipCode,
+      country: s.country,
+      serviceOption: s.serviceOption,
+      coverageType: s.coverageType,
+      _id: s._id,
+      groups: s.groups,
+    })
   }
 
   return (
     <DashboardLayout>
-      <div className="max-w-3xl mx-auto px-0 sm:px-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
+      <div className="w-full max-w-6xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-200/80">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900">Subscription</h1>
-            {!loading && subs.length > 0 && (
-              <p className="text-xs text-slate-500 mt-1">
-                {subs.length} subscription{subs.length !== 1 ? 's' : ''} found
-              </p>
-            )}
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Subscription</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {!loading && subs.length > 0 && (() => {
-              const s = subs[0]
-              const isAirline = user?.role === 'airline'
-              const isPaid = s.isPaid === true || s.paymentStatus === 'paid'
-              const active = isPaid
-              return (
-                <>
-                  {active && (
-                    <button
-                      onClick={() => {
-                        window.dispatchEvent(new Event('ifoa-subscription-manage-expand'))
-                        setTimeout(() => {
-                          const el = document.getElementById('current-subscription-section')
-                          if (el) {
-                            const yOffset = -120; // 120px offset for sticky header and margins
-                            const y = el.getBoundingClientRect().top + window.scrollY + yOffset;
-                            window.scrollTo({ top: y, behavior: 'smooth' });
-                          }
-                        }, 400)
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-950 hover:border-slate-300 hover:bg-slate-50 transition shadow-sm"
-                    >
-                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Manage Plan
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setEditTarget(s)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-950 hover:border-slate-300 hover:bg-slate-50 transition shadow-sm"
-                  >
-                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
-                    </svg>
-                    Edit Form
-                  </button>
-                  {active && (
-                    <button
-                      onClick={() => handleParentInvoiceClick(s)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-950 hover:border-slate-300 hover:bg-slate-50 transition shadow-sm"
-                    >
-                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Invoices
-                    </button>
-                  )}
-                  {isAirline && active && !s.wirePaymentRequested && (
-                    <button
-                      onClick={() => setUpgradeTarget(s)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 transition shadow-sm"
-                    >
-                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
-                      Expand Holders
-                    </button>
-                  )}
-                </>
-              )
-            })()}
-            <button
-              onClick={() => { setRefreshing(true); invalidate(`subs_${user?.id || user?.email}`); setRefreshKey(k => k + 1) }}
-              disabled={loading || refreshing}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition disabled:opacity-50 shadow-sm"
-            >
-              <svg className={`w-3.5 h-3.5 ${loading || refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              Refresh
-            </button>
-          </div>
+          <button
+            onClick={() => { setRefreshing(true); invalidate(`subs_${user?.id || user?.email}`); setRefreshKey(k => k + 1) }}
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition disabled:opacity-50 shadow-xs self-start sm:self-auto"
+          >
+            <svg className={`w-3.5 h-3.5 ${loading || refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            Refresh Data
+          </button>
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-3 py-16 justify-center">
-            <svg className="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" />
+          <div className="flex items-center gap-3 py-20 justify-center">
+            <svg className="w-6 h-6 animate-spin text-slate-900" fill="none" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} className="opacity-20" />
               <path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" />
             </svg>
-            <span className="text-slate-500 text-sm">Loading subscription…</span>
+            <span className="text-slate-600 text-sm font-medium">Loading subscription data…</span>
           </div>
         ) : subs.length === 0 ? (
           <>
@@ -4072,15 +4011,15 @@ export default function SubscriptionPage() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Current Plan</p>
               </div>
               <div className="px-4 sm:px-6 py-8 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <rect x="2" y="5" width="20" height="14" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" />
                   </svg>
                 </div>
                 <p className="text-slate-700 font-bold mb-1">No active subscription</p>
                 <p className="text-slate-500 text-sm mb-5">Register to activate your FAA compliance service.</p>
                 <Link to="/register"
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all">
+                  className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all">
                   Register Now
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                 </Link>
@@ -4089,54 +4028,207 @@ export default function SubscriptionPage() {
             <div className="rounded-2xl border border-slate-200 bg-slate-900 p-6 text-center">
               <p className="text-white font-black text-lg mb-2">Choose a Plan</p>
               <p className="text-slate-300 text-sm mb-5">Starting from just ${individualPrice('1 Year Subscription Plan')}/year for individuals.</p>
-              <Link to="/#pricing" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all">
+              <Link
+                to="/register"
+                state={{ forceRegType: user?.role === 'airline' ? 'airline' : 'individual' }}
+                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all"
+              >
                 View Plans
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
               </Link>
             </div>
           </>
         ) : (
-          <div className="space-y-8">
-            {subs.map((s, idx) => (
-              <SubscriptionCard
-                key={s._id || idx}
-                s={s}
-                idx={idx}
-                total={subs.length}
-                user={user}
-                token={token}
-                highlighted={!!highlightId && String(s._id) === String(highlightId)}
-                onPay={() => {
-                  if (payingId === s._id) return
-                  const isAirSub = user?.role === 'airline'
-                  const ppcDisp = Number(s.pricePerCertificate || s.pricePerCert || 0)
-                  const countDisp = Number(s.committedCount || s.holderCountValue || s.certificateHolders?.length || 0)
-                  const yearsDisp = s.subscriptionPlan === 'Multiple Years Subscription Plan'
-                    ? Math.max(2, Number(s.multiYearCount) || 3) : 1
-                  const correctTotal = isAirSub
-                    ? (ppcDisp * countDisp * yearsDisp) || Number(s.totalAmount || s.totalServiceFees || 0)
-                    : Number(s.price || s.totalServiceFees || 0)
-                  const enrichedSub = { ...s, _computedTotal: correctTotal }
-                  setSub(enrichedSub)
-                  setPayTarget(enrichedSub)
-                  setPayingId(s._id)
-                  setShowPayModal(true)
-                }}
-                onAddHolders={() => { setSub(s); setManageGroupId(''); setShowAddHolders(true) }}
-                onManageGroup={(group) => { setSub(s); setManageGroupId(String(group._id || '')); setShowAddHolders(true) }}
-                onUpgrade={() => setUpgradeTarget(s)}
-                onViewInvoice={(inv) => setViewInvoice(inv)}
-                onViewAllInvoices={(docs, reg) => setViewAllInvoices({ docs, reg })}
-                onEditForm={() => setEditTarget(s)}
-                onEditCert={() => setCertTarget(s)}
-                onRenew={() => setRenewTarget({ sub: s, group: null })}
-                onRenewGroup={(group) => setRenewTarget({ sub: s, group })}
-                onCancelPlan={(planRef) => setCancelTarget({ sub: s, planRef })}
-                onConvertUnlimited={() => setConvertTarget({ sub: s, group: null })}
-                onConvertGroupUnlimited={(group) => setConvertTarget({ sub: s, group })}
-                onShowCredits={() => setCreditsTarget(s)}
-              />
-            ))}
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start w-full">
+            {/* ── LEFT NAVIGATION PANEL ── */}
+            {(() => {
+              const primarySub = subs[0]
+              const isAirline = user?.role === 'airline'
+              const isPaid = primarySub.isPaid === true || primarySub.paymentStatus === 'paid'
+              const active = isPaid
+
+              return (
+                <aside className="w-full lg:w-80 flex-shrink-0 space-y-4 lg:sticky lg:top-28">
+                  {/* Card 1: Action Navigation Card */}
+                  <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-3.5 space-y-1">
+                    <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Subscription Actions
+                    </div>
+
+                    {/* Manage Plan */}
+                    {active && (
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new Event('ifoa-subscription-manage-expand'))
+                          setTimeout(() => {
+                            const el = document.getElementById('current-subscription-section')
+                            if (el) {
+                              const yOffset = -100
+                              const y = el.getBoundingClientRect().top + window.scrollY + yOffset
+                              window.scrollTo({ top: y, behavior: 'smooth' })
+                            }
+                          }, 300)
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-50 transition group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition flex-shrink-0">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <span>Manage Plan</span>
+                      </button>
+                    )}
+
+                    {/* Edit Form */}
+                    <button
+                      onClick={() => setEditTarget(primarySub)}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-50 transition group text-left"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition flex-shrink-0">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
+                        </svg>
+                      </div>
+                      <span>Edit Form</span>
+                    </button>
+
+                    {/* Invoices */}
+                    {active && (
+                      <button
+                        onClick={() => handleParentInvoiceClick(primarySub)}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-50 transition group text-left"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition flex-shrink-0">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <span>Invoices</span>
+                      </button>
+                    )}
+
+                    {/* Expand Holders (Airline only) */}
+                    {isAirline && active && !primarySub?.wirePaymentRequested && (
+                      <button
+                        onClick={() => setUpgradeTarget(primarySub)}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white transition shadow-sm hover:bg-slate-800 text-left mt-1"
+                        style={{ background: '#020617' }}
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white flex-shrink-0">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                        <span>Expand Holders</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Card 2: Financial & Billing Summary */}
+                  {(() => {
+                    const isUnlimited = primarySub.subscriptionPlan === 'Unlimited Plan'
+                    const isMultipleYears = (primarySub.subscriptionPlan || '').includes('Multiple Year') && Number(primarySub.multiYearCount) > 1
+                    const daysToExpiry = primarySub.expirationDate
+                      ? Math.ceil((new Date(primarySub.expirationDate) - new Date()) / (1000 * 60 * 60 * 24))
+                      : null
+                    const isExpired = isPaid && !isUnlimited && daysToExpiry !== null && daysToExpiry <= 0
+
+                    const _groups = primarySub.holderGroups || []
+                    const _groupsAmount = _groups
+                      .filter(isActiveHolderGroup)
+                      .reduce((a, g) => a + Number(g.amount || 0), 0)
+                    const _basePpc = Number(primarySub.pricePerCertificate ?? primarySub.pricePerCert ?? 0)
+                    const _baseCommitted = Math.max(0, Number(primarySub.committedCount ?? primarySub.holderCountValue ?? 0) - allGroupSlots(_groups))
+                    const _baseYears = isMultipleYears ? Number(primarySub.multiYearCount) : 1
+                    const _baseTotal = _basePpc > 0 && _baseCommitted > 0 ? _basePpc * _baseCommitted * _baseYears : 0
+                    const computedPlanTotal = isAirline ? (_baseTotal > 0 ? _baseTotal + _groupsAmount : getAirlineTotal(primarySub)) : 0
+                    const displayTotal = isAirline
+                      ? (computedPlanTotal > 0 ? computedPlanTotal : (primarySub.totalAmount || primarySub.price || 0))
+                      : (primarySub.price || primarySub.totalServiceFees || 0)
+
+                    return (
+                      <>
+                        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-5 space-y-4">
+                          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">Billing Summary</span>
+                            <PayBadge status={primarySub.paymentStatus} />
+                          </div>
+
+                          <div>
+                            <span className="text-xs font-medium text-slate-500">Total Charged</span>
+                            <p className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight tabular-nums mt-0.5">
+                              {money(displayTotal)}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2 text-xs pb-4 border-b border-slate-100">
+                            <div className="flex items-center justify-between text-slate-600">
+                              <span>Rate per cert</span>
+                              <span className="font-bold text-slate-900">{isAirline ? money(primarySub.pricePerCertificate || primarySub.pricePerCert) : money(primarySub.price)}</span>
+                            </div>
+                            {isAirline && (
+                              <div className="flex items-center justify-between text-slate-600">
+                                <span>Committed slots</span>
+                                <span className="font-bold text-slate-900">{primarySub.committedCount || primarySub.holderCountValue || primarySub.certificateHolders?.length || 0}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-slate-600">
+                              <span>Billing term</span>
+                              <span className="font-bold text-slate-900">{isUnlimited ? 'Lifetime' : isMultipleYears ? `${primarySub.multiYearCount} Years` : '1 Year'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )
+                  })()}
+                </aside>
+              )
+            })()}
+
+            {/* ── RIGHT MAIN DASHBOARD CONTENT ── */}
+            <main className="flex-1 min-w-0 space-y-8">
+              {subs.map((s, idx) => (
+                <SubscriptionCard
+                  key={s._id || idx}
+                  s={s}
+                  idx={idx}
+                  total={subs.length}
+                  user={user}
+                  token={token}
+                  highlighted={!!highlightId && String(s._id) === String(highlightId)}
+                  onPay={() => {
+                    if (payingId === s._id) return
+                    const isAirSub = user?.role === 'airline'
+                    const ppcDisp = Number(s.pricePerCertificate || s.pricePerCert || 0)
+                    const countDisp = Number(s.committedCount || s.holderCountValue || s.certificateHolders?.length || 0)
+                    const yearsDisp = s.subscriptionPlan === 'Multiple Years Subscription Plan'
+                      ? Math.max(2, Number(s.multiYearCount) || 3) : 1
+                    const correctTotal = isAirSub
+                      ? (ppcDisp * countDisp * yearsDisp) || Number(s.totalAmount || s.totalServiceFees || 0)
+                      : Number(s.price || s.totalServiceFees || 0)
+                    const enrichedSub = { ...s, _computedTotal: correctTotal }
+                    setSub(enrichedSub)
+                    setPayTarget(enrichedSub)
+                    setPayingId(s._id)
+                    setShowPayModal(true)
+                  }}
+                  onAddHolders={() => { setSub(s); setManageGroupId(''); setShowAddHolders(true) }}
+                  onManageGroup={(group) => { setSub(s); setManageGroupId(String(group._id || '')); setShowAddHolders(true) }}
+                  onUpgrade={() => setUpgradeTarget(s)}
+                  onViewInvoice={(inv) => setViewInvoice(inv)}
+                  onViewAllInvoices={(docs, reg) => setViewAllInvoices({ docs, reg })}
+                  onEditForm={() => setEditTarget(s)}
+                  onEditCert={() => setCertTarget(s)}
+                  onRenew={() => setRenewTarget({ sub: s, group: null })}
+                  onRenewGroup={(group) => setRenewTarget({ sub: s, group })}
+                  onCancelPlan={(planRef) => setCancelTarget({ sub: s, planRef })}
+                  onConvertUnlimited={() => setConvertTarget({ sub: s, group: null })}
+                  onConvertGroupUnlimited={(group) => setConvertTarget({ sub: s, group })}
+                  onShowCredits={() => setCreditsTarget(s)}
+                />
+              ))}
+            </main>
           </div>
         )}
       </div>
@@ -4391,29 +4483,29 @@ function AllInvoicesModal({ docs, reg, token, onClose, onViewSingle }) {
     onViewSingle(invoice)
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center px-4 pt-[88px] sm:pt-[96px] pb-4 animate-modal-backdrop">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[calc(100vh-104px)] sm:max-h-[calc(100vh-120px)] animate-modal-panel">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-2xl sm:max-w-3xl h-[85vh] max-h-[760px] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-modal-panel">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 flex-shrink-0 bg-white">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Payment History</p>
-            <h3 className="text-base font-black text-slate-900">All Invoices</h3>
+            <h3 className="text-lg font-black text-slate-900">All Invoices</h3>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center flex-shrink-0"
+            className="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 flex items-center justify-center flex-shrink-0 transition"
           >
             ✕
           </button>
         </div>
 
         {/* Invoice list */}
-        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+        <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
           {(!docs || docs.length === 0) && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <svg className="w-12 h-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <p className="text-sm font-semibold text-slate-500">No invoices available</p>
@@ -4423,60 +4515,69 @@ function AllInvoicesModal({ docs, reg, token, onClose, onViewSingle }) {
             <button
               key={String(doc._id || i)}
               onClick={() => handleView(doc)}
-              className="w-full text-left rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 hover:shadow-sm px-4 py-3 transition-all duration-150 group"
+              className="w-full text-left rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-slate-300 hover:shadow-md px-5 py-4 transition-all duration-150 group"
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <p className="text-sm font-bold text-slate-800">
+                  <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                    <p className="text-base font-bold text-slate-900">
                       {doc.invoiceNumber || '(no number)'}
                     </p>
-                    <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${purposeColor(doc)}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md border ${purposeColor(doc)}`}>
                       {purposeLabel(doc)}
                     </span>
                     {(() => {
-                      // Shared status badge — single source of truth in utils/invoiceStatus.js,
+                      // Shared status badge, single source of truth in utils/invoiceStatus.js,
                       // identical on client (individual & airline) + admin. Dynamic: follows
                       // the registration's active/queued plan.
                       const badge = getInvoiceStatus(doc, reg, { isHolderUpgrade: isHolderUpgrade(doc) })
                       if (!badge) return null
-                      return <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${badge.cls}`}>{badge.label}</span>
+                      return <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md border ${badge.cls}`}>{badge.label}</span>
                     })()}
                   </div>
-                  <p className="text-[11px] text-slate-500">{fmt(doc.paidAt || doc.issueDate || doc.createdAt)}</p>
-                  {doc.subscriptionPlan && (
-                    <p className="text-[11px] text-slate-500 mt-0.5">{doc.subscriptionPlan}</p>
-                  )}
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span>{fmt(doc.paidAt || doc.issueDate || doc.createdAt)}</span>
+                    {doc.subscriptionPlan && (
+                      <>
+                        <span className="text-slate-300">·</span>
+                        <span>{doc.subscriptionPlan}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-shrink-0 text-right">
-                  <p className="text-sm font-black text-slate-900">{money(
+                  <p className="text-base font-black text-slate-900">{money(
                     doc.draft?.lineItems?.length
                       ? doc.draft.lineItems.reduce((s, li) => s + (Number(li.totalPrice) || 0), 0)
                       : doc.totalAmount
                   )}</p>
-                  <p className="text-[10px] text-blue-600 font-semibold mt-1 group-hover:underline">View →</p>
+                  <p className="text-xs text-emerald-600 font-bold mt-1 group-hover:underline inline-flex items-center gap-1">
+                    View →
+                  </p>
                 </div>
               </div>
             </button>
           ))}
         </div>
 
-        <div className="px-5 py-3 border-t border-slate-100">
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+            className="w-full py-3 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition shadow-sm"
           >
             Close
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
 /*  SubscriptionCard                                                             */
 /* ─────────────────────────────────────────────────────────────────────────── */
-function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onPay, onAddHolders, onManageGroup, onViewInvoice, onEditCert, onRenew, onRenewGroup, onCancelPlan, onConvertUnlimited, onConvertGroupUnlimited, onShowCredits }) {
+function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onPay, onAddHolders, onManageGroup, onViewInvoice, onEditForm, onEditCert, onRenew, onRenewGroup, onCancelPlan, onConvertUnlimited, onConvertGroupUnlimited, onShowCredits }) {
   const navigate = useNavigate()
   const isAirline = user?.role === 'airline'
   const isPaid = s.isPaid === true || s.paymentStatus === 'paid'
@@ -4586,7 +4687,7 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
         { headers: { Authorization: `Bearer ${token}` } }
       )
       closeHolderModal()
-      // Trigger re-fetch by bumping refreshKey via parent — signal via window event
+      // Trigger re-fetch by bumping refreshKey via parent, signal via window event
       window.dispatchEvent(new Event('ifoa-subscription-refresh'))
     } catch (err) {
       setHolderActError(err.response?.data?.message || 'Failed to remove holder.')
@@ -4694,21 +4795,30 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
         ? 'bg-gradient-to-r from-slate-800 to-slate-700'
         : 'bg-gradient-to-br from-slate-500 to-slate-600'
 
+  const isMultipleYears = (s.subscriptionPlan || '').includes('Multiple Year') && Number(s.multiYearCount) > 1
+  const remainingSlots = isAirline ? Math.max(0, Number(s.committedCount || s.holderCountValue || 0) - Number(s.certificateHolders?.length || 0)) : 0
+  const holderPct = isAirline && Number(s.committedCount || s.holderCountValue || 0) > 0
+    ? Math.min(100, Math.round(((s.certificateHolders?.length || 0) / Number(s.committedCount || s.holderCountValue || 1)) * 100))
+    : 100
+
   return (
-    <div ref={cardRootRef} className={`space-y-5 relative scroll-mt-24 rounded-2xl transition-all duration-500 ${pulse ? 'ring-2 ring-blue-400/60 ring-offset-4 ring-offset-slate-50' : ''}`}>
+    <div ref={cardRootRef} className={`space-y-6 relative scroll-mt-24 rounded-3xl transition-all duration-500 ${pulse ? 'ring-2 ring-emerald-500/50 ring-offset-4 ring-offset-slate-50' : ''}`}>
       {total > 1 && (
-        <div className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-[10px] font-black flex items-center justify-center">
-            {idx + 1}
-          </span>
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Subscription #{idx + 1}
-          </p>
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-md bg-slate-900 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+              {idx + 1}
+            </span>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Subscription {idx + 1} of {total}
+            </p>
+          </div>
+          <PayBadge status={s.status || s.paymentStatus} />
         </div>
       )}
 
       {hasQueuedRenewalDue && (
-        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 sm:p-5 flex items-start gap-4">
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50/80 p-4 sm:p-5 flex items-start gap-4 shadow-sm">
           <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
             <svg className="w-5 h-5 text-emerald-600 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" />
@@ -4725,37 +4835,42 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
       )}
 
       {isExpired && !s.nextRenewal?.paidAt && (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-stretch">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 flex-1 justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Subscription Expired</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Renew to restore FAA compliance coverage and keep certifications active.</p>
-                </div>
-              </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5 flex items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-amber-900">Subscription Expired</p>
+              <p className="text-xs text-amber-700 mt-0.5">Renew your subscription to maintain active FAA compliance coverage.</p>
             </div>
           </div>
+          {onRenew && (
+            <button
+              onClick={onRenew}
+              className="px-4 py-2 text-xs font-bold text-white rounded-xl bg-slate-900 hover:bg-slate-800 transition shadow-sm flex-shrink-0"
+              style={{ background: '#020617' }}
+            >
+              Renew Now
+            </button>
+          )}
         </div>
       )}
 
       {pending && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5 flex flex-col gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5 flex flex-col gap-3 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-3 flex-1">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01" />
                 </svg>
               </div>
               <div>
                 <p className="text-sm font-bold text-slate-800">Payment pending</p>
-                <p className="text-xs text-slate-500 leading-relaxed">Complete your payment to activate this subscription.</p>
+                <p className="text-xs text-slate-500 leading-relaxed">Complete your payment to activate this subscription and initiate FAA filing.</p>
                 <button
                   onClick={() => navigate('/register', {
                     state: {
@@ -4763,7 +4878,7 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                       forceRegType: isAirline ? 'airline' : 'individual',
                     },
                   })}
-                  className="text-xs font-semibold text-blue-600 hover:underline mt-1 inline-block"
+                  className="text-xs font-semibold text-emerald-600 hover:underline mt-1 inline-block"
                 >
                   Change plan ↗
                 </button>
@@ -4771,9 +4886,8 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
             </div>
             <button
               onClick={onPay}
-              className="flex-shrink-0 inline-flex items-center justify-center gap-2 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all w-full sm:w-auto" style={{ background: '#0000ff' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#0000e6'}
-              onMouseLeave={e => e.currentTarget.style.background = '#0000ff'}
+              className="flex-shrink-0 inline-flex items-center justify-center gap-2 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all w-full sm:w-auto hover:bg-slate-800 shadow-sm"
+              style={{ background: '#020617' }}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <rect x="2" y="5" width="20" height="14" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" />
@@ -4784,341 +4898,338 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
         </div>
       )}
 
-      <div className={`rounded-2xl p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${bannerCls}`}>
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/50">
-              {onHold
-                ? 'On Hold'
-                : active && !isExpired
-                ? 'Active Subscription'
-                : inactive
-                  ? 'Inactive Subscription'
-                  : s.status === 'Active'
-                    ? 'Pending Payment'
-                    : 'Pending Subscription'}
-            </p>
-            {isExpired && (
-              <span className="text-[9px] font-black uppercase tracking-widest text-amber-400 border border-amber-500/40 bg-amber-500/10 rounded-full px-2 py-0.5">
-                Expired
-              </span>
-            )}
-          </div>
-          <PlanBadge plan={s.subscriptionPlan} />
-          {isExpired && s.expirationDate && (
-            <p className="text-[11px] text-white/40 mt-1.5">Expired {fmtYMD(s.expirationDate)}</p>
-          )}
-        </div>
-        <div className="sm:text-right">
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">
-            {isAirline ? 'Total Amount' : 'Plan Price'}
-          </p>
-          <p className="text-2xl sm:text-3xl font-black text-white">
-            {money(displayTotal)}
-          </p>
-        </div>
-      </div>
+      {/* ── Main Single-Column Content Layout ── */}
+      <div className="space-y-6">
+          
+          {/* Hero Active Plan & Capacity Status */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 text-white shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/3 -mb-6 w-28 h-28 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Plan Details</p>
-        </div>
-        <div className="px-4 sm:px-6 py-2">
-          {isAirline ? (
-            <>
-              <Row label="Airline Name" value={s.airlineName} />
-              <Row label="Subscription Plan" value={s.subscriptionPlan} />
-              <Row label="Payment Status" value={<PayBadge status={s.paymentStatus} />} />
-              <Row
-                label="Subscription Start Date"
-                value={
-                  s.subscriptionDate
-                    ? <span className="font-semibold text-slate-900">{fmtYMD(s.subscriptionDate)}</span>
-                    : active ? fmtYMD(s.updatedAt) : 'Activates on payment'
-                }
-              />
-              <Row
-                label="Expiration Date"
-                value={
-                  s.subscriptionPlan === 'Unlimited Plan'
-                    ? 'Never (Unlimited ∞)'
-                    : s.expirationDate
-                      ? isExpired
-                        ? <span className="inline-flex items-center gap-1.5"><span className="font-semibold text-slate-900">{fmtYMD(s.expirationDate)}</span><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-1.5 py-0.5">Expired</span></span>
-                        : <span className="font-semibold text-slate-900">{fmtYMD(s.expirationDate)}</span>
-                      : active ? '—' : 'Activates on payment'
-                }
-              />
-              <Row label="Price per Certificate" value={money(s.pricePerCertificate || s.pricePerCert)} />
-              <Row label="Certificate Holders" value={`${s.certificateHolders?.length || 0} / ${s.committedCount || s.holderCountValue || s.certificateHolders?.length || 0} holder(s)`} />
-              {s.subscriptionPlan === 'Multiple Years Subscription Plan' && Number(s.multiYearCount) > 1 && (
-                <Row label="Plan Duration" value={`${s.multiYearCount} years`} />
-              )}
-              <Row label="Total Amount" value={money(displayTotal)} />
+            <div className="relative z-10">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    {isAirline ? 'Airline Organization' : 'Individual Airman'}
+                  </span>
+                  <span className="text-slate-600">·</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white border border-white/15">
+                    {active ? 'Active Plan' : 'Pending Payment'}
+                  </span>
+                  {isExpired && (
+                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 rounded-full px-2 py-0.5">
+                      Expired
+                    </span>
+                  )}
+                </div>
+                {isAirline && (
+                  <span className="text-[10px] font-bold text-slate-300 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                    {1 + (Array.isArray(s.holderGroups) ? s.holderGroups.length : 0)} Active Tier{Array.isArray(s.holderGroups) && s.holderGroups.length ? 's' : ''}
+                  </span>
+                )}
+              </div>
 
-              {/* ── Subscription Plans — base plan + each added counter plan ── */}
-              {(() => {
-                const groupCount = Array.isArray(s.holderGroups) ? s.holderGroups.length : 0
-                return (
-                  <div id="current-subscription-section" ref={subscriptionBlockRef} className="py-5 border-b border-slate-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="h-4 w-1 rounded-full bg-slate-900" />
-                        <p className="text-sm font-extrabold text-slate-900">Current Subscription</p>
-                      </div>
-                      <span className="text-[11px] font-bold text-slate-500 bg-slate-100 rounded-full px-2.5 py-1">{1 + groupCount} plan{groupCount ? 's' : ''}</span>
-                    </div>
-                    <ActiveSubscriptionBlock
-                      s={s}
-                      active={active}
-                      onAddHolders={s.wirePaymentRequested ? null : onAddHolders}
-                      onManageGroup={onManageGroup}
-                      onRenew={s.wirePaymentRequested ? null : onRenew}
-                      onRenewGroup={s.wirePaymentRequested ? null : onRenewGroup}
-                      onCancelPlan={s.wirePaymentRequested ? null : onCancelPlan}
-                      onConvertUnlimited={s.wirePaymentRequested ? null : onConvertUnlimited}
-                      onConvertGroupUnlimited={s.wirePaymentRequested ? null : onConvertGroupUnlimited}
-                      onShowCredits={onShowCredits}
-                      forceExpandKey={forceExpandKey}
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1.5">
+                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                  {s.subscriptionPlan || 'Active Subscription'}
+                </h2>
+                {isMultipleYears && (
+                  <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-400/30 rounded-lg px-2 py-0.5">
+                    {s.multiYearCount} Years Multi-Year
+                  </span>
+                )}
+              </div>
+
+              {/* Dynamic Capacity / Allocation Progress */}
+              {isAirline ? (
+                <div className="mt-2.5 pt-2 border-t border-white/10">
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-slate-300 font-medium">
+                      Holders Capacity: <strong className="text-white font-bold">{s.certificateHolders?.length || 0}</strong> of <strong className="text-white font-bold">{s.committedCount || s.holderCountValue || s.certificateHolders?.length || 0}</strong> assigned
+                    </span>
+                    <span className="font-bold text-white text-[11px] tabular-nums">{holderPct}% Full</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 bg-[#34E06E]"
+                      style={{ width: `${holderPct}%` }}
                     />
                   </div>
-                )
-              })()}
 
-              {(() => {
-                const remaining = (s.committedCount || 0) - (s.certificateHolders?.length || 0)
-                if (remaining > 0) return (
-                  <div className="py-3 border-b border-slate-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  {remainingSlots > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5">
                       <div>
-                        <p className="text-xs font-bold text-slate-700">{remaining} slot{remaining !== 1 ? 's' : ''} not yet filled</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Total payment covers all committed slots.</p>
+                        <p className="text-[11px] text-slate-200">
+                          <strong className="text-white font-semibold">{remainingSlots} slot{remainingSlots !== 1 ? 's' : ''}</strong> available to assign under this plan.
+                        </p>
                       </div>
                       {!s.wirePaymentRequested && (
-                        <button onClick={onAddHolders}
-                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-white text-xs font-semibold rounded-lg transition-all w-full sm:w-auto"
-                          style={{ background: '#0000ff' }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#0000e6'}
-                          onMouseLeave={e => e.currentTarget.style.background = '#0000ff'}>
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-                          Add Certificate Holder
+                        <button
+                          onClick={onAddHolders}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-slate-900 text-[11px] font-bold rounded-lg hover:bg-slate-100 transition shadow-xs"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                          </svg>
+                          Add Holder
                         </button>
                       )}
                     </div>
-                  </div>
-                )
-                return null
-              })()}
-              <Row label="Country" value={countryDisplayName(s.country)} />
-              <Row label="Submitted" value={fmt(s.submittedAt || s.createdAt)} />
-              {s.certificateHolders?.length > 0 && (() => {
-                return (
-                  <div ref={holdersSectionRef} className="py-3 border-b border-slate-100">
-                    <button
-                      onClick={() => { setShowHoldersDrawer(v => !v); setHolderSearch('') }}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 transition-all group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                          </svg>
-                        </div>
-                        <div className="text-left">
-                          <p className="text-sm font-bold text-slate-800">
-                            {s.certificateHolders.length} Certificate Holder{s.certificateHolders.length !== 1 ? 's' : ''}
-                          </p>
-                          <p className="text-xs text-slate-500">{showHoldersDrawer ? 'Hide holders' : 'View all holders'}</p>
-                        </div>
-                      </div>
-                      <motion.div
-                        animate={{ rotate: showHoldersDrawer ? 180 : 0 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-                      >
-                        <svg className="w-4 h-4 text-slate-500 group-hover:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </motion.div>
-                    </button>
-                  </div>
-                )
-              })()}
-            </>
-          ) : (
-            <>
-              <Row label="Subscription Plan" value={s.subscriptionPlan} />
-              <Row label="Status" value={<PayBadge status={s.status || s.paymentStatus} />} />
-              <Row label="Payment Status" value={<PayBadge status={s.paymentStatus} />} />
-              <Row label="Plan Price" value={money(s.price)} />
-              <Row
-                label="Subscription Start Date"
-                value={
-                  active && s.subscriptionDate
-                    ? <span className="font-semibold text-slate-900">{fmtYMD(s.subscriptionDate)}</span>
-                    : 'Activates on payment'
-                }
-              />
-              <Row
-                label="Expiration Date"
-                value={
-                  !active
-                    ? 'Activates on payment'
-                    : s.subscriptionPlan === 'Unlimited Plan'
-                      ? 'Never (Unlimited)'
-                      : s.expirationDate
-                        ? isExpired
-                          ? <span className="inline-flex items-center gap-1.5"><span className="font-semibold text-slate-900">{fmtYMD(s.expirationDate)}</span><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-1.5 py-0.5">Expired</span></span>
-                          : <span className="font-semibold text-slate-900">{fmtYMD(s.expirationDate)}</span>
-                        : '—'
-                }
-              />
-              <Row label="Primary Certificate" value={s.primaryCertificate} />
-              <Row label="Certificate Type" value={s.primaryAirmanCertificate} />
-              {/* Always show certificate numbers — primary and secondary — even when blank. */}
-              <Row label="FAA Certificate #" value={s.faaCertificateNumber || '—'} />
-              <Row label="IACRA Tracking # (FTN)" value={s.iacraTrackingNumber || '—'} />
-              <Row label="Secondary FAA Certificate #" value={s.secondaryFaaCertificateNumber || '—'} />
-              <Row label="Secondary IACRA FTN #" value={s.secondaryIacraTrackingNumber || '—'} />
-              <Row label="Submitted" value={fmt(s.submittedAt || s.createdAt)} />
-              <div id="current-subscription-section" ref={subscriptionBlockRef} className="py-5 scroll-mt-24">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="h-4 w-1 rounded-full bg-slate-900" />
-                  <p className="text-sm font-extrabold text-slate-900">Current Subscription</p>
+                  )}
                 </div>
-                <IndividualSubscriptionBlock
-                  s={s}
-                  active={active}
-                  onUpgrade={s.wirePaymentRequested ? undefined : onConvertUnlimited}
-                  onShowCredits={onShowCredits}
-                  onRenew={s.wirePaymentRequested ? undefined : onRenew}
-                  onEditCert={onEditCert}
-                  forceExpandKey={forceExpandKey}
-                />
+              ) : (
+                <div className="mt-2.5 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Primary Certificate</span>
+                    <span className="text-xs font-bold text-white">{s.primaryCertificate || 'FAA Certificate'}</span>
+                  </div>
+                  {s.faaCertificateNumber && (
+                    <div className="bg-white/10 px-2 py-0.5 rounded-md border border-white/10 font-mono text-[11px] text-slate-200">
+                      FAA #{s.faaCertificateNumber}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 2-Column Overview Row: Coverage Term + Entity Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Coverage & Term Card */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-5 space-y-3">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">Coverage Term</span>
+                <span className="text-xs font-bold text-slate-700">
+                  {isUnlimited ? 'Lifetime' : daysToExpiry !== null && daysToExpiry > 0 ? `${daysToExpiry}d left` : isExpired ? 'Expired' : 'Pending'}
+                </span>
               </div>
-            </>
-          )}
-        </div>
-      </div>
 
-      {/* ── Certificate Holders Panel — absolute right of card, in viewport right-space ── */}
-      <AnimatePresence>
-        {showHoldersDrawer && s.certificateHolders?.length > 0 && (() => {
-          const filteredHP = (s.certificateHolders || []).filter(h =>
-            !holderSearch.trim() ||
-            h.fullName?.toLowerCase().includes(holderSearch.toLowerCase()) ||
-            h.faaCertificateNumber?.toLowerCase().includes(holderSearch.toLowerCase()) ||
-            h.iacraFtnNumber?.toLowerCase().includes(holderSearch.toLowerCase())
-          )
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <span className="text-slate-400 font-medium block">Subscription Start</span>
+                  <span className="font-bold text-slate-900">
+                    {s.subscriptionDate ? fmtYMD(s.subscriptionDate) : active ? fmtYMD(s.updatedAt) : 'Activates on payment'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium block">Expiration Date</span>
+                  <span className="font-bold text-slate-900">
+                    {isUnlimited ? 'Never (Unlimited Validity ∞)' : s.expirationDate ? fmtYMD(s.expirationDate) : (active ? '—' : 'Activates on payment')}
+                  </span>
+                </div>
+              </div>
 
-          // Calculate coordinates
-          const popupWidth = 360
-          const margin = 12
-          let popupStyle = {}
-          let isDesktopPositioned = false
+              {(isExpired || (daysToExpiry !== null && daysToExpiry <= 60)) && onRenew && active && !hasQueuedRenewal && (
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={onRenew}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-xs font-bold transition shadow-sm hover:bg-slate-800"
+                    style={{ background: '#020617' }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Renew Plan Now
+                  </button>
+                </div>
+              )}
+            </div>
 
-          if (coords && window.innerWidth >= 1024) {
-            const rightSpace = window.innerWidth - coords.right
-            const leftSpace = coords.left
+            {/* Entity Details Card */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-5 space-y-3">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">Entity Details</span>
+                <button
+                  onClick={() => isAirline ? (onEditForm && onEditForm()) : (onEditCert && onEditCert())}
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition"
+                >
+                  Edit
+                </button>
+              </div>
 
-            let left = coords.right + margin
-            let top = coords.top
+              <div className="space-y-2.5 text-xs">
+                {isAirline ? (
+                  <>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Airline Name</span>
+                      <span className="font-bold text-slate-900">{s.airlineName || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Country</span>
+                      <span className="font-bold text-slate-900">{countryDisplayName(s.country)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Date Registered</span>
+                      <span className="font-bold text-slate-900">{fmt(s.submittedAt || s.createdAt)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Certificate Type</span>
+                      <span className="font-bold text-slate-900">{s.primaryAirmanCertificate || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium block">FAA / IACRA FTN</span>
+                      <span className="font-bold text-slate-900 font-mono">
+                        {s.faaCertificateNumber ? `FAA: ${s.faaCertificateNumber}` : ''} {s.iacraTrackingNumber ? `· FTN: ${s.iacraTrackingNumber}` : ''}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Country</span>
+                      <span className="font-bold text-slate-900">{countryDisplayName(s.country)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Date Registered</span>
+                      <span className="font-bold text-slate-900">{fmt(s.submittedAt || s.createdAt)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
 
-            if (rightSpace < popupWidth + 24) {
-              if (leftSpace > popupWidth + 24) {
-                left = coords.left - popupWidth - margin
-              } else {
-                left = Math.max(margin, window.innerWidth - popupWidth - 24)
-              }
-            }
+          {/* Card 2: Interactive Subscriptions & Add-ons Plan Manager */}
+          <div id="current-subscription-section" ref={subscriptionBlockRef} className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-7">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">Subscription Plans & Add-ons</h3>
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200/60 rounded-full px-3 py-0.5">
+                {1 + (Array.isArray(s.holderGroups) ? s.holderGroups.length : 0)} Plan{Array.isArray(s.holderGroups) && s.holderGroups.length ? 's' : ''}
+              </span>
+            </div>
 
-            const approxHeight = 580
-            if (top + approxHeight > window.innerHeight) {
-              top = Math.max(margin, window.innerHeight - approxHeight - 24)
-            }
+            {isAirline ? (
+              <ActiveSubscriptionBlock
+                s={s}
+                active={active}
+                onAddHolders={s.wirePaymentRequested ? null : onAddHolders}
+                onManageGroup={onManageGroup}
+                onRenew={s.wirePaymentRequested ? null : onRenew}
+                onRenewGroup={s.wirePaymentRequested ? null : onRenewGroup}
+                onCancelPlan={s.wirePaymentRequested ? null : onCancelPlan}
+                onConvertUnlimited={s.wirePaymentRequested ? null : onConvertUnlimited}
+                onConvertGroupUnlimited={s.wirePaymentRequested ? null : onConvertGroupUnlimited}
+                onShowCredits={onShowCredits}
+                forceExpandKey={forceExpandKey}
+              />
+            ) : (
+              <IndividualSubscriptionBlock
+                s={s}
+                active={active}
+                onUpgrade={s.wirePaymentRequested ? undefined : onConvertUnlimited}
+                onShowCredits={onShowCredits}
+                onRenew={s.wirePaymentRequested ? undefined : onRenew}
+                onEditCert={onEditCert}
+                forceExpandKey={forceExpandKey}
+              />
+            )}
+          </div>
 
-            popupStyle = {
-              position: 'fixed',
-              top: `${top}px`,
-              left: `${left}px`,
-              width: `${popupWidth}px`,
-              // Bound the panel to the viewport so the list scrolls instead of
-              // overflowing off-screen (bottom holders + their buttons were cut off).
-              maxHeight: `${window.innerHeight - top - margin}px`,
-              display: 'flex',
-              flexDirection: 'column',
-            }
-            isDesktopPositioned = true
-          }
+          {/* Card 3: Certificate Holders Directory Drawer (for Airline) */}
+          {isAirline && s.certificateHolders?.length > 0 && (
+            <div ref={holdersSectionRef} className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-7">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">Assigned Certificate Holders</h3>
+                <span className="text-xs font-bold text-slate-600 bg-slate-100 rounded-full px-2.5 py-0.5">
+                  {s.certificateHolders.length} Active
+                </span>
+              </div>
 
-          return (
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.97 }}
-              transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-              className={`fixed z-50 rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xl flex flex-col ${isDesktopPositioned
-                ? ""
-                : "top-24 bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-[360px] max-h-[calc(100vh-7rem)]"
-                }`}
-              style={popupStyle}
-            >
-              {/* Panel header */}
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between"
-                style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+              <button
+                onClick={() => { setShowHoldersDrawer(true); setHolderSearch('') }}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-100/70 hover:border-slate-300 transition-all group"
+              >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: '#000' }}>
+                  <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center flex-shrink-0 shadow-xs">
                     <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
                     </svg>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none mb-0.5">Certificate Holders</p>
-                    <p className="text-sm font-black text-slate-900 leading-none">
-                      {s.certificateHolders.length} <span className="text-slate-500 font-semibold text-xs">total</span>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-slate-900">
+                      Manage {s.certificateHolders.length} Certificate Holder{s.certificateHolders.length !== 1 ? 's' : ''}
                     </p>
+                    <p className="text-xs text-slate-500">View, search, edit, convert, or remove holders</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-emerald-600 group-hover:text-emerald-700">
+                    Open Directory →
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
+      </div>
+
+      {/* ── Certificate Holders Modal Popup ── */}
+      {showHoldersDrawer && s.certificateHolders?.length > 0 && (() => {
+        const filteredHP = (s.certificateHolders || []).filter(h =>
+          !holderSearch.trim() ||
+          h.fullName?.toLowerCase().includes(holderSearch.toLowerCase()) ||
+          h.faaCertificateNumber?.toLowerCase().includes(holderSearch.toLowerCase()) ||
+          h.iacraFtnNumber?.toLowerCase().includes(holderSearch.toLowerCase())
+        )
+
+        return createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 animate-modal-backdrop" style={{ zIndex: 9999 }}>
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowHoldersDrawer(false)} />
+            <div className="relative z-10 w-full max-w-2xl sm:max-w-3xl h-[85vh] max-h-[780px] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-modal-panel">
+              {/* Panel header */}
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between flex-shrink-0 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-slate-900 shadow-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none mb-1">Certificate Holders Directory</p>
+                    <h3 className="text-lg font-black text-slate-900 leading-none">
+                      {s.certificateHolders.length} <span className="text-slate-500 font-semibold text-sm">Total Assigned</span>
+                    </h3>
                   </div>
                 </div>
                 <button onClick={() => setShowHoldersDrawer(false)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Search */}
-              <div className="px-4 py-2 border-b border-slate-100 bg-white">
+              <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/60 flex-shrink-0">
                 <div className="relative">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                   </svg>
                   <input
                     autoFocus
                     value={holderSearch}
                     onChange={e => setHolderSearch(e.target.value)}
-                    placeholder="Search name, FAA #, FTN…"
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs outline-none focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-50 transition"
+                    placeholder="Search holders by name, FAA #, FTN…"
+                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition shadow-xs"
                   />
                 </div>
               </div>
 
               {/* Holder list */}
-              <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3">
                 {filteredHP.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <p className="text-xs font-semibold text-slate-500">No match for "{holderSearch}"</p>
+                  <div className="py-16 text-center">
+                    <p className="text-sm font-semibold text-slate-500">No matching holders found for "{holderSearch}"</p>
                   </div>
                 ) : filteredHP.map((h, i) => (
-                  <div key={h._id || i} className="px-4 py-3 hover:bg-slate-50/60 transition-colors">
-                    <div className="flex items-start gap-2.5 mb-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-black text-slate-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div key={h._id || i} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-slate-300 hover:shadow-sm transition-all">
+                    <div className="flex items-start gap-3 mb-2">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-black text-slate-600 flex items-center justify-center flex-shrink-0 mt-0.5">
                         {i + 1}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-bold text-slate-900 truncate leading-tight">{h.fullName}</p>
-                          <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border flex-shrink-0 bg-slate-100 border-slate-200 text-slate-500">
+                        <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                          <p className="text-base font-bold text-slate-900 leading-tight">{h.fullName}</p>
+                          <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border flex-shrink-0 bg-slate-100 border-slate-200 text-slate-600">
                             {h.certificateStatus || 'NEW'}
                           </span>
                         </div>
@@ -5126,50 +5237,52 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                           const pInfo = holderPlanInfo(h, s)
                           const exp = getExpiryStatus(pInfo.expiry)
                           return (
-                            <span className="mt-1 inline-flex flex-wrap items-center gap-1">
-                              <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${pInfo.isGroup
-                                ? 'bg-blue-50 border-blue-200 text-blue-700'
-                                : 'bg-slate-50 border-slate-200 text-slate-500'
+                            <span className="inline-flex flex-wrap items-center gap-1.5 mb-1">
+                              <span className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${pInfo.isGroup
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-slate-100 border-slate-200 text-slate-600'
                                 }`}>
                                 {pInfo.label}{pInfo.isGroup ? ' · upgrade' : ''}
                               </span>
-                              {exp && <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${exp.cls}`}>{exp.label}</span>}
+                              {exp && <span className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${exp.cls}`}>{exp.label}</span>}
                             </span>
                           )
                         })()}
                         {h.certificateType && (
-                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">{h.certificateType}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{h.certificateType}</p>
                         )}
-                        {/* Always show both primary and secondary certificate numbers (blank → —). */}
-                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                          <p className="text-[10px] text-slate-500"><span className="font-bold text-slate-500">FAA</span> {h.faaCertificateNumber || '—'}</p>
-                          <p className="text-[10px] text-slate-500"><span className="font-bold text-slate-500">FTN</span> {h.iacraFtnNumber || '—'}</p>
-                          <p className="text-[10px] text-slate-500"><span className="font-bold text-slate-500">Sec. FAA</span> {h.secondaryFaaCertificateNumber || '—'}</p>
-                          <p className="text-[10px] text-slate-500"><span className="font-bold text-slate-500">Sec. FTN</span> {h.secondaryIacraFtnNumber || '—'}</p>
+                        <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-xs text-slate-500">
+                          <p><span className="font-semibold text-slate-700">FAA:</span> {h.faaCertificateNumber || '—'}</p>
+                          <p><span className="font-semibold text-slate-700">FTN:</span> {h.iacraFtnNumber || '—'}</p>
+                          <p><span className="font-semibold text-slate-700">Sec. FAA:</span> {h.secondaryFaaCertificateNumber || '—'}</p>
+                          <p><span className="font-semibold text-slate-700">Sec. FTN:</span> {h.secondaryIacraFtnNumber || '—'}</p>
                         </div>
                       </div>
                     </div>
                     {active && h._id && (
-                      <div className="flex items-center gap-1.5 pl-[34px]">
+                      <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 justify-end">
                         <button
+                          type="button"
                           onClick={() => openEditHolder(h)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition shadow-2xs"
                         >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
                           Edit
                         </button>
                         <button
+                          type="button"
                           onClick={() => setHolderAction({ holder: h, holderId: h._id, action: 'convert' })}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition shadow-2xs"
                         >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                           Convert
                         </button>
                         <button
+                          type="button"
                           onClick={() => setHolderAction({ holder: h, holderId: h._id, action: 'remove' })}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 bg-white text-[10px] font-bold text-slate-500 hover:border-red-200 hover:text-red-600 hover:bg-red-50 transition"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-red-600 hover:border-red-200 hover:bg-red-50 transition shadow-2xs"
                         >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           Remove
                         </button>
                       </div>
@@ -5178,20 +5291,26 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                 ))}
               </div>
 
-              {/* Footer count when scrollable */}
-              {s.certificateHolders.length > 4 && (
-                <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60">
-                  <p className="text-[10px] text-slate-500 font-medium text-center">
-                    {filteredHP.length} of {s.certificateHolders.length} holders
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          )
-        })()}
-      </AnimatePresence>
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex-shrink-0 flex items-center justify-between">
+                <p className="text-xs text-slate-500 font-medium">
+                  Showing {filteredHP.length} of {s.certificateHolders.length} holders
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowHoldersDrawer(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      })()}
 
-      {/* Upcoming/Queued Next Plan card removed — each plan now shows its own renewal status inline. */}
+      {/* Upcoming/Queued Next Plan card removed, each plan now shows its own renewal status inline. */}
       {false && (() => {
         const nr = s.nextRenewal
         // Airline fallback: divide by (ppc × count) not just ppc
@@ -5222,7 +5341,7 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-emerald-800">Next Subscription Plan</p>
                 <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
-                  Activates on {fmtYMD(activationDate)} — when your current plan expires
+                  Activates on {fmtYMD(activationDate)}, when your current plan expires
                 </p>
               </div>
               <span className="ml-auto text-[10px] font-semibold text-emerald-600">
@@ -5258,7 +5377,7 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
             <div className="px-4 sm:px-6 pb-4">
               <div className="rounded-xl bg-emerald-100/70 border border-emerald-200 px-4 py-3">
                 <p className="text-xs text-emerald-700 leading-relaxed">
-                  ✓ Your renewal is confirmed and queued. Your current plan remains fully active until <strong>{fmtYMD(s.expirationDate)}</strong>. This new plan starts automatically on <strong>{fmtYMD(activationDate)}</strong> — no action needed.
+                  ✓ Your renewal is confirmed and queued. Your current plan remains fully active until <strong>{fmtYMD(s.expirationDate)}</strong>. This new plan starts automatically on <strong>{fmtYMD(activationDate)}</strong>, no action needed.
                 </p>
                 {(nr.invoiceNumber || cachedInvoiceDocs?.find(d => d.purpose === 'renewal')?.invoiceNumber) && (() => {
                   const renewalInvoiceNum = cachedInvoiceDocs?.find(d => d.purpose === 'renewal')?.invoiceNumber || nr.invoiceNumber
@@ -5322,8 +5441,8 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
       })()}
 
       {/* ── Holder Remove Confirm Modal ─────────────────────────────────── */}
-      {holderAction?.action === 'remove' && (
-        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop">
+      {holderAction?.action === 'remove' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop" style={{ zIndex: 9999 }}>
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel-sm">
             <div className="px-6 py-5 border-b border-slate-100">
               <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-0.5">Remove Holder</p>
@@ -5346,12 +5465,13 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Holder Convert Confirm Modal ─────────────────────────────────── */}
-      {holderAction?.action === 'convert' && (
-        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop">
+      {holderAction?.action === 'convert' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop" style={{ zIndex: 9999 }}>
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel-sm">
             <div className="px-6 py-5 border-b border-slate-100">
               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">Convert to Individual</p>
@@ -5373,7 +5493,7 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">Keep subscription active</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Current plan, start date, and expiry are carried over. No new payment required — already covered.</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Current plan, start date, and expiry are carried over. No new payment required, already covered.</p>
                     </div>
                   </div>
                 </button>
@@ -5414,16 +5534,17 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Holder Edit Modal ─────────────────────────────────────────────── */}
-      {holderAction?.action === 'edit' && (
-        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop">
+      {holderAction?.action === 'edit' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop" style={{ zIndex: 9999 }}>
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel-sm">
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-0.5">Edit Holder</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">Edit Holder</p>
                 <h2 className="text-base font-extrabold text-slate-900">{holderAction.holder.fullName}</h2>
               </div>
               <button onClick={closeHolderModal} className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">
@@ -5437,36 +5558,39 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Full Name <span className="text-red-500">*</span></label>
                   <input type="text" value={editHolderForm.fullName || ''}
                     onChange={e => setEditHolderForm(f => ({ ...f, fullName: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Date of Birth</label>
                   <input type="date" value={editHolderForm.dateOfBirth || ''}
                     onChange={e => setEditHolderForm(f => ({ ...f, dateOfBirth: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition" />
                 </div>
               </div>
               {/* Row: Certificate Type + Certificate Status */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Certificate Type <span className="text-red-500">*</span></label>
-                  <select value={editHolderForm.certificateType || ''}
-                    onChange={e => setEditHolderForm(f => ({ ...f, certificateType: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition bg-white">
-                    <option value="">Select type…</option>
-                    {['Part 61 - Pilot', 'Part 61 - Flight or Ground Instructor', 'Part 65 - Aircraft Dispatcher', 'Part 107 - Remote Pilot'].map(v => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    value={editHolderForm.certificateType || ''}
+                    onChange={val => setEditHolderForm(f => ({ ...f, certificateType: val }))}
+                    placeholder="Select type…"
+                    options={[
+                      { value: '', label: 'Select type…' },
+                      ...['Part 61 - Pilot', 'Part 61 - Flight or Ground Instructor', 'Part 65 - Aircraft Dispatcher', 'Part 107 - Remote Pilot'].map(v => ({ value: v, label: v }))
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Certificate Status</label>
-                  <select value={editHolderForm.certificateStatus || 'EXISTING'}
-                    onChange={e => setEditHolderForm(f => ({ ...f, certificateStatus: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition bg-white">
-                    <option value="EXISTING">EXISTING</option>
-                    <option value="NEW">NEW</option>
-                  </select>
+                  <CustomSelect
+                    value={editHolderForm.certificateStatus || 'EXISTING'}
+                    onChange={val => setEditHolderForm(f => ({ ...f, certificateStatus: val }))}
+                    options={[
+                      { value: 'EXISTING', label: 'EXISTING' },
+                      { value: 'NEW', label: 'NEW' }
+                    ]}
+                  />
                 </div>
               </div>
               {/* Row: FAA # + IACRA FTN # */}
@@ -5475,13 +5599,13 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">FAA Certificate # <span className="text-red-500">*</span></label>
                   <input type="text" value={editHolderForm.faaCertificateNumber || ''}
                     onChange={e => setEditHolderForm(f => ({ ...f, faaCertificateNumber: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">IACRA FTN # <span className="text-red-500">*</span></label>
                   <input type="text" value={editHolderForm.iacraFtnNumber || ''}
                     onChange={e => setEditHolderForm(f => ({ ...f, iacraFtnNumber: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition" />
                 </div>
               </div>
               {/* Holder Email */}
@@ -5489,58 +5613,60 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Holder Email</label>
                 <input type="email" value={editHolderForm.email || ''} placeholder="holder@airline.com"
                   onChange={e => setEditHolderForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition" />
               </div>
-              {/* Plan group assignment — which paid plan this holder is on */}
+              {/* Plan group assignment, which paid plan this holder is on */}
               {Array.isArray(s.holderGroups) && s.holderGroups.length > 0 && (
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Plan</label>
-                  <select value={editHolderForm.holderGroupId || ''}
-                    onChange={e => setEditHolderForm(f => ({ ...f, holderGroupId: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition">
-                    <option value="">Base plan — {planShortLabel(s.subscriptionPlan, s.multiYearCount)}</option>
-                    {s.holderGroups.map((g, gi) => (
-                      <option key={String(g._id || gi)} value={String(g._id)}>
-                        {planShortLabel(g.plan, g.multiYearCount)} upgrade ({g.count} slots)
-                      </option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    value={editHolderForm.holderGroupId || ''}
+                    onChange={val => setEditHolderForm(f => ({ ...f, holderGroupId: val }))}
+                    options={[
+                      { value: '', label: `Base plan, ${planShortLabel(s.subscriptionPlan, s.multiYearCount)}` },
+                      ...s.holderGroups.map((g, gi) => ({
+                        value: String(g._id || gi),
+                        label: `${planShortLabel(g.plan, g.multiYearCount)} upgrade (${g.count} slots)`
+                      }))
+                    ]}
+                  />
                 </div>
               )}
               {/* Secondary certificate checkbox */}
-              <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${editHolderForm.hasSecondaryCertificate ? 'border-blue-400 bg-blue-50/60' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+              <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${editHolderForm.hasSecondaryCertificate ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
                 <input type="checkbox" checked={!!editHolderForm.hasSecondaryCertificate}
                   onChange={e => setEditHolderForm(f => ({ ...f, hasSecondaryCertificate: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-blue-600" />
+                  className="w-4 h-4 rounded accent-[#34E06E]" />
                 <span className="text-sm font-semibold text-slate-700">This holder has a secondary FAA certificate</span>
               </label>
               {/* Secondary certificate details */}
               {editHolderForm.hasSecondaryCertificate && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50/40 px-4 py-4 space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Secondary Certificate Details</p>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60/40 px-4 py-4 space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Secondary Certificate Details</p>
                   <div>
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Secondary Certificate Type <span className="text-red-500">*</span></label>
-                    <select value={editHolderForm.secondaryCertificateType || ''}
-                      onChange={e => setEditHolderForm(f => ({ ...f, secondaryCertificateType: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition bg-white">
-                      <option value="">Select secondary type…</option>
-                      {['Part 61 - Pilot', 'Part 61 - Flight or Ground Instructor', 'Part 65 - Aircraft Dispatcher', 'Part 107 - Remote Pilot'].map(v => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </select>
+                    <CustomSelect
+                      value={editHolderForm.secondaryCertificateType || ''}
+                      onChange={val => setEditHolderForm(f => ({ ...f, secondaryCertificateType: val }))}
+                      placeholder="Select secondary type…"
+                      options={[
+                        { value: '', label: 'Select secondary type…' },
+                        ...['Part 61 - Pilot', 'Part 61 - Flight or Ground Instructor', 'Part 65 - Aircraft Dispatcher', 'Part 107 - Remote Pilot'].map(v => ({ value: v, label: v }))
+                      ]}
+                    />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Secondary FAA Cert #</label>
                       <input type="text" value={editHolderForm.secondaryFaaCertificateNumber || ''} placeholder="Secondary FAA Cert #"
                         onChange={e => setEditHolderForm(f => ({ ...f, secondaryFaaCertificateNumber: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition" />
                     </div>
                     <div>
                       <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Secondary IACRA FTN #</label>
                       <input type="text" value={editHolderForm.secondaryIacraFtnNumber || ''} placeholder="FTN-XXXXXXXX"
                         onChange={e => setEditHolderForm(f => ({ ...f, secondaryIacraFtnNumber: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition" />
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition" />
                     </div>
                   </div>
                 </div>
@@ -5553,20 +5679,19 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
                 Cancel
               </button>
               <button onClick={handleHolderEdit} disabled={holderActLoading}
-                className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition disabled:opacity-60"
-                style={{ background: '#0000ff' }}
-                onMouseEnter={e => { if (!holderActLoading) e.currentTarget.style.background = '#0000e6' }}
-                onMouseLeave={e => e.currentTarget.style.background = '#0000ff'}>
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition disabled:opacity-60 hover:bg-slate-800 shadow-sm"
+                style={{ background: '#020617' }}>
                 {holderActLoading ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Credentials Display Modal (after convert success) ─────────────── */}
-      {holderCredentials && (
-        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop">
+      {holderCredentials && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-modal-backdrop" style={{ zIndex: 9999 }}>
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden animate-modal-panel-sm">
             <div className="px-6 py-5 border-b border-slate-100">
               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">Conversion Successful</p>
@@ -5575,7 +5700,7 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
             <div className="px-6 py-4 space-y-3">
               {holderCredentials.keepSubscription ? (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-                  <p className="text-xs font-bold text-emerald-700">Subscription kept active — plan and expiry carried over from your airline account.</p>
+                  <p className="text-xs font-bold text-emerald-700">Subscription kept active, plan and expiry carried over from your airline account.</p>
                 </div>
               ) : (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
@@ -5602,7 +5727,8 @@ function SubscriptionCard({ s, idx, total, user, token, highlighted = false, onP
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

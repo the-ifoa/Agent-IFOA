@@ -1,5 +1,5 @@
 /**
- * AdminSupportPage.jsx  — /admin/support
+ * AdminSupportPage.jsx , /admin/support
  *
  * Admin live-chat console. Left: conversation list with Individuals / Airlines
  * tabs (each row shows the name, last message, time + unread badge). Right: the
@@ -7,6 +7,16 @@
  */
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import {
+  Search,
+  Mail,
+  Trash2,
+  Pencil,
+  Send,
+  MessageSquare,
+  ChevronLeft,
+  X
+} from 'lucide-react'
 import { getSocket } from '../../services/socket'
 import {
   getSupportConversations,
@@ -58,13 +68,13 @@ function Avatar({ name, logoUrl, size = 'md' }) {
   const sz = size === 'sm' ? 'w-9 h-9 text-xs' : 'w-10 h-10 text-xs'
   if (logoUrl) {
     return (
-      <div className={`${sz} rounded-full flex-shrink-0 bg-white border border-slate-200 overflow-hidden`}>
+      <div className={`${sz} rounded-xl flex-shrink-0 bg-white border border-slate-200 overflow-hidden shadow-2xs`}>
         <img src={logoUrl} alt={name} className="w-full h-full object-contain p-0.5" />
       </div>
     )
   }
   return (
-    <div className={`${sz} rounded-full flex-shrink-0 flex items-center justify-center text-white font-black bg-slate-900`}>
+    <div className={`${sz} rounded-xl flex-shrink-0 flex items-center justify-center text-white font-black bg-slate-900 border border-slate-800 shadow-2xs`}>
       {initials(name)}
     </div>
   )
@@ -170,7 +180,7 @@ export default function AdminSupportPage() {
     const onConversation = (summary) => {
       upsertConversation(summary)
       if (summary.lastSenderRole === 'user' && Notification.permission === 'granted') {
-        new Notification(`New message — ${summary.name || 'User'}`, {
+        new Notification(`New message, ${summary.name || 'User'}`, {
           body: summary.lastMessageBody?.trim().slice(0, 100) || 'New message',
           icon: '/favicon.ico',
           tag: `support-${summary._id}`,
@@ -440,11 +450,15 @@ export default function AdminSupportPage() {
   const TabBtn = ({ id, label }) => (
     <button
       onClick={() => setTab(id)}
-      className={`relative flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition ${tab === id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+      className={`relative flex-1 px-3 py-2 text-xs font-bold rounded-lg transition ${
+        tab === id
+          ? 'bg-white text-slate-900 shadow-2xs'
+          : 'text-slate-500 hover:text-slate-900'
+      }`}
     >
       {label}
       {counts[id] > 0 && (
-        <span className="absolute top-1.5 right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-red-600 text-white text-[9px] leading-[16px] font-black">
+        <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-slate-900 text-white text-[9px] font-bold">
           {counts[id] > 9 ? '9+' : counts[id]}
         </span>
       )}
@@ -453,38 +467,42 @@ export default function AdminSupportPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-116px)] sm:h-[calc(100vh-156px)] overflow-hidden">
-      <div className="mb-3 sm:mb-5 flex-shrink-0">
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Support</h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Live chat with airlines and individuals.</p>
+      <div className="mb-4 flex-shrink-0">
+        <div className="inline-block">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Support</h1>
+          <div className="h-0.5 w-full bg-emerald-500 rounded-full mt-1.5 mb-2" />
+        </div>
+        <p className="text-sm font-medium text-slate-500">Live chat with airlines and individuals.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr] gap-3 sm:gap-4 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] xl:grid-cols-[360px_1fr] gap-4 flex-1 min-h-0">
         {/* ── List column ── */}
-        <div className={`flex flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden ${activeId ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-3 border-b border-slate-100 space-y-3">
-            <div className="flex gap-1.5 bg-slate-50 rounded-xl p-1">
+        <div className={`flex flex-col rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-sm ${activeId ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="p-3.5 border-b border-slate-100 space-y-3">
+            <div className="flex gap-1 bg-slate-100/80 rounded-xl p-1">
               <TabBtn id="all" label="All" />
               <TabBtn id="individual" label="Individuals" />
               <TabBtn id="airline" label="Airlines" />
             </div>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name or email…"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name or email…"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 py-2 text-sm outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-100 transition h-[38px]"
+              />
+            </div>
           </div>
           {selected.size > 0 && (
-            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-900 text-white">
+            <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-slate-900 text-white">
               <span className="text-xs font-bold">{selected.size} selected</span>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={openBulkEmail}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-900 hover:bg-slate-100 transition"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-900 hover:bg-slate-100 transition shadow-2xs"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+                  <Mail className="w-3.5 h-3.5" />
                   Send mail
                 </button>
                 <button onClick={clearSelected} className="px-2 py-1.5 text-xs font-semibold text-white/70 hover:text-white transition">Clear</button>
@@ -493,10 +511,10 @@ export default function AdminSupportPage() {
           )}
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {loadingList && (
-              <div className="flex justify-center py-10"><div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-slate-600 animate-spin" /></div>
+              <div className="flex justify-center py-12"><div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" /></div>
             )}
             {!loadingList && filtered.length === 0 && (
-              <p className="text-center text-sm text-slate-400 py-10">No users found.</p>
+              <p className="text-center text-sm text-slate-400 py-12">No users found.</p>
             )}
             {filtered.map(c => {
               const active = c._id && String(c._id) === String(activeId)
@@ -504,10 +522,12 @@ export default function AdminSupportPage() {
               return (
                 <div
                   key={c.user}
-                  className={`flex items-center border-b border-slate-50 transition ${active ? 'bg-slate-100' : checked ? 'bg-blue-50/60' : 'hover:bg-slate-50'}`}
+                  className={`flex items-center border-b border-slate-100/80 transition ${
+                    active ? 'bg-slate-100/90' : checked ? 'bg-emerald-50/50' : 'hover:bg-slate-50/70'
+                  }`}
                 >
                   <label
-                    className="pl-3 pr-1 self-stretch flex items-center cursor-pointer"
+                    className="pl-3.5 pr-1 self-stretch flex items-center cursor-pointer"
                     title="Select for email"
                     onClick={e => e.stopPropagation()}
                   >
@@ -515,39 +535,43 @@ export default function AdminSupportPage() {
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleSelect(c.user)}
-                      className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400 cursor-pointer"
+                      className="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer"
                     />
                   </label>
-                <button
-                  onClick={() => openConversation(c)}
-                  className="flex-1 min-w-0 text-left pl-2 pr-3 py-3 flex items-center gap-3"
-                >
-                  <Avatar name={c.name} logoUrl={c.logoUrl} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                  <button
+                    onClick={() => openConversation(c)}
+                    className="flex-1 min-w-0 text-left pl-2.5 pr-3.5 py-3 flex items-center gap-3"
+                  >
+                    <Avatar name={c.name} logoUrl={c.logoUrl} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
                         <p className="text-sm font-bold text-slate-900 truncate">{c.name || 'Unknown'}</p>
-                        {tab === 'all' && (
-                          <span className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${c.role === 'airline' ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                            {c.role === 'airline' ? 'Airline' : 'Individual'}
-                          </span>
-                        )}
+                        <span className="text-[11px] font-medium text-slate-400 flex-shrink-0">{fmtTime(c.lastMessageAt)}</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 flex-shrink-0">{fmtTime(c.lastMessageAt)}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-slate-500 truncate flex-1 min-w-0">
+                          {c.lastSenderRole === 'admin' && <span className="font-semibold text-slate-700">You: </span>}
+                          {c.lastMessageBody || 'No messages yet'}
+                        </p>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {tab === 'all' && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              c.role === 'airline'
+                                ? 'bg-slate-100 text-slate-700 border border-slate-200/80'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                            }`}>
+                              {c.role === 'airline' ? 'Airline' : 'Individual'}
+                            </span>
+                          )}
+                          {c.adminUnread > 0 && (
+                            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-slate-900 text-white text-[10px] leading-[18px] font-bold text-center">
+                              {c.adminUnread > 9 ? '9+' : c.adminUnread}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs text-slate-500 truncate">
-                        {c.lastSenderRole === 'admin' && <span className="text-slate-400">You: </span>}
-                        {c.lastMessageBody || 'No messages yet'}
-                      </p>
-                      {c.adminUnread > 0 && (
-                        <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] font-black text-center flex-shrink-0">
-                          {c.adminUnread > 9 ? '9+' : c.adminUnread}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
+                  </button>
                 </div>
               )
             })}
@@ -555,69 +579,72 @@ export default function AdminSupportPage() {
         </div>
 
         {/* ── Thread column ── */}
-        <div className={`relative flex-col rounded-2xl border border-slate-200 bg-white overflow-hidden ${activeId ? 'flex' : 'hidden lg:flex'}`}>
+        <div className={`relative flex-col rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-sm ${activeId ? 'flex' : 'hidden lg:flex'}`}>
           {!activeConv ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-3">
-                <svg className="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 0 1-4-.8L3 20l1.3-3.9A7.96 7.96 0 0 1 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-3">
+                <MessageSquare className="w-6 h-6 text-slate-400" />
               </div>
-              <p className="text-sm font-bold text-slate-700">Select a conversation</p>
-              <p className="text-xs text-slate-400 mt-1">Choose someone from the list to start replying.</p>
+              <p className="text-sm font-bold text-slate-900">Select a conversation</p>
+              <p className="text-xs text-slate-500 mt-1">Choose someone from the list to start replying.</p>
             </div>
           ) : (
             <>
               {/* Thread header */}
-              <div className="flex items-center gap-3 px-3 sm:px-4 py-3 border-b border-slate-100">
+              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-200/80 bg-white">
                 <button onClick={() => setActiveId(null)} className="lg:hidden w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                  <ChevronLeft className="w-4 h-4 text-slate-600" />
                 </button>
                 <Avatar name={activeConv.name} logoUrl={activeConv.logoUrl} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-900 truncate">{activeConv.name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{activeConv.email} · {activeConv.role === 'airline' ? 'Airline' : 'Individual'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-slate-900 truncate">{activeConv.name}</p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      activeConv.role === 'airline'
+                        ? 'bg-slate-100 text-slate-700 border border-slate-200/80'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                    }`}>
+                      {activeConv.role === 'airline' ? 'Airline' : 'Individual'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{activeConv.email || 'No email'}</p>
                 </div>
                 {/* Send custom email to this user */}
                 <button
                   onClick={() => openEmail()}
-                  className="flex-shrink-0 w-8 h-8 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 flex items-center justify-center transition"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition shadow-2xs"
                   title="Send email to user"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+                  <Mail className="w-3.5 h-3.5" />
                 </button>
                 {/* Delete entire conversation */}
                 <button
                   onClick={() => setConfirmDeleteConv(true)}
-                  className="flex-shrink-0 w-8 h-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition shadow-2xs"
                   title="Delete conversation"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {/* Confirm delete conversation modal */}
               {confirmDeleteConv && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 rounded-2xl">
-                  <div className="bg-white rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full">
-                    <p className="text-sm font-bold text-slate-900 mb-1">Delete conversation?</p>
-                    <p className="text-xs text-slate-500 mb-5">Permanently removes this conversation and all messages for both admin and the user. Cannot be undone.</p>
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
+                  <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full border border-slate-200">
+                    <p className="text-base font-bold text-slate-900 mb-1">Delete conversation?</p>
+                    <p className="text-xs text-slate-500 mb-5 leading-relaxed">Permanently removes this conversation and all messages for both admin and the user. Cannot be undone.</p>
                     <div className="flex gap-2 justify-end">
-                      <button onClick={() => setConfirmDeleteConv(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
-                      <button onClick={deleteConv} className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl transition">Delete</button>
+                      <button onClick={() => setConfirmDeleteConv(false)} className="px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-xl transition">Cancel</button>
+                      <button onClick={deleteConv} className="px-4 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl transition shadow-sm">Delete</button>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Messages */}
-              <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-slate-50" style={{ scrollbarWidth: 'thin' }}>
+              <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-slate-50/60" style={{ scrollbarWidth: 'thin' }}>
                 {loadingThread && (
-                  <div className="flex justify-center py-6"><div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-slate-600 animate-spin" /></div>
+                  <div className="flex justify-center py-8"><div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" /></div>
                 )}
                 {!loadingThread && messages.map((m, i) => {
                   const mine = m.senderRole === 'admin'
@@ -626,67 +653,63 @@ export default function AdminSupportPage() {
                   return (
                     <div key={m._id}>
                     {showSep && (
-                      <div className="flex items-center gap-3 my-2">
+                      <div className="flex items-center gap-3 my-3">
                         <div className="flex-1 h-px bg-slate-200" />
-                        <span className="text-[11px] font-medium text-slate-400 px-2">{fmtDateSep(m.createdAt)}</span>
+                        <span className="text-[11px] font-semibold text-slate-400 px-2 uppercase tracking-wider">{fmtDateSep(m.createdAt)}</span>
                         <div className="flex-1 h-px bg-slate-200" />
                       </div>
                     )}
-                    <div className={`flex group items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex group items-end gap-1.5 ${mine ? 'justify-end' : 'justify-start'}`}>
                       {/* User message action: delete only */}
                       {!mine && !isEditing && (
                         <button
                           onClick={() => deleteMsg(m._id)}
-                          className="opacity-0 group-hover:opacity-100 transition w-6 h-6 rounded-lg bg-slate-100 hover:bg-red-50 hover:text-red-500 flex items-center justify-center flex-shrink-0 mb-1"
+                          className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:text-red-500 hover:border-red-200 flex items-center justify-center flex-shrink-0 mb-1 shadow-2xs"
                           title="Delete message"
                         >
-                          <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-500" />
                         </button>
                       )}
                       {mine && !isEditing && (
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition mb-1">
                           <button
                             onClick={() => { setEditingId(m._id); setEditText(m.body) }}
-                            className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center flex-shrink-0"
+                            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center flex-shrink-0 shadow-2xs"
                             title="Edit message"
                           >
-                            <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2.414a2 2 0 01.586-1.414z" />
-                            </svg>
+                            <Pencil className="w-3 h-3 text-slate-500" />
                           </button>
                           <button
                             onClick={() => deleteMsg(m._id)}
-                            className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-red-50 flex items-center justify-center flex-shrink-0"
+                            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 flex items-center justify-center flex-shrink-0 shadow-2xs"
                             title="Delete message"
                           >
-                            <svg className="w-3 h-3 text-slate-400 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-500" />
                           </button>
                         </div>
                       )}
-                      <div className={`max-w-[72%] sm:max-w-[65%] rounded-2xl px-3.5 py-2 text-sm leading-snug ${mine ? 'bg-slate-900 text-white rounded-br-sm' : 'bg-white text-slate-800 border border-slate-200 rounded-bl-sm'}`}>
+                      <div className={`max-w-[72%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 text-sm leading-snug shadow-2xs ${
+                        mine ? 'bg-slate-900 text-white rounded-br-sm' : 'bg-white text-slate-800 border border-slate-200/90 rounded-bl-sm'
+                      }`}>
                         {isEditing ? (
-                          <div className="space-y-2 min-w-[180px]">
+                          <div className="space-y-2 min-w-[200px]">
                             <textarea
                               value={editText}
                               onChange={e => setEditText(e.target.value)}
                               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(m._id) } if (e.key === 'Escape') { setEditingId(null) } }}
                               rows={2}
                               autoFocus
-                              className="w-full resize-none rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 px-2 py-1 text-sm outline-none"
+                              className="w-full resize-none rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 px-2.5 py-1.5 text-sm outline-none"
                             />
                             <div className="flex gap-1.5 justify-end">
-                              <button onClick={() => setEditingId(null)} className="px-2 py-0.5 text-[11px] font-semibold rounded text-white/60 hover:text-white transition">Cancel</button>
-                              <button onClick={() => saveEdit(m._id)} className="px-2 py-0.5 text-[11px] font-semibold rounded bg-white/20 hover:bg-white/30 text-white transition">Save</button>
+                              <button onClick={() => setEditingId(null)} className="px-2.5 py-1 text-[11px] font-semibold rounded text-white/60 hover:text-white transition">Cancel</button>
+                              <button onClick={() => saveEdit(m._id)} className="px-2.5 py-1 text-[11px] font-bold rounded bg-white/20 hover:bg-white/30 text-white transition">Save</button>
                             </div>
                           </div>
                         ) : (
                           <>
                             <p className="whitespace-pre-wrap break-words">{m.body?.trim().replace(/\n{3,}/g, '\n\n')}</p>
-                            <p className={`text-[10px] mt-1 flex items-center gap-1 ${mine ? 'text-white/60' : 'text-slate-400'}`}>
+                            <p className={`text-[10px] mt-1.5 flex items-center gap-1 ${mine ? 'text-slate-400' : 'text-slate-400'}`}>
                               {fmtTime(m.createdAt)}
                               {m.edited && <span className="italic">(edited)</span>}
                             </p>
@@ -699,7 +722,7 @@ export default function AdminSupportPage() {
                 })}
                 {userTyping && (
                   <div className="flex justify-start">
-                    <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-3.5 py-2.5">
+                    <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-2xs">
                       <div className="flex gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -711,7 +734,7 @@ export default function AdminSupportPage() {
               </div>
 
               {/* Composer */}
-              <div className="border-t border-slate-100 p-2.5 sm:p-3 bg-white">
+              <div className="border-t border-slate-200/80 p-3 bg-white">
                 <div className="flex items-end gap-2">
                   <textarea
                     value={text}
@@ -719,15 +742,15 @@ export default function AdminSupportPage() {
                     onKeyDown={onKeyDown}
                     rows={1}
                     placeholder="Type your reply…"
-                    className="flex-1 resize-none max-h-28 sm:max-h-32 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100 transition"
+                    className="flex-1 resize-none max-h-28 sm:max-h-32 rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-100 transition"
                   />
                   <button
                     onClick={send}
                     disabled={!text.trim() || sending}
-                    className="w-10 h-10 flex-shrink-0 rounded-xl bg-slate-900 text-white flex items-center justify-center transition hover:bg-slate-700 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Send"
+                    className="w-10 h-10 flex-shrink-0 rounded-xl bg-slate-900 text-white flex items-center justify-center transition hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                    title="Send message"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    <Send className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -736,49 +759,49 @@ export default function AdminSupportPage() {
         </div>
       </div>
 
-      {/* Email composer modal (page-level — works for single + bulk) */}
+      {/* Email composer modal (page-level, works for single + bulk) */}
       {emailOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-6 w-full max-w-md">
-            <div className="flex items-start justify-between mb-3">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md border border-slate-200">
+            <div className="flex items-start justify-between mb-4">
               <div className="min-w-0">
-                <p className="text-sm font-black text-slate-900">Send email</p>
+                <p className="text-base font-black text-slate-900">Send Email</p>
                 {emailMode === 'bulk' ? (
                   <p className="text-xs text-slate-500 mt-0.5">To: <span className="font-semibold text-slate-700">{selectedEmails.length} recipient{selectedEmails.length !== 1 ? 's' : ''}</span>{selectedEmails.length > 0 && <span className="block text-[11px] text-slate-400 truncate mt-0.5">{selectedEmails.join(', ')}</span>}</p>
                 ) : (
                   <p className="text-xs text-slate-500 mt-0.5 truncate">To: <span className="font-semibold text-slate-700">{activeConv?.email || '—'}</span></p>
                 )}
               </div>
-              <button onClick={() => setEmailOpen(false)} className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <button onClick={() => setEmailOpen(false)} className="w-8 h-8 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-700 transition">
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Subject</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Subject</label>
             <input
               value={emailSubject}
               onChange={e => setEmailSubject(e.target.value)}
               placeholder="Subject"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition mb-3"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-100 transition mb-3.5"
             />
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Message</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Message</label>
             <textarea
               value={emailBody}
               onChange={e => setEmailBody(e.target.value)}
               rows={6}
               placeholder="Write your message…"
-              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition"
+              className="w-full resize-none rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-100 transition"
             />
             {emailStatus && (
               <p className={`text-xs mt-2 font-semibold ${emailStatus.ok ? 'text-emerald-600' : 'text-red-500'}`}>{emailStatus.msg}</p>
             )}
-            <div className="flex gap-2 justify-end mt-4">
-              <button onClick={() => setEmailOpen(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
+            <div className="flex gap-2 justify-end mt-5">
+              <button onClick={() => setEmailOpen(false)} className="px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-xl transition">Cancel</button>
               <button
                 onClick={sendEmail}
                 disabled={!emailBody.trim() || emailSending}
-                className="px-4 py-2 text-sm font-semibold bg-slate-900 hover:bg-slate-700 text-white rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
               >
-                {emailSending ? 'Sending…' : 'Send email'}
+                {emailSending ? 'Sending…' : 'Send Email'}
               </button>
             </div>
           </div>

@@ -77,35 +77,51 @@ function fullYearFromYY(twoDigit) {
  *
  * Prefers the lowest previously-released sequence so deleted numbers are reused
  * before the counter advances; falls back to incrementing the high-water mark.
+ *
+ * The counter is a fast-path cache, not the source of truth — an admin can type
+ * or accept a number by hand elsewhere (saveAdminDraft, etc.) without the
+ * counter ever hearing about it, so its sequence/released state can drift from
+ * what is actually in the database. Every candidate is therefore checked
+ * against the real records before being handed out; a candidate that turns out
+ * to already be taken is discarded and the next one is tried, so callers can
+ * never receive a number that collides on save.
  */
 async function allocateInvoiceNumber(yearOverride) {
   const year = yearOverride || new Date().getFullYear();
 
-  // 1. Try to reuse the lowest released sequence.
-  //    findOneAndUpdate returns the PRE-image, so we read the element this call
-  //    popped. Concurrent callers are serialised by MongoDB's document-level
-  //    atomicity and therefore each pop a different element.
-  const popped = await InvoiceCounter.findOneAndUpdate(
-    { year, 'released.0': { $exists: true } },
-    { $pop: { released: -1 } },
-    { new: false },
-  ).lean();
+  // 1. Drain the released pool first, verifying each one against the database
+  //    (it may have been "released" and then reused by hand since).
+  for (;;) {
+    const popped = await InvoiceCounter.findOneAndUpdate(
+      { year, 'released.0': { $exists: true } },
+      { $pop: { released: -1 } },
+      { new: false },
+    ).lean();
 
-  if (popped && Array.isArray(popped.released) && popped.released.length) {
+    if (!popped || !Array.isArray(popped.released) || !popped.released.length) break;
+
     const seq = popped.released[0];
     // Keep the high-water mark at or above anything we hand out.
     await InvoiceCounter.updateOne({ year }, { $max: { sequence: seq } });
-    return formatInvoiceNumber(seq, year);
+    const candidate = formatInvoiceNumber(seq, year);
+    // eslint-disable-next-line no-await-in-loop
+    if (!(await isInvoiceNumberTaken(candidate))) return candidate;
+    // Someone already has this number despite it being marked free — drop it
+    // and keep draining the pool.
   }
 
-  // 2. Otherwise mint a brand-new sequence.
-  const doc = await InvoiceCounter.findOneAndUpdate(
-    { year },
-    { $inc: { sequence: 1 } },
-    { new: true, upsert: true, setDefaultsOnInsert: true },
-  ).lean();
-
-  return formatInvoiceNumber(doc.sequence, year);
+  // 2. Mint new sequences, skipping any the counter doesn't know are already
+  //    in use (the drift this whole check exists to catch).
+  for (;;) {
+    const doc = await InvoiceCounter.findOneAndUpdate(
+      { year },
+      { $inc: { sequence: 1 } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    ).lean();
+    const candidate = formatInvoiceNumber(doc.sequence, year);
+    // eslint-disable-next-line no-await-in-loop
+    if (!(await isInvoiceNumberTaken(candidate))) return candidate;
+  }
 }
 
 /**
@@ -141,11 +157,18 @@ async function releaseInvoiceNumber(invoiceNumber) {
 async function peekNextInvoiceNumber(yearOverride) {
   const year = yearOverride || new Date().getFullYear();
   const doc = await InvoiceCounter.findOne({ year }).lean();
-  if (!doc) return formatInvoiceNumber(1, year);
-  if (Array.isArray(doc.released) && doc.released.length) {
-    return formatInvoiceNumber(Math.min(...doc.released), year);
+  let seq = !doc ? 1
+    : (Array.isArray(doc.released) && doc.released.length) ? Math.min(...doc.released)
+    : Number(doc.sequence || 0) + 1;
+
+  // Same drift risk as allocateInvoiceNumber: verify against the database so
+  // the previewed number is one that will actually still be free at save time.
+  for (;;) {
+    const candidate = formatInvoiceNumber(seq, year);
+    // eslint-disable-next-line no-await-in-loop
+    if (!(await isInvoiceNumberTaken(candidate))) return candidate;
+    seq += 1;
   }
-  return formatInvoiceNumber(Number(doc.sequence || 0) + 1, year);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -51,9 +51,9 @@ function NavItem({ item, collapsed }) {
           ? 'text-white shadow-sm'
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
       }`}
-      style={active ? { background: '#0000ff' } : {}}
+      style={active ? { background: '#020617' } : {}}
     >
-      <span className={`flex-shrink-0 w-[18px] h-[18px] ${active ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`}>
+      <span className={`flex-shrink-0 w-[18px] h-[18px] ${active ? 'text-[#34E06E]' : 'text-slate-400 group-hover:text-slate-600'}`}>
         {item.icon}
       </span>
       {!collapsed && <span className="truncate">{item.label}</span>}
@@ -139,14 +139,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           <div
             title={`${fullName} (${user?.role ?? 'user'})`}
             className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black cursor-default"
-            style={{ background: '#0000ff' }}
+            style={{ background: '#020617' }}
           >
             {initials}
           </div>
         ) : (
           <div className="flex items-center gap-3">
             <div className="relative flex-shrink-0">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black" style={{ background: '#0000ff' }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black" style={{ background: '#020617' }}>
                 {initials}
               </div>
             </div>

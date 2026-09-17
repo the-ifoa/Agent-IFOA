@@ -4,7 +4,7 @@ import { useDataCache } from '../../context/DataCacheContext'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
-import { Plane } from 'lucide-react'
+import { PlaneTakeoff, ShieldCheck, User, CreditCard, ArrowRight, CheckCircle2, AlertCircle, Clock, FileText, ChevronRight } from 'lucide-react'
 import { getAirlineTotal } from '../../utils/airlineTotal'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -12,59 +12,60 @@ const API = axios.create({ baseURL: BASE_URL })
 
 function StatCard({ label, value, icon, accent = 'slate', sub }) {
   const configs = {
-    slate:   { wrap: 'bg-white border-slate-200',           icon: 'bg-slate-100 text-slate-600',   badge: 'text-slate-800' },
-    emerald: { wrap: 'bg-white border-emerald-100',         icon: 'bg-emerald-50 text-emerald-600', badge: 'text-emerald-700' },
-    blue:    { wrap: 'bg-white border-blue-100',            icon: 'bg-blue-50 text-blue-600',       badge: 'text-blue-700' },
-    amber:   { wrap: 'bg-white border-amber-100',           icon: 'bg-amber-50 text-amber-600',     badge: 'text-amber-700' },
-    sky:     { wrap: 'bg-white border-sky-100',             icon: 'bg-sky-50 text-sky-600',         badge: 'text-sky-700' },
+    slate:   { iconBg: 'bg-slate-100 text-slate-700' },
+    emerald: { iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100' },
+    amber:   { iconBg: 'bg-amber-50 text-amber-600 border border-amber-100' },
   }
   const c = configs[accent] || configs.slate
+
   return (
-    <div className={`rounded-2xl border p-4 sm:p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-200 ${c.wrap}`}>
-      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${c.icon}`}>
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{label}</p>
-        <p className={`text-base sm:text-lg font-black truncate ${c.badge}`}>{value}</p>
-        {sub && <p className="text-[10px] text-slate-400 mt-0.5 truncate">{sub}</p>}
+    <div className="group relative rounded-2xl bg-white p-5 border border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-slate-300 transition-all duration-200">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">{label}</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">{value}</p>
+          {sub && <p className="text-xs text-slate-500 font-medium mt-1 truncate">{sub}</p>}
+        </div>
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-105 ${c.iconBg}`}>
+          {icon}
+        </div>
       </div>
     </div>
   )
 }
 
-function ActionRow({ icon, label, to, href }) {
-  const cls = "flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700 group"
-  const inner = (
-    <>
-      <span className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 transition-colors flex-shrink-0">
+function ActionTile({ icon, title, desc, to, href }) {
+  const content = (
+    <div className="group flex items-center gap-4 rounded-xl border border-slate-100 p-3.5 hover:border-slate-200 hover:bg-slate-50/80 transition-all duration-150">
+      <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center flex-shrink-0 shadow-sm group-hover:bg-slate-800 transition-colors">
         {icon}
-      </span>
-      {label}
-      <svg className="w-4 h-4 text-slate-300 ml-auto group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
-    </>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-slate-900 group-hover:text-black transition-colors">{title}</p>
+        <p className="text-xs text-slate-500 truncate mt-0.5">{desc}</p>
+      </div>
+      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+    </div>
   )
-  if (href) return <a href={href} className={cls}>{inner}</a>
-  return <Link to={to} className={cls}>{inner}</Link>
+
+  if (href) return <a href={href} className="block">{content}</a>
+  return <Link to={to} className="block">{content}</Link>
 }
 
 export default function UserDashboard() {
   const { user, token } = useAuth()
-  const { getOrFetch, invalidate } = useDataCache()
+  const { getOrFetch, get } = useDataCache()
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
   const isAirline = user?.role === 'airline'
-  const [sub, setSub] = useState(null)
-  const [subLoading, setSubLoading] = useState(true)
+  const cacheKey = `sub_${user?.id || user?.email}`
+  const cachedSub = get(cacheKey)
+  const [sub, setSub] = useState(cachedSub || null)
+  const [subLoading, setSubLoading] = useState(!cachedSub)
 
   useEffect(() => {
     if (!user) { setSubLoading(false); return }
     const headers = { Authorization: `Bearer ${token}` }
     const isAirline = user.role === 'airline'
-    const cacheKey = `sub_${user.id || user.email}`
-
-    invalidate(cacheKey)
 
     const load = async () => {
       try {
@@ -93,148 +94,171 @@ export default function UserDashboard() {
       finally { setSubLoading(false) }
     }
     load()
-  }, [user, token, getOrFetch, invalidate])
+  }, [user, token, getOrFetch, cacheKey])
 
   const getSubStatus = () => {
-    if (subLoading) return { label: 'Loading…', accent: 'sky', sub: 'Checking subscription' }
+    if (subLoading) return { label: 'Loading…', accent: 'slate', sub: 'Checking subscription' }
     if (!sub) return { label: 'No Plan', accent: 'slate', sub: 'Register to activate' }
-    // Admin can put an account On Hold (status = Inactive); this overrides the paid/active
-    // state so the client clearly sees access is suspended.
     const onHold = sub.status === 'Inactive'
     const paid   = !onHold && (sub.isPaid === true || sub.paymentStatus === 'paid' || sub.status === 'Active')
     const failed = sub.paymentStatus === 'failed'
     if (onHold) return { label: 'On Hold', accent: 'amber', sub: sub.subscriptionPlan }
-    if (paid)   return { label: 'Active',   accent: 'emerald', sub: sub.subscriptionPlan }
-    if (failed) return { label: 'Inactive', accent: 'slate',   sub: sub.subscriptionPlan }
+    if (paid)   return { label: 'Active', accent: 'emerald', sub: sub.subscriptionPlan }
+    if (failed) return { label: 'Inactive', accent: 'slate', sub: sub.subscriptionPlan }
     return { label: 'Pending', accent: 'amber', sub: sub.subscriptionPlan }
   }
   const subStatus = getSubStatus()
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto space-y-5 sm:space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* ── Welcome banner ── */}
-        <div
-          className="relative rounded-2xl overflow-hidden border border-slate-200"
-          style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}
-        >
-          <div className="relative z-10 px-5 sm:px-7 py-5 sm:py-6 flex flex-col items-center text-center gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Welcome back</p>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900">Hello, {user?.firstName || fullName} 👋</h1>
-              <p className="text-slate-500 text-sm mt-1">Here's an overview of your IFOA USA account.</p>
+        {/* ── Top Header Card ── */}
+        <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-6 sm:p-8 shadow-xl shadow-slate-950/10 border border-slate-800">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                IFOA USA · Portal Overview
+              </p>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+                Welcome back, {user?.firstName || fullName} <span className="animate-waving-hand">👋</span>
+              </h1>
+              <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
+                Manage your FAA Agent for Service compliance, certificate records, and subscription status seamlessly.
+              </p>
             </div>
-            {!subLoading && !sub && (
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-2 rounded-xl px-4 sm:px-5 py-2.5 text-sm font-bold text-white transition-all"
-                style={{ background: '#0000ff' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#0000e6'}
-                onMouseLeave={e => e.currentTarget.style.background = '#0000ff'}
-              >
-                {isAirline ? <><Plane className="w-4 h-4" /> Airlines Registration</> : 'Complete Registration'}
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </Link>
-            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              {!subLoading && !sub ? (
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition-all hover:bg-slate-100 shadow-md shadow-black/20"
+                >
+                  {isAirline ? <><PlaneTakeoff className="w-4 h-4" /> Airline Registration</> : 'Complete Registration'}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              ) : (
+                <Link
+                  to="/dashboard/subscription"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-2.5 text-xs font-bold text-white transition-all backdrop-blur-sm"
+                >
+                  <CreditCard className="w-4 h-4 text-slate-300" />
+                  View Subscription
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── Stat cards ── */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        {/* ── Metric Stat Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             label="Subscription Status"
             value={subStatus.label}
             accent={subStatus.accent}
             sub={subStatus.sub}
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><rect x="2" y="5" width="20" height="14" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" /></svg>}
+            icon={<ShieldCheck className="w-5 h-5" />}
           />
           <StatCard
             label="Account Type"
             value={user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
             accent="slate"
-            sub="Current role"
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>}
+            sub="Designated role"
+            icon={<User className="w-5 h-5" />}
           />
           <StatCard
-            label="Plan"
+            label="Plan Details"
             value={sub
               ? sub.subscriptionPlan?.includes('Unlimited') ? 'Unlimited'
                 : sub.subscriptionPlan?.includes('Multiple') ? `Multi-Year`
                 : '1 Year'
               : 'None'}
-            accent={sub ? 'sky' : 'slate'}
-            sub={sub ? `$${isAirline ? getAirlineTotal(sub).toFixed(2) : Number(sub.price ?? sub.totalAmount ?? 0).toFixed(2)}` : 'No plan selected'}
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>}
+            accent={sub ? 'emerald' : 'slate'}
+            sub={sub ? `$${isAirline ? getAirlineTotal(sub).toFixed(2) : Number(sub.price ?? sub.totalAmount ?? 0).toFixed(2)} USD` : 'No active plan'}
+            icon={<CreditCard className="w-5 h-5" />}
           />
         </div>
 
-        {/* ── Info grid ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          {/* Account info */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                </svg>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Account Info</p>
-              </div>
-              <Link to="/dashboard/profile" className="text-xs text-slate-500 font-semibold hover:text-slate-700 hover:underline">Edit →</Link>
-            </div>
-            <div className="px-4 sm:px-5 py-4 space-y-3">
-              {[
-                { label: 'Full Name', value: fullName },
-                { label: 'Email', value: user?.email },
-                { label: 'Role', value: user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1) },
-              ].map(r => (
-                <div key={r.label} className="flex justify-between items-center text-sm py-1 border-b border-slate-50 last:border-0 gap-2">
-                  <span className="text-slate-400 font-medium flex-shrink-0">{r.label}</span>
-                  <span className="text-slate-800 font-semibold truncate text-right">{r.value}</span>
+        {/* ── Main 2-Column Content ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Account Overview */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col justify-between">
+            <div>
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Account Overview</h3>
                 </div>
-              ))}
+                <Link
+                  to="/dashboard/profile"
+                  className="text-xs font-bold text-slate-600 hover:text-black underline underline-offset-4 decoration-slate-300 hover:decoration-black transition-colors"
+                >
+                  Edit Profile
+                </Link>
+              </div>
+
+              <div className="p-5 space-y-3">
+                {[
+                  { label: 'Full Name', value: fullName },
+                  { label: 'Primary Email', value: user?.email },
+                  { label: 'Account Role', value: user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : '—' },
+                  ...(isAirline && user?.airlineName ? [{ label: 'Organization', value: user.airlineName }] : []),
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0 text-sm">
+                    <span className="text-xs font-semibold text-slate-400">{item.label}</span>
+                    <span className="font-bold text-slate-800 truncate text-right max-w-[65%]">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-5 py-3.5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span>Account ID: <code className="font-mono text-[11px] text-slate-700">{user?.id || '—'}</code></span>
+              <Link
+                to="/dashboard/settings"
+                className="font-bold text-slate-700 hover:text-black underline underline-offset-4 decoration-slate-300 hover:decoration-black transition-colors"
+              >
+                Security Settings
+              </Link>
             </div>
           </div>
 
-          {/* Quick actions */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2">
-              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Actions</p>
+          {/* Quick Actions */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
+                <FileText className="w-4 h-4" />
+              </div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Quick Actions</h3>
             </div>
-            <div className="px-2 py-2 space-y-0.5">
-              <ActionRow to="/dashboard/profile" label="Edit Profile"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>} />
-              <ActionRow to="/dashboard/subscription" label="View Subscription"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="2" y="5" width="20" height="14" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" /></svg>} />
-              <ActionRow href="mailto:agent@theifoa.com" label="Contact Support"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>} />
+
+            <div className="p-4 space-y-2.5">
+              <ActionTile
+                to="/dashboard/profile"
+                icon={<User className="w-4 h-4" />}
+                title="Edit Profile"
+                desc="Update your name, company info, and branding"
+              />
+              <ActionTile
+                to="/dashboard/subscription"
+                icon={<CreditCard className="w-4 h-4" />}
+                title="View Subscription"
+                desc="Access invoices, plans, and FAA certificate records"
+              />
+              <ActionTile
+                href="mailto:agent@theifoa.com"
+                icon={<AlertCircle className="w-4 h-4" />}
+                title="Contact Support"
+                desc="Direct line to the IFOA USA compliance team"
+              />
             </div>
           </div>
         </div>
 
-        {/* ── No subscription notice ── */}
-        {!subLoading && !sub && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-800 mb-1">Complete your FAA registration</p>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Submit your FAA certificate details to activate your U.S. Agent for Service.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Subscription summary ── */}
+        {/* ── Subscription Status Banner ── */}
         {!subLoading && sub && (() => {
           const onHold = sub.status === 'Inactive'
           const isPaid = !onHold && (sub.isPaid === true || sub.paymentStatus === 'paid' || sub.status === 'Active')
@@ -246,29 +270,23 @@ export default function UserDashboard() {
 
           if (isExpired) {
             return (
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-bold text-slate-900">Subscription Expired</p>
-                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-amber-700">Action Required</span>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Plan: <strong className="text-slate-700">{sub.subscriptionPlan}</strong>. Renew to restore FAA compliance coverage.
-                  </p>
+                  <div>
+                    <p className="text-sm font-black text-slate-900">Subscription Expired</p>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                      Plan: <strong className="text-slate-800">{sub.subscriptionPlan}</strong>. Renew your coverage to restore FAA compliance status.
+                    </p>
+                  </div>
                 </div>
                 <Link
                   to="/dashboard/subscription"
-                  className="flex-shrink-0 inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-950 hover:bg-slate-800 transition-all shadow-sm flex-shrink-0"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Renew Now
+                  Renew Now <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             )
@@ -276,19 +294,18 @@ export default function UserDashboard() {
 
           if (onHold) {
             return (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-bold text-slate-900">Your account is on hold</p>
-                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-amber-700">On Hold</span>
-                  </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Plan: <strong className="text-slate-700">{sub.subscriptionPlan}</strong>. Your subscription is temporarily suspended. Please contact support to restore access.
+                <div>
+                  <p className="text-sm font-black text-slate-900">Account Temporarily On Hold</p>
+                  <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                    Plan: <strong className="text-slate-800">{sub.subscriptionPlan}</strong>. Your subscription is temporarily suspended. Please contact{' '}
+                    <a href="mailto:agent@theifoa.com" className="font-bold text-slate-900 underline underline-offset-4 decoration-slate-300 hover:decoration-black">
+                      agent@theifoa.com
+                    </a>{' '}
+                    to restore active status.
                   </p>
                 </div>
               </div>
@@ -296,38 +313,33 @@ export default function UserDashboard() {
           }
 
           return (
-            <div className={`rounded-2xl border p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-4 ${
-              isPaid ? 'border-emerald-100 bg-emerald-50' : 'border-slate-200 bg-slate-50'
-            }`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                isPaid ? 'bg-emerald-100' : 'bg-slate-100'
-              }`}>
-                <svg className={`w-5 h-5 ${isPaid ? 'text-emerald-600' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  {isPaid
-                    ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    : <><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01" /></>}
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className={`text-sm font-bold mb-1 ${isPaid ? 'text-emerald-900' : 'text-slate-800'}`}>
-                  {isPaid ? 'Your subscription is active' : 'Payment pending — your plan is awaiting confirmation'}
-                </p>
-                <p className={`text-xs leading-relaxed ${isPaid ? 'text-emerald-700' : 'text-slate-500'}`}>
-                  Plan: <strong>{sub.subscriptionPlan}</strong>.
-                  {!isPaid ? ' Complete payment to activate your subscription.' : ' Your U.S. Agent for Service is active and ready.'}
-                </p>
+            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/30 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {isPaid ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900">
+                    {isPaid ? 'Your subscription is active' : 'Payment pending confirmation'}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                    Plan: <strong className="text-slate-800">{sub.subscriptionPlan}</strong>.
+                    {isPaid ? ' Your U.S. Agent for Service is active and ready.' : ' Complete payment to activate your compliance coverage.'}
+                  </p>
+                </div>
               </div>
               <Link
                 to="/dashboard/subscription"
-                className={`flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${
-                  isPaid ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'border-slate-200 text-slate-600 hover:bg-slate-100'
-                }`}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-800 hover:text-black border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-all shadow-sm flex-shrink-0"
               >
-                View Details →
+                View Subscription <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
               </Link>
             </div>
           )
         })()}
+
       </div>
     </DashboardLayout>
   )

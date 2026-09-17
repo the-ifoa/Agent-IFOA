@@ -113,7 +113,7 @@ export function allGroupSlots(groups) {
  * always do (they carry across base renewals). A non-Unlimited upgrade belongs only
  * if it is not expired AND was purchased on/after the current base period start
  * (`periodStart` = the base plan's subscriptionDate). Upgrades bought under a
- * previous base-plan period are NOT part of the current base count — they remain as
+ * previous base-plan period are NOT part of the current base count, they remain as
  * their own separate plans.
  *
  * @param {object} g
@@ -158,7 +158,7 @@ export function currentBaseGroupSlots(groups, periodStart, asOf = new Date()) {
  *   - Renewing the BASE plan      → { excludeBase: true }   (base is the unit)
  *   - Renewing an add-on group g  → { excludeGroupId: g._id }
  *
- * Mirror of backend utils/holderGroups.js activeCoverageAnchor — keep in sync.
+ * Mirror of backend utils/holderGroups.js activeCoverageAnchor, keep in sync.
  *
  * @param {object} record
  * @param {{ excludeBase?: boolean, excludeGroupId?: string }} [opts]

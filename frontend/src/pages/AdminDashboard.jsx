@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
-import { airlinePricePerCert, individualPrice } from '../services/pricing'
+import { airlinePricePerCert, individualPrice, airlineTiers } from '../services/pricing'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import AdminAirlineForm from '../components/airlines/AdminAirlineForm'
 import AdminIndividualForm from '../components/individual/AdminIndividualForm'
-import { Plane } from 'lucide-react'
+import CustomSelect from '../components/ui/CustomSelect'
+import { PlaneTakeoff, Users, FileText, DollarSign, ShieldCheck, CheckCircle2, AlertCircle, ChevronRight, ArrowRight, Eye, Trash2, Pencil, FilePlus, FileDown, Search, BookOpen, X, Lightbulb, Sparkles, Check, HelpCircle, Layers } from 'lucide-react'
 import { getAirlineTotal, fmtAirlineTotal, activeGroupSlots, allGroupSlots, currentBaseGroupSlots, activeCoverageAnchor } from '../utils/airlineTotal'
 import { getExpiryStatus } from '../utils/expiryStatus'
 import { getInvoiceStatus } from '../utils/invoiceStatus'
@@ -82,20 +83,20 @@ function AdminCancellationBanner({ record, type, onRecordUpdated, onDeleteRegist
     } catch (e) { window.alert(e?.response?.data?.message || 'Could not delete the plan.') } finally { setBusy('') }
   }
   return (
-    <div className="mb-3 rounded-xl border-2 border-red-200 bg-red-50/60 p-3">
-      <p className="text-[10px] font-black uppercase tracking-widest text-red-700 mb-2">Cancellation requested — your decision</p>
+    <div className="mb-3 rounded-xl border-2 border-red-200 bg-red-50/60 p-3.5">
+      <p className="text-xs font-black uppercase tracking-wider text-red-700 mb-2">Cancellation requested, your decision</p>
       <div className="space-y-2">
         {items.map(it => (
-          <div key={it.ref} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-red-100 px-3 py-2">
-            <span className="text-[12px] font-bold text-slate-800">{it.label} · {planLbl(it.plan)}</span>
+          <div key={it.ref} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-red-100 px-3.5 py-2">
+            <span className="text-sm font-bold text-slate-800">{it.label} · {planLbl(it.plan)}</span>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => keep(it)} disabled={!!busy} className="rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">{busy === it.ref + ':keep' ? '…' : 'Keep'}</button>
-              <button onClick={() => del(it)} disabled={!!busy} className="rounded-lg bg-red-600 hover:bg-red-700 px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-50">{busy === it.ref + ':del' ? '…' : 'Delete'}</button>
+              <button onClick={() => keep(it)} disabled={!!busy} className="rounded-lg border border-emerald-300 bg-white px-3 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">{busy === it.ref + ':keep' ? '…' : 'Keep'}</button>
+              <button onClick={() => del(it)} disabled={!!busy} className="rounded-lg bg-red-600 hover:bg-red-700 px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{busy === it.ref + ':del' ? '…' : 'Delete'}</button>
             </div>
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[9px] text-slate-500">Keep = un-cancel (plan stays). Delete = remove permanently from the database. To modify instead, use Edit.</p>
+      <p className="mt-2 text-xs text-slate-500">Keep = un-cancel (plan stays). Delete = remove permanently from the database. To modify instead, use Edit.</p>
     </div>
   )
 }
@@ -122,18 +123,18 @@ function AdminPlanCredits({ record, type }) {
   return (
     <div className="mb-2 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3.5 py-2.5">
       <div className="flex items-center justify-between mb-1.5">
-        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700">Plan Credits · unused-time</p>
-        <p className="text-[11px] font-black text-emerald-700">{money(total)}</p>
+        <p className="text-xs font-black uppercase tracking-wider text-emerald-700">Plan Credits · unused-time</p>
+        <p className="text-sm font-black text-emerald-700">{money(total)}</p>
       </div>
       <div className="space-y-1">
         {credits.map(c => (
-          <div key={c.ref} className="flex items-center justify-between text-[11px]">
-            <span className="text-slate-600">{c.label} · {planLbl(c.plan)}</span>
+          <div key={c.ref} className="flex items-center justify-between text-xs">
+            <span className="text-slate-600 font-medium">{c.label} · {planLbl(c.plan)}</span>
             <span className={`font-bold ${c.credit > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>{money(c.credit)}</span>
           </div>
         ))}
       </div>
-      <p className="mt-1 text-[9px] text-slate-400">Applied automatically toward an upgrade to {upgradeTargets}.</p>
+      <p className="mt-1 text-xs text-slate-500">Applied automatically toward an upgrade to {upgradeTargets}.</p>
     </div>
   )
 }
@@ -306,34 +307,32 @@ const hasExistingInvoice = (record) =>
   Boolean(record?.invoiceGenerated || record?.invoiceDraft || record?.invoiceNumber)
 
 const inputCls =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:border-slate-300'
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 hover:border-slate-300'
 
 const selectCls =
-  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:border-slate-300'
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 hover:border-slate-300'
 
 function Badge({ value, type = 'payment', isPaid }) {
-  let cls = 'inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] whitespace-nowrap '
+  let cls = 'inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap '
   let label = value ? value.charAt(0).toUpperCase() + value.slice(1) : 'Pending'
 
   if (type === 'status') {
     const trulyActive = value === 'Active' && isPaid !== false
-    if (trulyActive) { cls += 'bg-emerald-50 border-emerald-200 text-emerald-700' }
-    else if (value === 'Pending') { cls += 'bg-amber-50 border-amber-200 text-amber-700' }
-    else { cls += 'bg-slate-100 border-slate-200 text-slate-500' }
+    if (trulyActive) { cls += 'bg-emerald-50 border-emerald-200/80 text-emerald-700'; label = 'Active' }
+    else if (value === 'Pending') { cls += 'bg-amber-50 border-amber-200/80 text-amber-700'; label = 'Pending' }
+    else { cls += 'bg-slate-100 border-slate-200 text-slate-600'; label = value || 'Inactive' }
     if (value === 'Active' && isPaid === false) label = 'Pending'
   } else if (type === 'plan') {
-    if (value?.includes('Unlimited')) { cls += 'bg-indigo-50 border-indigo-200 text-indigo-700' }
+    if (value?.includes('Unlimited')) { cls += 'bg-slate-900 border-slate-900 text-white' }
     else if (value?.includes('Multiple')) { cls += 'bg-slate-100 border-slate-200 text-slate-700' }
     else { cls += 'bg-slate-50 border-slate-200 text-slate-600' }
   } else if (type === 'isPaid') {
-    if (isPaid === true) { cls += 'bg-emerald-50 border-emerald-200 text-emerald-700'; label = 'Paid' }
-    else { cls += 'bg-amber-50 border-amber-200 text-amber-700'; label = 'Unpaid' }
+    if (isPaid === true) { cls += 'bg-emerald-50 border-emerald-200/80 text-emerald-700'; label = 'Paid' }
+    else { cls += 'bg-amber-50 border-amber-200/80 text-amber-700'; label = 'Unpaid' }
   } else {
-    // Invoice/payment status stands on its own — decoupled from the plan-active (isPaid)
-    // flag, so a paid invoice on an inactive plan still reads "Paid" and vice versa.
-    if (value === 'paid') { cls += 'bg-emerald-50 border-emerald-200 text-emerald-700' }
-    else if (value === 'failed') { cls += 'bg-red-50 border-red-200 text-red-600' }
-    else { cls += 'bg-slate-100 border-slate-200 text-slate-600' }
+    if (value === 'paid') { cls += 'bg-emerald-50 border-emerald-200/80 text-emerald-700'; label = 'Paid' }
+    else if (value === 'failed') { cls += 'bg-red-50 border-red-200/80 text-red-700'; label = 'Failed' }
+    else { cls += 'bg-amber-50 border-amber-200/80 text-amber-700'; label = 'Pending' }
   }
   return <span className={cls}>{label}</span>
 }
@@ -362,19 +361,19 @@ function StatusText({ value, type = 'payment', isPaid }) {
     if (isPaid === true) { color = '#047857'; label = 'Paid' }
     else { color = '#92400e'; label = 'Unpaid' }
   } else {
-    // Invoice/payment status stands on its own — decoupled from the plan-active (isPaid)
+    // Invoice/payment status stands on its own, decoupled from the plan-active (isPaid)
     // flag, so a paid invoice on an inactive plan still reads "Paid" and vice versa.
     if (value === 'paid') { color = '#047857'; label = 'Paid' }
     else if (value === 'failed') { color = '#dc2626'; label = 'Failed' }
     else { color = '#92400e'; label = 'Pending' }
   }
-  return <span className='text-sm font-semibold' style={{ color }}>{label}</span>
+  return <span className='text-sm font-bold' style={{ color }}>{label}</span>
 }
 
 function Field({ label, children }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</label>
+      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</label>
       {children}
     </div>
   )
@@ -403,17 +402,17 @@ function InvoiceNumberField({ value, onChange }) {
           <input className={`${inputCls} pr-7`} value={value || ''} onChange={e => onChange(e.target.value)} placeholder="e.g. Invoice US-30-26" />
           <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col">
             <button type="button" aria-label="Increase invoice number" onClick={() => bump(1)}
-              className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors">
+              className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 15 6-6 6 6" /></svg>
             </button>
             <button type="button" aria-label="Decrease invoice number" onClick={() => bump(-1)}
-              className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors">
+              className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
             </button>
           </div>
         </div>
         <button type="button" onClick={gen} disabled={busy}
-          className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition">
+          className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition">
           {busy ? '…' : 'Generate'}
         </button>
       </div>
@@ -424,21 +423,21 @@ function InvoiceNumberField({ value, onChange }) {
 function ViewField({ label, value }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</span>
-      <span className="text-sm text-slate-800 font-medium break-words">{value || '—'}</span>
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <span className="text-sm font-semibold text-slate-900 break-words">{value || '—'}</span>
     </div>
   )
 }
 
 function SectionHead({ label, badge }) {
   return (
-    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-3 pt-1">
-      {label}{badge && <span className="text-slate-500"> · {badge}</span>}
+    <p className="text-xs font-black uppercase tracking-wider text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 mb-3 pt-1">
+      {label}{badge && <span className="text-slate-500 font-bold no-underline"> · {badge}</span>}
     </p>
   )
 }
 
-// ─── NextRenewalSection — shared between Individual & Airline view modals ──────
+// ─── NextRenewalSection, shared between Individual & Airline view modals ──────
 function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
   const nr = record.nextRenewal
 
@@ -449,7 +448,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
     return d.toISOString().slice(0, 10)
   }
 
-  // ── Hooks first (unconditional) — early returns happen AFTER all hooks so the
+  // ── Hooks first (unconditional), early returns happen AFTER all hooks so the
   // hook order stays stable when a queued plan appears/disappears. ──────────────
   const [activating, setActivating] = React.useState(false)
   const [activateErr, setActivateErr] = React.useState('')
@@ -457,7 +456,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
   const [savingEdit, setSavingEdit] = React.useState(false)
   const [editErr, setEditErr] = React.useState('')
   const [cancelling, setCancelling] = React.useState(false)
-  // Canonical invoice number from Invoice collection — authoritative source of truth.
+  // Canonical invoice number from Invoice collection, authoritative source of truth.
   const [canonicalInvoiceNum, setCanonicalInvoiceNum] = React.useState(nr?.invoiceNumber || '')
   React.useEffect(() => {
     if (!record._id) return
@@ -560,8 +559,8 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
     <div className="border-t border-emerald-100 pt-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 pt-1">Next / Upcoming Plan</p>
-          <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border bg-emerald-50 border-emerald-200 text-emerald-600">
+          <p className="text-xs font-black uppercase tracking-wider text-emerald-700 pt-1">Next / Upcoming Plan</p>
+          <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border bg-emerald-50 border-emerald-200 text-emerald-700">
             Queued
           </span>
         </div>
@@ -571,17 +570,17 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
               setEditErr('')
               setEditing((v) => !v)
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition"
           >
             Edit Queued Plan
           </button>
           <button
             onClick={handleActivate}
             disabled={activating}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1.5 text-[11px] font-bold text-white transition"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1.5 text-xs font-bold text-white transition"
           >
             {activating ? (
-              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>
             ) : (
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             )}
@@ -590,7 +589,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
           <button
             onClick={handleCancel}
             disabled={cancelling}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 disabled:opacity-50 px-3 py-1.5 text-[11px] font-bold text-red-600 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 disabled:opacity-50 px-3 py-1.5 text-xs font-bold text-red-600 transition"
           >
             {cancelling ? 'Deleting…' : 'Delete Plan'}
           </button>
@@ -601,7 +600,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
           <div className="rounded-lg border border-emerald-300 bg-white p-3 mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Plan</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Plan</label>
                 <select
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
                   value={editForm.plan}
@@ -614,7 +613,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
               </div>
               {editForm.plan === 'Multiple Years Subscription Plan' && (
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Years</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Years</label>
                   <input
                     type="number"
                     min="2"
@@ -626,7 +625,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
               )}
               {registrationModel === 'Airlines' && (
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Committed Count</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Committed Count</label>
                   <input
                     type="number"
                     min="1"
@@ -637,7 +636,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
                 </div>
               )}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Activation Date</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Activation Date</label>
                 <input
                   type="date"
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
@@ -646,7 +645,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Expires At</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Expires At</label>
                 <input
                   type="date"
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
@@ -655,7 +654,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Amount Paid</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Amount Paid</label>
                 <input
                   type="number"
                   step="0.01"
@@ -666,7 +665,7 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Invoice #</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Invoice #</label>
                 <input
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
                   value={editForm.invoiceNumber}
@@ -674,12 +673,12 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
                 />
               </div>
             </div>
-            {editErr && <p className="mt-2 text-[11px] text-red-600 font-semibold">{editErr}</p>}
+            {editErr && <p className="mt-2 text-xs text-red-600 font-semibold">{editErr}</p>}
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -687,9 +686,9 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
                 type="button"
                 onClick={handleSaveEdit}
                 disabled={savingEdit}
-                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1.5 text-[11px] font-bold text-white"
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3.5 py-1.5 text-xs font-bold text-white"
               >
-                {savingEdit ? 'Saving�' : 'Save Queued Plan'}
+                {savingEdit ? 'Saving…' : 'Save Queued Plan'}
               </button>
             </div>
           </div>
@@ -703,11 +702,11 @@ function NextRenewalSection({ record, registrationModel, onRecordUpdated }) {
           <ViewField label="Amount Paid" value={fmtMoney(nr.price)} />
           <ViewField label="Invoice #" value={canonicalInvoiceNum} />
         </div>
-        <p className="mt-3 text-[10px] text-emerald-600 leading-relaxed">
+        <p className="mt-3 text-xs text-emerald-700 leading-relaxed font-medium">
           Current plan remains active until {fmtDateYMD(record.expirationDate)}. Queued plan activates automatically on {fmtDateYMD(nr.activationDate)}.
         </p>
         {activateErr && (
-          <p className="mt-2 text-[11px] text-red-600 font-semibold">{activateErr}</p>
+          <p className="mt-2 text-xs text-red-600 font-semibold">{activateErr}</p>
         )}
       </div>
     </div>
@@ -725,7 +724,7 @@ function triggerInvoiceDownload({ url, filename }) {
 }
 
 
-// ─── InvoiceDraftFields — shared editable invoice form (edit + create) ────────
+// ─── InvoiceDraftFields, shared editable invoice form (edit + create) ────────
 function InvoiceDraftFields({ form, setForm, onGenerateNumber, generatingNumber }) {
   // Step the sequence number in "Invoice US-<n>-<yy>" up/down (min 1).
   const bumpInvoiceNumber = (delta) => setForm(f => {
@@ -743,36 +742,39 @@ function InvoiceDraftFields({ form, setForm, onGenerateNumber, generatingNumber 
     }
     return f
   })
+
+  const inpClass = "w-full text-xs font-medium border border-slate-200/90 rounded-xl px-3 py-2 bg-white text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 placeholder:text-slate-400 transition"
+
   return (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
-        {/* Invoice # — full-width so the number is never clipped; optional Generate button */}
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Invoice # */}
         <div className="sm:col-span-2">
-          <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">Invoice #</p>
-          <div className="flex items-center gap-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Invoice #</label>
+          <div className="flex items-center gap-2">
             <div className="relative flex-1 min-w-0">
               <input
                 value={form.invoiceNumber || ''}
                 onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value }))}
-                placeholder={onGenerateNumber ? 'Blank = auto on save' : ''}
-                className="w-full text-xs border border-slate-200 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                placeholder={onGenerateNumber ? 'Leave blank to auto-generate' : 'Invoice Number'}
+                className="w-full text-xs font-bold border border-slate-200/90 rounded-xl pl-3 pr-8 py-2 bg-white text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 placeholder:font-normal placeholder:text-slate-400 transition"
               />
-              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col">
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col">
                 <button
                   type="button"
                   aria-label="Increase invoice number"
                   onClick={() => bumpInvoiceNumber(1)}
-                  className="h-[13px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600"
+                  className="h-3.5 w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition"
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 15 6-6 6 6" /></svg>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m6 15 6-6 6 6" /></svg>
                 </button>
                 <button
                   type="button"
                   aria-label="Decrease invoice number"
                   onClick={() => bumpInvoiceNumber(-1)}
-                  className="h-[13px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600"
+                  className="h-3.5 w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition"
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
                 </button>
               </div>
             </div>
@@ -782,9 +784,9 @@ function InvoiceDraftFields({ form, setForm, onGenerateNumber, generatingNumber 
                 onClick={onGenerateNumber}
                 disabled={generatingNumber}
                 title="Preview the next invoice number (not saved until you click Create Invoice)"
-                className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition disabled:opacity-50"
+                className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50 shadow-2xs"
               >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 {generatingNumber ? '…' : 'Generate'}
               </button>
             )}
@@ -797,44 +799,44 @@ function InvoiceDraftFields({ form, setForm, onGenerateNumber, generatingNumber 
           ['Country', 'recipientCountry'],
         ].map(([label, key]) => (
           <div key={key}>
-            <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">{label}</p>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">{label}</label>
             <input
               value={form[key] || ''}
               onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-              className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className={inpClass}
             />
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-x-3">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">Issue Date</p>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Issue Date</label>
           <input
             type="date"
             value={form.issueDate || ''}
             onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))}
-            className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className={inpClass}
           />
         </div>
         <div>
-          <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">Payable By</p>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Payable By</label>
           <input
             type="date"
             value={form.payableBy || ''}
             onChange={e => setForm(f => ({ ...f, payableBy: e.target.value }))}
-            className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className={inpClass}
           />
         </div>
       </div>
       <div>
-        <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">Address</p>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Address</label>
         <input
           value={form.recipientAddress1 || ''}
           onChange={e => setForm(f => ({ ...f, recipientAddress1: e.target.value }))}
-          className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className={inpClass}
         />
       </div>
-      {/* Multi-line items — admin can add/remove rows; total is computed */}
+      {/* Multi-line items */}
       {(() => {
         const lineItems = Array.isArray(form.lineItems) ? form.lineItems : []
         const setLines = (fn) => setForm(f => ({ ...f, lineItems: fn(Array.isArray(f.lineItems) ? f.lineItems : []) }))
@@ -843,40 +845,71 @@ function InvoiceDraftFields({ form, setForm, onGenerateNumber, generatingNumber 
         const removeLine = (i) => setLines(items => items.filter((_, idx) => idx !== i))
         const total = lineItems.reduce((s, li) => s + (Number(li.quantity) || 0) * (Number(li.unitPrice) || 0), 0)
         return (
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wide">Line Items</p>
-              <button type="button" onClick={addLine} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition">+ Add line</button>
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-200/60">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Line Items</span>
+              <button
+                type="button"
+                onClick={addLine}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 transition inline-flex items-center gap-1"
+              >
+                <span className="text-sm leading-none">+</span> Add Line
+              </button>
             </div>
             <div className="space-y-2">
               {lineItems.length === 0 && (
-                <p className="text-[11px] text-slate-400 italic py-1">No line items — click “+ Add line”.</p>
+                <p className="text-xs text-slate-400 italic py-2 text-center">No line items. Click “+ Add Line”.</p>
               )}
               {lineItems.map((li, i) => (
-                <div key={i} className="flex gap-1.5 items-center">
-                  <input value={li.description || ''} onChange={e => updateLine(i, 'description', e.target.value)} placeholder="Description"
-                    className="flex-1 min-w-0 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                  <input type="number" value={li.quantity ?? ''} onChange={e => updateLine(i, 'quantity', e.target.value)} title="Qty"
-                    className="w-12 text-xs border border-slate-200 rounded-lg px-1.5 py-1.5 text-center bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                  <input type="number" step="0.01" value={li.unitPrice ?? ''} onChange={e => updateLine(i, 'unitPrice', e.target.value)} title="Unit price"
-                    className="w-20 text-xs border border-slate-200 rounded-lg px-1.5 py-1.5 text-right bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                  <span className="w-20 text-[11px] font-bold text-right text-slate-700 tabular-nums">${((Number(li.quantity) || 0) * (Number(li.unitPrice) || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <button type="button" onClick={() => removeLine(i)} className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-500 transition">✕</button>
+                <div key={i} className="flex gap-2 items-center">
+                  <input
+                    value={li.description || ''}
+                    onChange={e => updateLine(i, 'description', e.target.value)}
+                    placeholder="Description"
+                    className="flex-1 min-w-0 text-xs border border-slate-200 rounded-xl px-2.5 py-1.5 bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
+                  />
+                  <input
+                    type="number"
+                    value={li.quantity ?? ''}
+                    onChange={e => updateLine(i, 'quantity', e.target.value)}
+                    title="Qty"
+                    className="w-14 text-xs border border-slate-200 rounded-xl px-2 py-1.5 text-center bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 tabular-nums font-semibold"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={li.unitPrice ?? ''}
+                    onChange={e => updateLine(i, 'unitPrice', e.target.value)}
+                    title="Unit price"
+                    className="w-20 text-xs border border-slate-200 rounded-xl px-2 py-1.5 text-right bg-white shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 tabular-nums font-semibold"
+                  />
+                  <span className="w-18 text-xs font-bold text-right text-slate-900 tabular-nums flex-shrink-0">
+                    ${((Number(li.quantity) || 0) * (Number(li.unitPrice) || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeLine(i)}
+                    className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition"
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
-            <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-[12px] font-black">
-              <span className="uppercase tracking-widest text-emerald-700">Total</span>
-              <span className="text-slate-900">${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <div className="flex items-center justify-between rounded-xl bg-slate-900 px-3.5 py-2.5 text-white shadow-2xs mt-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Total</span>
+              <span className="text-sm font-black text-white tabular-nums tracking-tight">
+                ${Number(total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
             </div>
           </div>
         )
       })()}
-    </>
+    </div>
   )
 }
 
-// ─── AdminInvoicesPanel — shows all invoices for a registration ───────────────
+// ─── AdminInvoicesPanel, shows all invoices for a registration ───────────────
 function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerMode = false, onGenerateInvoice }) {
   const [invoices, setInvoices] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
@@ -887,7 +920,7 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
   const [saveErr, setSaveErr] = React.useState('')
   const [pdfBusy, setPdfBusy] = React.useState({})
   const [deletingNum, setDeletingNum] = React.useState(null)
-  // Numbers deleted this session — suppress them even if the synthetic fallback
+  // Numbers deleted this session, suppress them even if the synthetic fallback
   // (built from record.invoiceNumber) would otherwise resurrect them.
   const [deletedNums, setDeletedNums] = React.useState(() => new Set())
   // Admin custom-invoice creation (separate from inline edit so they don't clash).
@@ -897,7 +930,7 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
   const [createErr, setCreateErr] = React.useState('')
   const [genNumBusy, setGenNumBusy] = React.useState(false)
 
-  // Peek the next invoice number and drop it into the form — NOT persisted. The
+  // Peek the next invoice number and drop it into the form, NOT persisted. The
   // counter only advances when the invoice is actually created.
   const handleGenerateNumber = async () => {
     setGenNumBusy(true)
@@ -905,7 +938,7 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
       const r = await generateInvoiceNumber()
       const num = r.data?.invoiceNumber || ''
       if (num) setCreateForm(f => ({ ...f, invoiceNumber: num }))
-    } catch (_) { /* non-critical — admin can still type one */ }
+    } catch (_) { /* non-critical, admin can still type one */ }
     finally { setGenNumBusy(false) }
   }
 
@@ -972,7 +1005,7 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
     const list = deletedNums.size
       ? invoices.filter(i => !deletedNums.has(normalize(i.invoiceNumber)))
       : invoices
-    // If real Invoice docs exist, use them — no synthetic needed.
+    // If real Invoice docs exist, use them, no synthetic needed.
     const hasRealDocs = list.some(d => !d._source)
     if (hasRealDocs) return list
     const regNum = record?.invoiceNumber
@@ -1080,15 +1113,15 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
     // Seed ALL line items so the admin can edit/add/remove rows.
     const seededLines = items.length
       ? items.map(li => ({
-          description: li.description || '',
-          quantity: li.quantity ?? 1,
-          unitPrice: li.unitPrice ?? 0,
-        }))
+        description: li.description || '',
+        quantity: li.quantity ?? 1,
+        unitPrice: li.unitPrice ?? 0,
+      }))
       : [{
-          description: inv.plan ? 'Agent For Service - ' + inv.plan.replace(' Subscription Plan', '').replace(' Plan', '') : 'Agent For Service',
-          quantity: 1,
-          unitPrice: Number(inv.totalAmount) || 0,
-        }]
+        description: inv.plan ? 'Agent For Service - ' + inv.plan.replace(' Subscription Plan', '').replace(' Plan', '') : 'Agent For Service',
+        quantity: 1,
+        unitPrice: Number(inv.totalAmount) || 0,
+      }]
     setEditForm({
       invoiceNumber: d.invoiceNumber || inv.invoiceNumber || '',
       issueDate: toDateInput(d.issueDate || inv.issueDate || inv.paidAt),
@@ -1140,7 +1173,7 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
         }
       }
       if (!targetInvoiceId) {
-        // Renewal or synthetic item — resolve Invoice doc via the registry.
+        // Renewal or synthetic item, resolve Invoice doc via the registry.
         try {
           const invRes = await getInvoiceByRegistration(registrationId)
           const realDocs = (invRes.data?.data || []).filter(d => !d._source)
@@ -1237,13 +1270,6 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
     ? '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '—'
 
-  const renewalStatusColor = (s) => {
-    if (s === 'queued') return '#92400e'
-    if (s === 'active') return '#047857'
-    if (s === 'superseded') return '#94a3b8'
-    return '#64748b'
-  }
-
   const hasPdf = (inv) => !!(
     inv.draft?.lineItems?.length ||
     inv.lineItems?.length ||
@@ -1255,14 +1281,20 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
     !(invoices || []).some(d => !d._source)
 
   return (
-    <div className={drawerMode ? 'p-3' : 'border-t border-slate-100 pt-5'}>
-      <div className={`flex items-center gap-2 flex-wrap ${drawerMode ? 'justify-end mb-3' : 'justify-between mb-4'}`}>
-        {!drawerMode && <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">All Invoices</p>}
-        <div className="flex items-center gap-2 ml-auto">
+    <div className={drawerMode ? 'p-4 sm:p-5 space-y-4' : 'border-t border-slate-100 pt-5 space-y-4'}>
+      {/* Top Toolbar */}
+      <div className={`flex items-center gap-2 flex-wrap ${drawerMode ? 'justify-end' : 'justify-between'}`}>
+        {!drawerMode && (
+          <div className="inline-block">
+            <h4 className="text-sm font-black uppercase tracking-wider text-slate-900">All Invoices</h4>
+            <div className="w-full h-0.5 rounded-full mt-1" style={{ backgroundColor: '#34E06E' }} />
+          </div>
+        )}
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
           {showWireGenerate && (
             <button
               onClick={() => onGenerateInvoice(record)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-700 transition shadow-2xs"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               Generate Wire Invoice
@@ -1270,11 +1302,15 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
           )}
           <button
             onClick={() => creating ? setCreating(false) : openCreate()}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${creating ? 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50' : 'bg-slate-900 text-white hover:bg-slate-700'}`}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition shadow-2xs ${
+              creating
+                ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                : 'bg-slate-900 text-white hover:bg-slate-800'
+            }`}
           >
             {creating ? 'Cancel' : (
               <>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                 Create New Invoice
               </>
             )}
@@ -1282,33 +1318,43 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
           <button
             onClick={load}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50 shadow-2xs"
           >
-            {loading ? 'Loading…' : 'Refresh'}
+            <svg className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            {loading ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
       </div>
 
       {/* Create New Invoice form */}
       {creating && (
-        <div className="mb-4 rounded-xl border-2 border-slate-900/10 bg-slate-50/60 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">New Custom Invoice</p>
-            <span className="text-[9px] text-slate-500">Leave Invoice # blank to auto-generate</span>
+        <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-4 sm:p-5 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-slate-900">New Custom Invoice</p>
+              <p className="text-[11px] text-slate-500">Fill in the fields to generate a new invoice document.</p>
+            </div>
+            <span className="text-[10px] text-slate-400 bg-white border border-slate-200/80 px-2 py-0.5 rounded-md">Leave Invoice # blank for auto-generate</span>
           </div>
           <InvoiceDraftFields form={createForm} setForm={setCreateForm} onGenerateNumber={handleGenerateNumber} generatingNumber={genNumBusy} />
-          {createErr && <p className="text-[11px] text-red-600 font-semibold">{createErr}</p>}
-          <div className="flex items-center gap-2">
+          {createErr && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
+              {createErr}
+            </div>
+          )}
+          <div className="flex items-center gap-2 pt-1">
             <button
               onClick={handleCreate}
               disabled={creatingSaving}
-              className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-bold text-white bg-slate-900 hover:bg-slate-700 rounded-lg px-3 py-2 transition disabled:opacity-50"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl px-4 py-2.5 transition disabled:opacity-50 shadow-sm"
             >
               {creatingSaving ? 'Creating…' : 'Create Invoice'}
             </button>
             <button
               onClick={() => setCreating(false)}
-              className="inline-flex items-center justify-center text-[11px] font-bold text-slate-600 border border-slate-300 bg-white hover:bg-slate-100 rounded-lg px-4 py-2 transition"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 transition shadow-2xs"
             >
               Cancel
             </button>
@@ -1317,17 +1363,23 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
       )}
 
       {loading && visibleInvoices === null && (
-        <p className="text-xs text-slate-500 italic">Loading invoices…</p>
+        <div className="py-8 text-center text-xs font-medium text-slate-400">Loading invoices…</div>
       )}
 
-      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700">
+          {error}
+        </div>
+      )}
 
       {!loading && visibleInvoices !== null && visibleInvoices.length === 0 && (
-        <p className="text-xs text-slate-500 italic">No invoices found.</p>
+        <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs font-medium text-slate-400 bg-slate-50/50">
+          No invoices found for this record.
+        </div>
       )}
 
       {visibleInvoices !== null && visibleInvoices.length > 0 && (
-        <div className={`space-y-2 pr-1 ${drawerMode ? '' : 'max-h-[480px] overflow-y-auto'}`}>
+        <div className={`space-y-3 ${drawerMode ? '' : 'max-h-[500px] overflow-y-auto pr-1'}`}>
           {visibleInvoices.map((inv) => {
             const isHolderUpgrade = inv.purpose === 'holder-upgrade' ||
               (inv.lineItems || inv.draft?.lineItems || []).some(li =>
@@ -1341,91 +1393,147 @@ function AdminInvoicesPanel({ registrationId, registrationModel, record, drawerM
                 : isHolderUpgrade ? 'Holder Upgrade'
                   : isRenewal ? 'Subscription Renewed'
                     : 'Subscription'
-            const purposeCls = inv._source === 'payment' ? 'bg-slate-100 border-slate-200 text-slate-500'
-              : 'bg-slate-800 border-slate-700 text-white'
+            const purposeCls = inv._source === 'payment' ? 'bg-slate-100 border-slate-200 text-slate-600'
+              : 'bg-slate-900 border-slate-800 text-white'
             const planLabel = inv.subscriptionPlan || inv.plan || ''
-            // Shared status badge — single source of truth in utils/invoiceStatus.js,
-            // identical on admin + client (individual & airline). Dynamic: follows the
-            // registration's active/queued plan.
+            // Shared status badge
             const badge = getInvoiceStatus(inv, record, { isHolderUpgrade, activeInvoiceNum })
             const isActiveInvoice = badge?.label === 'Active'
+
             return (
-              <div key={String(inv._id)} className={`rounded-xl border px-4 py-3 transition-all ${isActiveInvoice ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm'}`}>
-                <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <div>
+              <div
+                key={String(inv._id)}
+                className="rounded-2xl border border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-2xs transition-all p-4 space-y-2.5"
+              >
+                {/* Header row: Invoice #, badges, and Amount */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[11px] font-bold text-slate-800">{inv.invoiceNumber || '(no number)'}</p>
-                      <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${purposeCls}`}>
+                      <h4 className="text-sm font-bold text-slate-900 tracking-tight">{inv.invoiceNumber || '(no number)'}</h4>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                        inv._source === 'payment'
+                          ? 'bg-slate-100 border-slate-200 text-slate-600'
+                          : 'bg-slate-100 border-slate-200/90 text-slate-800'
+                      }`}>
                         {purposeLabel}
                       </span>
                       {badge && (
-                        <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${badge.cls}`}>
                           {badge.label}
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{fmtInvDate(inv.paidAt || inv.createdAt)}</p>
-                    {planLabel && <p className="text-[10px] text-slate-500 mt-0.5">{planLabel}</p>}
-                    <p className="text-[10px] font-semibold text-slate-700 mt-0.5">{fmtAmt(
-                      inv.draft?.lineItems?.length
-                        ? inv.draft.lineItems.reduce((s, li) => s + (Number(li.totalPrice) || 0), 0)
-                        : inv.totalAmount
-                    )}</p>
-                    {(inv.draft?.paymentId || inv.stripePaymentIntentId) && (() => {
-                      const raw = String(inv.draft?.paymentId || inv.stripePaymentIntentId)
-                      const clean = /^admin[_-]|^manual/i.test(raw) ? `MANUAL ${inv.invoiceNumber || ''}`.trim() : raw
-                      return <p className="text-[10px] text-slate-500 mt-0.5">Payment ID: <span className="font-mono text-slate-500 break-all">{clean}</span></p>
-                    })()}
+                    <p className="text-xs text-slate-500 mt-1">
+                      {fmtInvDate(inv.paidAt || inv.createdAt)}
+                      {planLabel && (
+                        <>
+                          <span className="text-slate-300 mx-1.5">·</span>
+                          <span className="font-semibold text-slate-700">{planLabel}</span>
+                        </>
+                      )}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {hasPdf(inv) && (
-                      <>
-                        <button
-                          onClick={() => handlePdf(inv, false)}
-                          disabled={pdfBusy[inv._id]}
-                          className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-lg px-2.5 py-1 transition disabled:opacity-50"
-                        >
-                          {pdfBusy[inv._id] ? '…' : 'View'}
-                        </button>
-                        <button
-                          onClick={() => handlePdf(inv, true)}
-                          disabled={pdfBusy[inv._id]}
-                          className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-lg px-2.5 py-1 transition disabled:opacity-50"
-                        >
-                          Download
-                        </button>
-                      </>
-                    )}
-                    {inv._source !== 'payment' && (
-                      <button
-                        onClick={() => editing?._id === inv._id ? setEditing(null) : openEdit(inv)}
-                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 bg-white rounded-lg px-2.5 py-1 transition"
-                      >
-                        {editing?._id === inv._id ? 'Cancel' : 'Edit'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteInvoice(inv)}
-                      disabled={deletingNum === inv.invoiceNumber}
-                      title="Delete invoice (hidden from the customer)"
-                      className="text-[11px] font-semibold text-red-600 hover:text-red-800 border border-red-200 bg-white rounded-lg px-2.5 py-1 transition disabled:opacity-50"
-                    >
-                      {deletingNum === inv.invoiceNumber ? 'Deleting…' : 'Delete'}
-                    </button>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-base sm:text-lg font-black text-slate-900 tabular-nums">
+                      {fmtAmt(
+                        inv.draft?.lineItems?.length
+                          ? inv.draft.lineItems.reduce((s, li) => s + (Number(li.totalPrice) || 0), 0)
+                          : inv.totalAmount
+                      )}
+                    </span>
                   </div>
                 </div>
 
-                {editing?._id === inv._id && (
-                  <div className="mt-3 pt-3 border-t border-slate-200 space-y-3">
-                    <InvoiceDraftFields form={editForm} setForm={setEditForm} />
-                    {saveErr && <p className="text-[11px] text-red-600 font-semibold">{saveErr}</p>}
+                {/* Payment ID (if exists) */}
+                {(inv.draft?.paymentId || inv.stripePaymentIntentId) && (() => {
+                  const raw = String(inv.draft?.paymentId || inv.stripePaymentIntentId)
+                  const clean = /^admin[_-]|^manual/i.test(raw) ? `MANUAL ${inv.invoiceNumber || ''}`.trim() : raw
+                  return (
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                      <span>Payment ID:</span>
+                      <span className="font-mono text-slate-600 break-all">{clean}</span>
+                    </div>
+                  )
+                })()}
+
+                {/* Actions Row */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5 flex-wrap">
+                  {hasPdf(inv) && (
+                    <>
+                      <button
+                        onClick={() => handlePdf(inv, false)}
+                        disabled={pdfBusy[inv._id]}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 transition disabled:opacity-50 shadow-2xs"
+                      >
+                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {pdfBusy[inv._id] ? '…' : 'View'}
+                      </button>
+                      <button
+                        onClick={() => handlePdf(inv, true)}
+                        disabled={pdfBusy[inv._id]}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 transition disabled:opacity-50 shadow-2xs"
+                      >
+                        <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        Download
+                      </button>
+                    </>
+                  )}
+                  {inv._source !== 'payment' && (
                     <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="w-full inline-flex items-center justify-center gap-1 text-[11px] font-bold text-white bg-slate-900 hover:bg-slate-700 rounded-lg px-3 py-2 transition disabled:opacity-50"
+                      onClick={() => editing?._id === inv._id ? setEditing(null) : openEdit(inv)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 transition shadow-2xs"
                     >
-                      {saving ? 'Saving…' : 'Save Invoice'}
+                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                      </svg>
+                      {editing?._id === inv._id ? 'Cancel' : 'Edit'}
                     </button>
+                  )}
+                  <button
+                    onClick={() => handleDeleteInvoice(inv)}
+                    disabled={deletingNum === inv.invoiceNumber}
+                    title="Delete invoice (hidden from the customer)"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 transition disabled:opacity-50 shadow-2xs"
+                  >
+                    <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                    {deletingNum === inv.invoiceNumber ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+
+                {editing?._id === inv._id && (
+                  <div className="mt-4 pt-4 border-t border-slate-200/80 space-y-3.5">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-200/60">
+                      <span className="text-xs font-bold text-slate-800">Edit Invoice Draft</span>
+                      <span className="text-[10px] text-slate-500">Changes update customer's invoice</span>
+                    </div>
+                    <InvoiceDraftFields form={editForm} setForm={setEditForm} />
+                    {saveErr && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
+                        {saveErr}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl px-4 py-2.5 transition disabled:opacity-50 shadow-sm"
+                      >
+                        {saving ? 'Saving…' : 'Save Invoice'}
+                      </button>
+                      <button
+                        onClick={() => setEditing(null)}
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 transition shadow-2xs"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1455,23 +1563,23 @@ function IndividualViewModal({ record, onClose, onEdit, onManagePlan, onDeletePl
           onClick={e => e.stopPropagation()}>
           <div className="border-b border-slate-100 px-6 py-5 flex items-center justify-between bg-slate-50 flex-shrink-0">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Individual — Record</p>
-              <h2 className="text-lg font-extrabold text-slate-900">{fullName}</h2>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 mb-1.5">Individual, Record</p>
+              <h2 className="text-xl font-extrabold text-slate-900">{fullName}</h2>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowInvoices(v => !v)}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${showInvoices ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-xs font-bold transition ${showInvoices ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
               >
                 All Invoices
               </button>
               {record.__noPlan && (
-                <button onClick={() => onManagePlan?.(record)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition">
+                <button onClick={() => onManagePlan?.(record)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition">
                   Add Plan
                 </button>
               )}
-              <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
+              <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
                 Edit
               </button>
               <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition">✕</button>
@@ -1480,15 +1588,15 @@ function IndividualViewModal({ record, onClose, onEdit, onManagePlan, onDeletePl
           <div className="px-6 py-5 space-y-6 overflow-y-auto flex-1">
             {record.convertedFromAirlineName && (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Converted from Airline</p>
-                  <p className="text-sm font-semibold text-emerald-900">{record.convertedFromAirlineName}</p>
-                  <p className="text-[11px] text-emerald-600 mt-0.5">This holder was transferred from the airline subscription and given an individual account.</p>
+                  <p className="text-xs font-black uppercase tracking-wider text-emerald-700">Converted from Airline</p>
+                  <p className="text-sm font-bold text-emerald-900">{record.convertedFromAirlineName}</p>
+                  <p className="text-xs text-emerald-700 mt-0.5 font-medium">This holder was transferred from the airline subscription and given an individual account.</p>
                 </div>
               </div>
             )}
@@ -1524,31 +1632,31 @@ function IndividualViewModal({ record, onClose, onEdit, onManagePlan, onDeletePl
                     <SectionHead label="Subscription Plan" />
                     <div className="flex items-center gap-2">
                       {canUpgrade && (
-                        <button onClick={() => setShowUpgrade(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 hover:border-emerald-700 transition-all duration-150 shadow-sm shadow-emerald-500/10">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 11l7-7 7 7M5 19l7-7 7 7" /></svg>
+                        <button onClick={() => setShowUpgrade(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 hover:border-emerald-700 transition-all duration-150 shadow-sm shadow-emerald-500/10">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 11l7-7 7 7M5 19l7-7 7 7" /></svg>
                           Upgrade Plan
                         </button>
                       )}
-                      <button onClick={() => setShowRenew(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-600 bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700 hover:border-blue-700 transition-all duration-150 shadow-sm shadow-blue-500/10">Renew Plan</button>
-                      <button onClick={() => onDeletePlan?.(record)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 transition">Delete Plan</button>
+                      <button onClick={() => setShowRenew(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800 hover:border-slate-800 transition-all duration-150 shadow-sm">Renew Plan</button>
+                      <button onClick={() => onDeletePlan?.(record)} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Delete Plan</button>
                     </div>
                   </div>
                   <AdminCancellationBanner record={record} type="individual" onRecordUpdated={onRecordUpdated} onDeleteRegistration={() => onDeletePlan?.(record)} />
                   <AdminPlanCredits record={record} type="individual" />
                   <button type="button" onClick={() => setShowHolderEdit(true)}
-                    className="w-full text-left rounded-xl border-2 border-blue-300 bg-blue-50/60 px-4 py-2.5 flex items-center justify-between gap-3 mt-3 hover:border-blue-400 hover:bg-blue-50 transition cursor-pointer">
+                    className="w-full text-left rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 flex items-center justify-between gap-3 mt-3 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer">
                     <div>
-                      <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-white bg-blue-600 rounded-full px-2 py-0.5">Plan</span>
+                      <p className="text-sm font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-950 bg-[#34E06E] rounded-full px-2.5 py-0.5">Plan</span>
                         {planShort(record.subscriptionPlan, record.multiYearCount)}
-                        {queued && <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border bg-emerald-50 border-emerald-200 text-emerald-700">Renewed</span>}
-                        {!queued && expiry && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${expiry.cls}`}>{expiry.label}</span>}
+                        {queued && <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald-50 border-emerald-200 text-emerald-700">Renewed</span>}
+                        {!queued && expiry && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${expiry.cls}`}>{expiry.label}</span>}
                       </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-600 mt-1 font-medium">
                         {fmtMoney(record.price)} · {unlimited ? 'No expiry' : (record.expirationDate ? `expires ${fmtDate(record.expirationDate)}` : '—')}{record.invoiceNumber ? ` · ${record.invoiceNumber}` : ''}
                       </p>
                     </div>
-                    <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
+                    <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
                   </button>
                 </div>
               )
@@ -1603,17 +1711,32 @@ function IndividualViewModal({ record, onClose, onEdit, onManagePlan, onDeletePl
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 40, scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-              className="w-full max-w-lg lg:w-[420px] flex-shrink-0 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-y-auto max-h-[85vh] lg:max-h-[78vh]"
+              className="w-full max-w-lg lg:w-[460px] flex-shrink-0 rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-950/25 overflow-hidden max-h-[85vh] lg:max-h-[80vh] flex flex-col"
               onClick={e => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 bg-slate-900 px-4 py-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 bg-slate-900 px-5 py-4 flex items-center justify-between border-b border-slate-800 flex-shrink-0">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-0.5">Invoice History</p>
-                  <p className="text-sm font-bold text-white truncate max-w-[180px]">{fullName}</p>
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    Invoice History
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white truncate max-w-[240px] tracking-tight">{fullName}</h3>
+                    <div className="w-full h-0.5 rounded-full mt-1" style={{ backgroundColor: '#34E06E' }} />
+                  </div>
                 </div>
-                <button onClick={() => setShowInvoices(false)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">✕</button>
+                <button
+                  onClick={() => setShowInvoices(false)}
+                  aria-label="Close invoice drawer"
+                  className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700/80 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition shadow-2xs"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <AdminInvoicesPanel registrationId={record._id} registrationModel="Individual" record={record} drawerMode={true} />
+              <div className="overflow-y-auto flex-1">
+                <AdminInvoicesPanel registrationId={record._id} registrationModel="Individual" record={record} drawerMode={true} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1638,7 +1761,7 @@ function IndividualViewModal({ record, onClose, onEdit, onManagePlan, onDeletePl
           record={record}
           onClose={() => setShowUpgrade(false)}
           onConfirm={async ({ targetPlan, targetYears, invoiceNumber, invoiceDraft }) => {
-            // Apply the upgrade directly (no separate invoice popup) — the invoice was
+            // Apply the upgrade directly (no separate invoice popup), the invoice was
             // edited inline in the modal. onConvertDirect throws on failure so the modal
             // can surface the error and stay open.
             await onConvertDirect?.(record._id, { targetPlan, targetYears, invoiceNumber, invoiceDraft })
@@ -1653,21 +1776,21 @@ function IndividualViewModal({ record, onClose, onEdit, onManagePlan, onDeletePl
 // ─── Admin: pick an individual upgrade target (Multi-Year / Unlimited) ───────────
 // Hands off to handleRequestConvert, which prices the upgrade (crediting unused
 // time), confirms the net, and opens the invoice editor in conversion mode.
-// Focused holder editor for an individual — the certificate-holder details (name +
+// Focused holder editor for an individual, the certificate-holder details (name +
 // FAA certificate info). Opened by clicking the plan card. Mirrors the airline holder edit.
 function AdminIndividualHolderModal({ record, onClose, onSaved }) {
   const [form, setForm] = useState({
-    firstName:  record.firstName || '',
+    firstName: record.firstName || '',
     middleName: record.middleName || '',
-    lastName:   record.lastName || '',
+    lastName: record.lastName || '',
     primaryAirmanCertificate: record.primaryAirmanCertificate || '',
-    primaryCertificate:       record.primaryCertificate || '',
-    faaCertificateNumber:     record.faaCertificateNumber || '',
-    iacraTrackingNumber:      record.iacraTrackingNumber || '',
-    hasSecondaryCertificate:  !!record.hasSecondaryCertificate,
-    secondaryCertificate:        record.secondaryCertificate || '',
+    primaryCertificate: record.primaryCertificate || '',
+    faaCertificateNumber: record.faaCertificateNumber || '',
+    iacraTrackingNumber: record.iacraTrackingNumber || '',
+    hasSecondaryCertificate: !!record.hasSecondaryCertificate,
+    secondaryCertificate: record.secondaryCertificate || '',
     secondaryFaaCertificateNumber: record.secondaryFaaCertificateNumber || '',
-    secondaryIacraTrackingNumber:  record.secondaryIacraTrackingNumber || '',
+    secondaryIacraTrackingNumber: record.secondaryIacraTrackingNumber || '',
   })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -1692,7 +1815,7 @@ function AdminIndividualHolderModal({ record, onClose, onSaved }) {
     }
   }
 
-  const inp = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-500'
+  const inp = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10'
   const lbl = 'block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1'
   const CERT_TYPES = ['Part 61 - Pilot', 'Part 61 - Flight or Ground Instructor', 'Part 65 - Aircraft Dispatcher', 'Part 107 - Remote Pilot']
 
@@ -1705,8 +1828,8 @@ function AdminIndividualHolderModal({ record, onClose, onSaved }) {
           className="w-full max-w-lg max-h-[calc(100vh-100px)] flex flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
           <div className="flex-shrink-0 flex items-start justify-between px-5 py-4 border-b border-slate-100">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Edit Holder</p>
-              <h3 className="text-base font-extrabold text-slate-900 mt-0.5">Certificate holder details</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4">Edit Holder</p>
+              <h3 className="text-base font-extrabold text-slate-900 mt-1">Certificate holder details</h3>
             </div>
             <button onClick={onClose} disabled={busy} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition disabled:opacity-50">✕</button>
           </div>
@@ -1737,11 +1860,11 @@ function AdminIndividualHolderModal({ record, onClose, onSaved }) {
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer pt-1">
-              <input type="checkbox" checked={form.hasSecondaryCertificate} onChange={e => set('hasSecondaryCertificate', e.target.checked)} className="w-4 h-4 rounded accent-blue-600" />
+              <input type="checkbox" checked={form.hasSecondaryCertificate} onChange={e => set('hasSecondaryCertificate', e.target.checked)} className="w-4 h-4 rounded accent-[#34E06E]" />
               <span className="text-xs font-semibold text-slate-700">Has secondary certificate</span>
             </label>
             {form.hasSecondaryCertificate && (
-              <div className="grid grid-cols-1 gap-2 ml-1 pl-3 border-l-2 border-blue-200">
+              <div className="grid grid-cols-1 gap-2 ml-1 pl-3 border-l-2 border-slate-200">
                 <div>
                   <label className={lbl}>Secondary Cert Type</label>
                   <select value={form.secondaryCertificate} onChange={e => set('secondaryCertificate', e.target.value)} className={inp}>
@@ -1756,9 +1879,9 @@ function AdminIndividualHolderModal({ record, onClose, onSaved }) {
             )}
             {err && <p className="text-sm font-semibold text-red-600">{err}</p>}
           </div>
-          <div className="flex-shrink-0 border-t border-slate-100 px-5 py-3 flex items-center justify-end gap-2">
-            <button onClick={onClose} disabled={busy} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50">Cancel</button>
-            <button onClick={save} disabled={busy} className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-sm font-bold text-white transition disabled:opacity-50">{busy ? 'Saving…' : 'Save Holder'}</button>
+          <div className="flex-shrink-0 border-t border-slate-100 px-5 py-3.5 flex items-center justify-end gap-2 bg-slate-50">
+            <button onClick={onClose} disabled={busy} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50">Cancel</button>
+            <button onClick={save} disabled={busy} className="rounded-xl bg-slate-900 hover:bg-slate-800 px-5 py-2 text-sm font-bold text-white transition disabled:opacity-50">{busy ? 'Saving…' : 'Save Holder'}</button>
           </div>
         </motion.div>
       </div>
@@ -1786,9 +1909,9 @@ function AdminIndividualUpgradeModal({ record, onClose, onConfirm }) {
     : record.subscriptionPlan === 'Unlimited Plan' ? 'Unlimited' : '1 Year'
   const currentTotal = Number(record.price) > 0 ? Number(record.price)
     : (record.subscriptionPlan === '1 Year Subscription Plan'
-       || record.subscriptionPlan === 'Multiple Years Subscription Plan')
+      || record.subscriptionPlan === 'Multiple Years Subscription Plan')
       ? individualPrice(record.subscriptionPlan, oldYears) : 0
-  // Unused-time fraction credit — mirrors backend computeConversionCharge.
+  // Unused-time fraction credit, mirrors backend computeConversionCharge.
   let credit = 0
   if (exp && exp > now && currentTotal > 0) {
     const totalMs = (start && exp > start) ? (exp - start) : oldYears * 365 * 86400000
@@ -1820,7 +1943,7 @@ function AdminIndividualUpgradeModal({ record, onClose, onConfirm }) {
   useEffect(() => {
     if (lineItemsTouched) return
     const items = [{ description: `Agent For Service - ${targetLabel}`, quantity: 1, unitPrice: targetPrice }]
-    if (credit > 0) items.push({ description: `Credit — unused ${curLabel} subscription`, quantity: 1, unitPrice: -credit })
+    if (credit > 0) items.push({ description: `Credit, unused ${curLabel} subscription`, quantity: 1, unitPrice: -credit })
     setLineItems(items)
   }, [targetPlan, years]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1841,21 +1964,21 @@ function AdminIndividualUpgradeModal({ record, onClose, onConfirm }) {
       const today = new Date()
       const iso = (d) => d.toISOString().slice(0, 10)
       const invoiceDraft = {
-        invoiceNumber:     invNumber.trim(),
-        issueDate:         iso(today),
-        payableBy:         iso(new Date(today.getTime() + 30 * 86400000)),
+        invoiceNumber: invNumber.trim(),
+        issueDate: iso(today),
+        payableBy: iso(new Date(today.getTime() + 30 * 86400000)),
         recipientName,
-        recipientCompany:  '',
-        recipientContact:  recipientName,
+        recipientCompany: '',
+        recipientContact: recipientName,
         recipientAddress1: record.addressLine1 || record.address || '',
         recipientAddress2: '',
-        recipientCountry:  record.country || '',
+        recipientCountry: record.country || '',
         paymentMethod,
         lineItems: lineItems.map(li => ({
           description: li.description,
-          quantity:    Number(li.quantity) || 1,
-          unitPrice:   Number(li.unitPrice) || 0,
-          totalPrice:  (Number(li.quantity) || 1) * (Number(li.unitPrice) || 0),
+          quantity: Number(li.quantity) || 1,
+          unitPrice: Number(li.unitPrice) || 0,
+          totalPrice: (Number(li.quantity) || 1) * (Number(li.unitPrice) || 0),
         })),
       }
       await onConfirm({
@@ -1865,134 +1988,279 @@ function AdminIndividualUpgradeModal({ record, onClose, onConfirm }) {
         invoiceDraft,
       })
     } catch (e) {
-      setErr(e?.response?.data?.message || 'Upgrade failed.')
+      const msg = e?.response?.data?.message || 'Upgrade failed.'
+      // "Generate" only previews a number — it doesn't reserve it, so another
+      // invoice can claim it first. Rather than dead-ending on that race,
+      // pull a fresh one automatically so the admin can just hit Save again.
+      if (/already exists/i.test(msg)) {
+        try {
+          const r = await generateInvoiceNumber()
+          if (r.data?.invoiceNumber) setInvNumber(r.data.invoiceNumber)
+          setErr('That number was just taken by another invoice — generated a new one. Click Save to retry.')
+        } catch {
+          setErr(msg)
+        }
+      } else {
+        setErr(msg)
+      }
       setBusy(false)
     }
   }
 
-  const inp = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-emerald-500'
+  const inp = 'w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 outline-none focus:border-slate-900 transition'
 
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm" onClick={busy ? undefined : onClose} />
-      <div className="fixed inset-0 z-[101] flex items-start justify-center p-4 pt-20 overflow-y-auto">
+        className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-md" onClick={busy ? undefined : onClose} />
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
         <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12 }}
-          className="w-full max-w-md max-h-[calc(100vh-100px)] flex flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-          <div className="flex-shrink-0 flex items-start justify-between px-5 py-4 border-b border-slate-100">
+          className="w-full max-w-xl sm:max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-950/30 overflow-hidden" onClick={e => e.stopPropagation()}>
+          
+          {/* Header */}
+          <div className="flex-shrink-0 flex items-start justify-between px-6 sm:px-8 pt-6 pb-4 border-b border-slate-100">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Upgrade Plan</p>
-              <h3 className="text-base font-extrabold text-slate-900 mt-0.5">Upgrade &amp; issue invoice</h3>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[11px] font-bold uppercase tracking-wider mb-2">
+                <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 11l7-7 7 7M5 19l7-7 7 7" />
+                </svg>
+                Upgrade Plan
+              </div>
+              <div>
+                <div className="inline-block">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Upgrade &amp; Issue Invoice</h3>
+                  <div className="w-full h-0.5 rounded-full mt-1.5 mb-1" style={{ backgroundColor: '#34E06E' }} />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Upgrade subscription plan and generate a customized invoice with prorated credits.</p>
+              </div>
             </div>
-            <button onClick={onClose} disabled={busy} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition disabled:opacity-50">✕</button>
+            <button
+              onClick={onClose}
+              disabled={busy}
+              aria-label="Close modal"
+              className="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition shadow-2xs flex-shrink-0 mt-1 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+
+          <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-5 space-y-4">
             {/* Current plan summary */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Current Plan</p>
-                  <p className="text-[13px] font-bold text-slate-900 truncate">{curLabel}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-[13px] font-extrabold text-slate-900">{money(currentTotal)}</p>
-                  <p className="text-[10px] text-slate-400">{record.subscriptionPlan === 'Unlimited Plan' ? 'No expiry' : `expires ${fmtD(exp)}`}</p>
-                </div>
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 flex items-center justify-between shadow-2xs">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Current Active Plan</span>
+                <span className="text-sm font-bold text-slate-900 mt-0.5 block">{curLabel}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-black text-slate-900 tabular-nums block">{money(currentTotal)}</span>
+                <span className="text-xs text-slate-500 block">{record.subscriptionPlan === 'Unlimited Plan' ? 'No expiry' : `Expires ${fmtD(exp)}`}</span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-600">Pick the upgrade target. Unused time on the current plan is credited on the invoice below.</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[['Multiple Years Subscription Plan', 'Multiple Years'], ['Unlimited Plan', 'Unlimited']].map(([val, lbl]) => (
-                <button key={val} type="button" onClick={() => { setTargetPlan(val); setLineItemsTouched(false) }}
-                  className={`rounded-xl border-2 px-3 py-2 text-[12px] font-bold transition ${targetPlan === val ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}>
-                  {lbl}
-                </button>
-              ))}
+            {/* Upgrade target selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Select Upgrade Target</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[['Multiple Years Subscription Plan', 'Multiple Years', 'Custom multi-year term extension'], ['Unlimited Plan', 'Unlimited Lifetime', 'Permanent coverage · No expiry']].map(([val, lbl, desc]) => {
+                  const isSel = targetPlan === val
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => { setTargetPlan(val); setLineItemsTouched(false) }}
+                      className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                        isSel
+                          ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-500/10 shadow-sm'
+                          : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-sm font-bold ${isSel ? 'text-slate-900' : 'text-slate-700'}`}>{lbl}</span>
+                        {isSel && (
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#34E06E' }} />
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-500 mt-1">{desc}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
+
             {isMulti && (
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Number of Years</label>
-                <input type="number" min={2} value={years} onChange={e => { setYears(Math.max(2, Number(e.target.value) || 2)); setLineItemsTouched(false) }} className={inp} />
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">Number of Years</span>
+                  <span className="text-[11px] text-slate-500">Duration for multiple years coverage</span>
+                </div>
+                <div className="w-28">
+                  <input
+                    type="number"
+                    min={2}
+                    max={10}
+                    value={years}
+                    onChange={e => { setYears(Math.max(2, Number(e.target.value) || 2)); setLineItemsTouched(false) }}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-900 text-center outline-none focus:border-slate-900 transition"
+                  />
+                </div>
               </div>
             )}
 
             {/* Unused-time credit details */}
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-3.5 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Unused-time credit</p>
-                <p className="text-sm font-black text-emerald-700">{money(credit)}</p>
+            <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-white to-emerald-50/30 p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Unused-Time Credit</span>
+                <span className="text-base font-black text-emerald-700 tabular-nums">{money(credit)}</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div><p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Paid</p><p className="text-[11px] font-bold text-slate-800 mt-0.5">{money(currentTotal)}</p></div>
-                <div><p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Days left</p><p className="text-[11px] font-bold text-slate-800 mt-0.5">{daysLeft ?? '—'}{termDays ? ` / ${termDays}` : ''}</p></div>
-                <div><p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Unused</p><p className="text-[11px] font-bold text-slate-800 mt-0.5">{creditPct}%</p></div>
+              <div className="grid grid-cols-3 gap-2 text-center bg-white/80 rounded-xl p-2.5 border border-emerald-100">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Paid Total</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5 tabular-nums">{money(currentTotal)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Days Remaining</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5 tabular-nums">{daysLeft ?? '—'}{termDays ? ` / ${termDays}` : ''}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unused Value</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5 tabular-nums">{creditPct}%</p>
+                </div>
               </div>
-              <div className="mt-2 flex items-center justify-between border-t border-emerald-200 pt-2 text-[11px]">
-                <span className="text-slate-600">New {targetLabel} {money(targetPrice)} − credit {money(credit)}</span>
-                <span className="font-black text-slate-900">= {money(Math.max(0, targetPrice - credit))}</span>
+              <div className="flex items-center justify-between pt-1 text-xs border-t border-emerald-200/60">
+                <span className="text-slate-600">New {targetLabel} ({money(targetPrice)}) − Credit ({money(credit)})</span>
+                <span className="font-black text-slate-900 text-sm tabular-nums">= {money(Math.max(0, targetPrice - credit))}</span>
               </div>
-              <p className="mt-1 text-[10px] text-slate-400">Credit = paid × remaining ÷ term. Applied as a line below.</p>
             </div>
 
             {/* Inline invoice editor */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Invoice Details</p>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Invoice Number</label>
-                <div className="flex gap-2">
-                  <input value={invNumber} onChange={e => setInvNumber(e.target.value)} placeholder="Auto-generated if blank" className={inp} />
-                  <button type="button" onClick={genInv} disabled={genBusy}
-                    className="flex-shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50">{genBusy ? '…' : 'Generate'}</button>
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 sm:p-5 space-y-4 shadow-2xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Invoice Configuration</p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Invoice Number</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={invNumber}
+                      onChange={e => setInvNumber(e.target.value)}
+                      placeholder="Auto-generated if left blank"
+                      className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 outline-none focus:border-slate-900 transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={genInv}
+                      disabled={genBusy}
+                      className="flex-shrink-0 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 transition disabled:opacity-50 shadow-2xs"
+                    >
+                      {genBusy ? 'Generating…' : 'Generate'}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Bill To / Recipient</label>
+                  <input
+                    value={recipientName}
+                    onChange={e => setRecipientName(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 outline-none focus:border-slate-900 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Method</label>
+                  <CustomSelect
+                    value={paymentMethod}
+                    onChange={setPaymentMethod}
+                    options={[
+                      { value: 'card', label: 'Credit / Debit Card' },
+                      { value: 'wire', label: 'Wire Transfer / Invoice' },
+                      { value: 'admin', label: 'Manual / Admin' },
+                    ]}
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Bill To</label>
-                  <input value={recipientName} onChange={e => setRecipientName(e.target.value)} className={inp} />
+
+              <div className="pt-2 border-t border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Line Items</label>
+                  <button
+                    type="button"
+                    onClick={addLine}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 px-2.5 py-1 rounded-lg transition"
+                  >
+                    + Add line
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Payment Method</label>
-                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={inp}>
-                    <option value="card">Card</option>
-                    <option value="wire">Wire</option>
-                    <option value="admin">Manual / Admin</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Line Items</label>
-                  <button type="button" onClick={addLine} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition">+ Add line</button>
-                </div>
+                
                 <div className="space-y-2">
                   {lineItems.map((li, i) => (
-                    <div key={i} className="flex gap-1.5 items-center">
-                      <input value={li.description} onChange={e => updateLine(i, 'description', e.target.value)} placeholder="Description"
-                        className="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs outline-none focus:border-emerald-500" />
-                      <input type="number" value={li.quantity} onChange={e => updateLine(i, 'quantity', e.target.value)} title="Qty"
-                        className="w-12 px-1.5 py-1.5 rounded-lg border border-slate-200 text-xs text-center outline-none focus:border-emerald-500" />
-                      <input type="number" step="0.01" value={li.unitPrice} onChange={e => updateLine(i, 'unitPrice', e.target.value)} title="Unit price"
-                        className="w-20 px-1.5 py-1.5 rounded-lg border border-slate-200 text-xs text-right outline-none focus:border-emerald-500" />
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        value={li.description}
+                        onChange={e => updateLine(i, 'description', e.target.value)}
+                        placeholder="Description"
+                        className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 outline-none focus:border-slate-900 transition"
+                      />
+                      <input
+                        type="number"
+                        value={li.quantity}
+                        onChange={e => updateLine(i, 'quantity', e.target.value)}
+                        title="Quantity"
+                        placeholder="Qty"
+                        className="w-14 px-2 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 text-center outline-none focus:border-slate-900 transition"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={li.unitPrice}
+                        onChange={e => updateLine(i, 'unitPrice', e.target.value)}
+                        title="Unit Price"
+                        placeholder="Price"
+                        className="w-24 px-2 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 text-right outline-none focus:border-slate-900 transition"
+                      />
                       {lineItems.length > 1 && (
-                        <button type="button" onClick={() => removeLine(i)} className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-500 transition">✕</button>
+                        <button
+                          type="button"
+                          onClick={() => removeLine(i)}
+                          aria-label="Remove line"
+                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       )}
                     </div>
                   ))}
                 </div>
-                <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-[12px] font-black">
-                  <span className="uppercase tracking-widest text-emerald-700">Net to bill</span>
-                  <span className="text-slate-900">{money(invoiceTotal)}</span>
+
+                <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-200">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Net To Bill</span>
+                  <span className="text-lg font-black text-slate-900 tabular-nums">{money(invoiceTotal)}</span>
                 </div>
               </div>
             </div>
 
             {err && <p className="text-sm font-semibold text-red-600">{err}</p>}
           </div>
-          <div className="flex-shrink-0 border-t border-slate-100 px-5 py-3 flex items-center justify-end gap-2">
-            <button onClick={onClose} disabled={busy} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50">Cancel</button>
-            <button onClick={submit} disabled={busy}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-sm font-bold text-white transition disabled:opacity-50">{busy ? 'Upgrading…' : 'Save invoice & upgrade'}</button>
+
+          <div className="flex-shrink-0 border-t border-slate-100 bg-slate-50/60 px-6 sm:px-8 py-4 flex items-center justify-end gap-3">
+            <button
+              onClick={onClose}
+              disabled={busy}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-sm font-bold text-slate-700 transition disabled:opacity-50 shadow-2xs"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy}
+              className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sm font-bold text-white transition disabled:opacity-50 shadow-sm"
+            >
+              {busy ? 'Upgrading…' : 'Save Invoice & Upgrade'}
+            </button>
           </div>
         </motion.div>
       </div>
@@ -2057,7 +2325,7 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
         : 'Initial'
 
   // Once admin generates THIS wire request's invoice, its invoiceStatus flips from
-  // 'Wire Requested' to 'Generated' — only then swap the button to "Edit Invoice".
+  // 'Wire Requested' to 'Generated', only then swap the button to "Edit Invoice".
   // Do NOT key off record.invoiceGenerated: that flag belongs to the base plan's
   // existing invoice and would falsely mark the wire invoice as already generated.
   const wireInvoiceGenerated = record.invoiceStatus === 'Generated'
@@ -2178,14 +2446,14 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <SectionHead label="Wire Payment Request" />
-          <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border bg-blue-50 border-blue-200 text-blue-600">
+          <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-slate-200 bg-slate-100 text-slate-700">
             {purposeLabel}
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => { setSaveErr(''); setEditing(v => !v) }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white hover:bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-700 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-3 py-1.5 text-[11px] font-bold text-slate-800 transition"
           >
             {editing ? 'Cancel' : 'Edit Details'}
           </button>
@@ -2240,7 +2508,7 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
                   const credit = Math.max(0, Math.round((uTotal - charge) * 100) / 100)
                   const lineItems = [
                     { description: 'Agent For Service - Unlimited', quantity: Number(wd.baseCount) || 1, unitPrice: Number(wd.unlimitedPpc) || charge, totalPrice: uTotal },
-                    ...(credit > 0 ? [{ description: `Credit — unused ${wd.oldPlanLabel || 'previous plan'} subscription`, quantity: 1, unitPrice: -credit, totalPrice: -credit }] : []),
+                    ...(credit > 0 ? [{ description: `Credit, unused ${wd.oldPlanLabel || 'previous plan'} subscription`, quantity: 1, unitPrice: -credit, totalPrice: -credit }] : []),
                   ]
                   invoiceRecord = {
                     ...record,
@@ -2280,9 +2548,9 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
         </div>
       </div>
       {activateErr && <p className="text-[11px] text-red-600 font-semibold mt-1">{activateErr}</p>}
-      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 space-y-3">
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-4 space-y-3">
         {editing && (
-          <div className="rounded-lg border border-blue-300 bg-white p-3 mb-1 space-y-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-3 mb-1 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Purpose</label>
@@ -2353,17 +2621,17 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
             {saveErr && <p className="text-[11px] text-red-600 font-semibold">{saveErr}</p>}
             <div className="flex justify-end gap-2">
               <button onClick={() => setEditing(false)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-3 py-1.5 text-[11px] font-bold text-white">
+              <button onClick={handleSave} disabled={saving} className="rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-50 px-3 py-1.5 text-[11px] font-bold text-white">
                 {saving ? 'Saving…' : 'Save Wire Details'}
               </button>
             </div>
           </div>
         )}
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-4 h-4 text-slate-700 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          <span className="text-xs font-black text-blue-800 uppercase tracking-widest">Wire Invoice Requested</span>
+          <span className="text-xs font-black text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 uppercase tracking-widest">Wire Invoice Requested</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <ViewField label="Requested On" value={record.wirePaymentRequestedAt ? fmtDate(record.wirePaymentRequestedAt) : '—'} />
@@ -2376,7 +2644,7 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
           {isConversionRequest && (
             <ViewField label="Conversion" value={`${record.wireRequestDetails?.holderGroupId ? 'Add-on plan' : 'Base plan'} → Unlimited`} />
           )}
-          {/* Full request snapshot — exactly what the airline asked for at checkout. */}
+          {/* Full request snapshot, exactly what the airline asked for at checkout. */}
           {record.wireRequestDetails?.multiYearCount && (
             <ViewField label="Years" value={`${record.wireRequestDetails.multiYearCount} years`} />
           )}
@@ -2396,7 +2664,7 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
           {(() => {
             // Wire renewal/upgrade/convert invoices live in their own doc with their
             // own number (stashed on wireRequestDetails when generated). Never show the
-            // base plan's record.invoiceNumber for these — show the generated wire
+            // base plan's record.invoiceNumber for these, show the generated wire
             // number once it exists, otherwise nothing (still "Wire Requested").
             const isWirePurpose = isRenewalRequest || isHolderUpgradeRequest || isConversionRequest
             const num = isWirePurpose ? record.wireRequestDetails?.invoiceNumber : record.invoiceNumber
@@ -2405,7 +2673,7 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
           {(() => {
             // Wire request amount owed = exactly what the airline committed to at
             // checkout (wireRequestDetails.amount). Prefer it as the single source of
-            // truth so Amount Due always matches Requested Amount — never recompute from
+            // truth so Amount Due always matches Requested Amount, never recompute from
             // the CURRENT price/cert (which may have drifted since the request).
             const requestedAmount = record.wireRequestDetails?.amount != null
               ? Number(record.wireRequestDetails.amount) : null
@@ -2421,7 +2689,7 @@ function WireRequestSection({ record, onRecordUpdated, onGenerateInvoice, onEdit
             )
           })()}
           {/* For renewal/upgrade, record.subscriptionDate/expirationDate are the CURRENT plan's dates.
-              Don't show them in the wire-request view — they're not what the airline requested. */}
+              Don't show them in the wire-request view, they're not what the airline requested. */}
           {!isRenewalRequest && !isHolderUpgradeRequest && record.subscriptionDate && (
             <ViewField label="Subscription Date" value={fmtDate(record.subscriptionDate)} />
           )}
@@ -2444,7 +2712,7 @@ const adminTierPpc = airlinePricePerCert
 // Popup shown for a signed-up account that has no plan yet (__noPlan). Lets the
 // admin pick the BASE plan, count (airlines), price (auto-tiered with override)
 // and paid/pending, then creates the real subscription via the admin create-form
-// endpoint — the same record the rest of the dashboard flow already understands.
+// endpoint, the same record the rest of the dashboard flow already understands.
 function AdminSetBasePlanModal({ record, onClose, onSaved }) {
   const isAirline = record.role === 'airline'
   const AIR_PLANS = ['1 Year Subscription Plan', 'Unlimited Plan']
@@ -2459,16 +2727,16 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  // ── Inline invoice draft (shown when paid) — admin edits before issuing ──
-  const [invNumber, setInvNumber]           = useState('')
-  const [genBusy, setGenBusy]               = useState(false)
-  const [recipientName, setRecipientName]   = useState(
+  // ── Inline invoice draft (shown when paid), admin edits before issuing ──
+  const [invNumber, setInvNumber] = useState('')
+  const [genBusy, setGenBusy] = useState(false)
+  const [recipientName, setRecipientName] = useState(
     isAirline ? (record.airlineName || '') : `${record.firstName || ''} ${record.lastName || ''}`.trim()
   )
   const [recipientAddress1, setRecipientAddress1] = useState(record.addressLine1 || record.address || '')
-  const [recipientCountry, setRecipientCountry]   = useState(record.country || '')
-  const [paymentMethod, setPaymentMethod]   = useState('card')
-  const [lineItems, setLineItems]           = useState([])
+  const [recipientCountry, setRecipientCountry] = useState(record.country || '')
+  const [paymentMethod, setPaymentMethod] = useState('card')
+  const [lineItems, setLineItems] = useState([])
   const [lineItemsTouched, setLineItemsTouched] = useState(false)
 
   const isUnlimited = plan === 'Unlimited Plan'
@@ -2489,8 +2757,8 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
     const label = planShort(plan)
     setLineItems([{
       description: `Agent For Service - ${label}`,
-      quantity:    isAirline ? (Number(count) || 1) : 1,
-      unitPrice:   isAirline ? effPpc : total,
+      quantity: isAirline ? (Number(count) || 1) : 1,
+      unitPrice: isAirline ? effPpc : total,
     }])
   }, [plan, count, years, priceOverride, paid]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2509,7 +2777,7 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
 
   const submit = async () => {
     setErr('')
-    if (!record.email) { setErr('Account has no email — cannot create a plan.'); return }
+    if (!record.email) { setErr('Account has no email, cannot create a plan.'); return }
     if (isAirline && (!count || Number(count) < 1)) { setErr('Holder count must be at least 1.'); return }
     setBusy(true)
     try {
@@ -2520,21 +2788,21 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
         const today = new Date()
         const iso = (d) => d.toISOString().slice(0, 10)
         invoiceDraft = {
-          invoiceNumber:     invNumber.trim(),
-          issueDate:         iso(today),
-          payableBy:         iso(new Date(today.getTime() + 30 * 86400000)),
+          invoiceNumber: invNumber.trim(),
+          issueDate: iso(today),
+          payableBy: iso(new Date(today.getTime() + 30 * 86400000)),
           recipientName,
-          recipientCompany:  isAirline ? recipientName : '',
-          recipientContact:  recipientName,
+          recipientCompany: isAirline ? recipientName : '',
+          recipientContact: recipientName,
           recipientAddress1: recipientAddress1,
           recipientAddress2: '',
-          recipientCountry:  recipientCountry,
+          recipientCountry: recipientCountry,
           paymentMethod,
           lineItems: lineItems.map(li => ({
             description: li.description,
-            quantity:    Number(li.quantity) || 1,
-            unitPrice:   Number(li.unitPrice) || 0,
-            totalPrice:  (Number(li.quantity) || 1) * (Number(li.unitPrice) || 0),
+            quantity: Number(li.quantity) || 1,
+            unitPrice: Number(li.unitPrice) || 0,
+            totalPrice: (Number(li.quantity) || 1) * (Number(li.unitPrice) || 0),
           })),
         }
       }
@@ -2604,7 +2872,7 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Plan</label>
               <select value={plan} onChange={e => { setPlan(e.target.value); setPriceOverride('') }} className={inp}>
-                {plans.map(p => <option key={p} value={p}>{planShort(p)} — {p}</option>)}
+                {plans.map(p => <option key={p} value={p}>{planShort(p)}, {p}</option>)}
               </select>
             </div>
 
@@ -2625,7 +2893,7 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                 {isAirline ? 'Price / Certificate' : 'Plan Price'} <span className="font-normal normal-case text-slate-400">— auto, editable</span>
               </label>
-              <input type="number" min={0} step="0.01" value={priceOverride} onChange={e => setPriceOverride(e.target.value)} placeholder={String(autoPpc)} className={inp} />
+              <input type="number" min={0} step="0.01" value={priceOverride !== '' ? priceOverride : autoPpc} onChange={e => setPriceOverride(e.target.value)} className={inp} />
             </div>
 
             <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
@@ -2635,7 +2903,7 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${paid ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
-            <p className="-mt-2 text-[11px] text-slate-500">{paid ? 'Activates the plan and issues the invoice below — edit details before setting the base plan.' : 'Created as Pending / Unpaid — activates on payment, no invoice yet.'}</p>
+            <p className="-mt-2 text-[11px] text-slate-500">{paid ? 'Activates the plan and issues the invoice below, edit details before setting the base plan.' : 'Created as Pending / Unpaid, activates on payment, no invoice yet.'}</p>
 
             {/* ── Inline invoice editor (paid only) ── */}
             {paid && (
@@ -2733,7 +3001,7 @@ function AdminSetBasePlanModal({ record, onClose, onSaved }) {
 }
 
 function AdminHolderCountModal({ record, onClose, onSaved }) {
-  // Raw stored committed (base + all not-expired groups) — used to derive base for
+  // Raw stored committed (base + all not-expired groups), used to derive base for
   // the decrease path. The "current base slots" shown to the admin excludes
   // previous-period upgrade plans (only base + perpetual + current-period upgrades),
   // matching the airline-side Expand Holder Count modal.
@@ -2748,7 +3016,7 @@ function AdminHolderCountModal({ record, onClose, onSaved }) {
   const [paid, setPaid] = useState(true)
   // '' = new separate plan; 'base' or a group _id = merge into that existing plan.
   const [mergeTarget, setMergeTarget] = useState('')
-  // decrease — keep selection
+  // decrease, keep selection
   const [keep, setKeep] = useState(() => new Set(holders.map(h => String(h._id))))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -2767,11 +3035,11 @@ function AdminHolderCountModal({ record, onClose, onSaved }) {
 
   const planShort = (p) => p === 'Unlimited Plan' ? 'Unlimited' : '1 Year'
 
-  // Existing plans the added holders can merge into — must be the same plan type.
+  // Existing plans the added holders can merge into, must be the same plan type.
   const mergeTargets = useMemo(() => {
     const list = []
     if (record.subscriptionPlan === plan)
-      list.push({ id: 'base', label: `Base plan — ${planShort(record.subscriptionPlan)}`, expiry: record.expirationDate })
+      list.push({ id: 'base', label: `Base plan, ${planShort(record.subscriptionPlan)}`, expiry: record.expirationDate })
         ; (record.holderGroups || []).forEach((g) => {
           if (g.plan === plan) list.push({ id: String(g._id), label: `${planShort(g.plan)} plan`, expiry: g.expirationDate })
         })
@@ -2784,16 +3052,16 @@ function AdminHolderCountModal({ record, onClose, onSaved }) {
   const planSections = useMemo(() => {
     const sections = [{
       key: 'base',
-      label: `Base plan — ${planShort(record.subscriptionPlan)}`,
+      label: `Base plan, ${planShort(record.subscriptionPlan)}`,
       holders: holders.filter(h => !h.holderGroupId),
     }]
-    ;(record.holderGroups || []).forEach((g, gi) => {
-      sections.push({
-        key: String(g._id),
-        label: `${groupLabelShort(g)} #${gi + 1}`,
-        holders: holders.filter(h => String(h.holderGroupId || '') === String(g._id)),
+      ; (record.holderGroups || []).forEach((g, gi) => {
+        sections.push({
+          key: String(g._id),
+          label: `${groupLabelShort(g)} #${gi + 1}`,
+          holders: holders.filter(h => String(h.holderGroupId || '') === String(g._id)),
+        })
       })
-    })
     return sections
   }, [holders, record])
 
@@ -2854,119 +3122,267 @@ function AdminHolderCountModal({ record, onClose, onSaved }) {
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-[101] flex items-start justify-center p-4 pt-[80px] sm:pt-[84px]">
+        className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
         <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12 }}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-92px)] sm:max-h-[calc(100vh-100px)]" onClick={e => e.stopPropagation()}>
-          <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between bg-slate-50 flex-shrink-0">
+          className="w-full max-w-xl sm:max-w-2xl max-h-[90vh] rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-950/30 overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+          
+          {/* Header */}
+          <div className="border-b border-slate-100 px-6 sm:px-8 pt-6 pb-4 flex items-start justify-between bg-white flex-shrink-0">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Holder Count</p>
-              <h3 className="text-base font-extrabold text-slate-900">Manage Holders</h3>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[11px] font-bold uppercase tracking-wider mb-2">
+                <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+                Holder Management
+              </div>
+              <div>
+                <div className="inline-block">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Manage Certificate Holders</h3>
+                  <div className="w-full h-0.5 rounded-full mt-1.5 mb-1" style={{ backgroundColor: '#34E06E' }} />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Adjust slot capacities, add new plan upgrades, or manage active certificate holders.</p>
+              </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100">✕</button>
+            <button
+              onClick={onClose}
+              aria-label="Close modal"
+              className="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition shadow-2xs flex-shrink-0 mt-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
-          <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
-            {err && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{err}</div>}
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setMode('increase')} className={`rounded-lg border px-3 py-2 text-xs font-bold ${mode === 'increase' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600'}`}>Increase</button>
-              <button onClick={() => setMode('decrease')} className={`rounded-lg border px-3 py-2 text-xs font-bold ${mode === 'decrease' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600'}`}>Decrease</button>
+          <div className="px-6 sm:px-8 py-5 space-y-4 overflow-y-auto flex-1">
+            {err && (
+              <div className="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 text-xs font-semibold text-red-700 flex items-center gap-2">
+                <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                </svg>
+                {err}
+              </div>
+            )}
+
+            {/* Mode Segmented Control */}
+            <div className="flex p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => setMode('increase')}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  mode === 'increase'
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                + Increase Holders
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('decrease')}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  mode === 'decrease'
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                − Decrease Holders
+              </button>
             </div>
-            <p className="text-[11px] text-slate-500">Current base slots: <span className="font-bold text-slate-800">{currentBaseSlots}</span> · holders on file: {holders.length}</p>
+
+            {/* Current base slots and on-file count */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Current Base Slots:</span>
+                <span className="text-xs font-bold text-slate-900 bg-white border border-slate-200/80 px-2.5 py-0.5 rounded-md shadow-2xs tabular-nums">{currentBaseSlots}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Holders on File:</span>
+                <span className="text-xs font-bold text-slate-900 bg-white border border-slate-200/80 px-2.5 py-0.5 rounded-md shadow-2xs tabular-nums">{holders.length}</span>
+              </div>
+            </div>
 
             {mode === 'increase' ? (
               <>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Plan for these holders</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['1 Year Subscription Plan', 'Unlimited Plan'].map(p => (
-                      <button key={p} onClick={() => setPlan(p)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${plan === p ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>{planShort(p)}</button>
-                    ))}
+                {/* Plan Selection */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Plan for these holders</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { val: '1 Year Subscription Plan', title: '1 Year Plan', desc: 'Standard 12-month extension' },
+                      { val: 'Unlimited Plan', title: 'Unlimited Plan', desc: 'Permanent lifetime coverage' },
+                    ].map(p => {
+                      const isSel = plan === p.val
+                      return (
+                        <button
+                          key={p.val}
+                          type="button"
+                          onClick={() => setPlan(p.val)}
+                          className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                            isSel
+                              ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-500/10 shadow-sm'
+                              : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-sm font-bold ${isSel ? 'text-slate-900' : 'text-slate-700'}`}>{p.title}</span>
+                            {isSel && (
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#34E06E' }} />
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-500 mt-1">{p.desc}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
+
+                {/* Attach to target */}
                 {mergeTargets.length > 0 && (
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Attach to</label>
-                    <div className="space-y-1.5">
-                      <label className={`flex items-start gap-2 px-3 py-2 rounded-lg border cursor-pointer ${mergeTarget === '' ? 'border-blue-600 bg-blue-50' : 'border-slate-200'}`}>
-                        <input type="radio" className="mt-0.5 accent-blue-600" checked={mergeTarget === ''} onChange={() => setMergeTarget('')} />
-                        <span>
-                          <span className="block text-xs font-bold text-slate-800">New separate plan</span>
-                          <span className="block text-[10px] text-slate-500">Independent — full term from today.</span>
-                        </span>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Attach to</label>
+                    <div className="space-y-2">
+                      <label className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        mergeTarget === ''
+                          ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-500/10 shadow-sm'
+                          : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                      }`}>
+                        <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                          mergeTarget === '' ? 'border-slate-900 bg-slate-900' : 'border-slate-300 bg-white'
+                        }`}>
+                          {mergeTarget === '' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                        <input type="radio" className="sr-only" checked={mergeTarget === ''} onChange={() => setMergeTarget('')} />
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-slate-900">New Separate Plan</span>
+                          <span className="block text-[11px] text-slate-500 mt-0.5">Independent upgrade plan, full term from today.</span>
+                        </div>
                       </label>
                       {mergeTargets.map(t => (
-                        <label key={t.id} className={`flex items-start gap-2 px-3 py-2 rounded-lg border cursor-pointer ${mergeTarget === t.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200'}`}>
-                          <input type="radio" className="mt-0.5 accent-blue-600" checked={mergeTarget === t.id} onChange={() => setMergeTarget(t.id)} />
-                          <span>
-                            <span className="block text-xs font-bold text-slate-800">Merge into {t.label}</span>
-                            <span className="block text-[10px] text-slate-500">Shares its dates{t.expiry ? ` — expires ${fmtDate(t.expiry)}` : (plan === 'Unlimited Plan' ? ' — no expiry' : '')}. Separate invoice.</span>
-                          </span>
+                        <label key={t.id} className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                          mergeTarget === t.id
+                            ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-500/10 shadow-sm'
+                            : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                        }`}>
+                          <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                            mergeTarget === t.id ? 'border-slate-900 bg-slate-900' : 'border-slate-300 bg-white'
+                          }`}>
+                            {mergeTarget === t.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <input type="radio" className="sr-only" checked={mergeTarget === t.id} onChange={() => setMergeTarget(t.id)} />
+                          <div className="min-w-0">
+                            <span className="block text-xs font-bold text-slate-900">Merge into {t.label}</span>
+                            <span className="block text-[11px] text-slate-500 mt-0.5">Shares dates{t.expiry ? `, expires ${fmtDate(t.expiry)}` : (plan === 'Unlimited Plan' ? ', no expiry' : '')}. Separate invoice.</span>
+                          </div>
                         </label>
                       ))}
                     </div>
                   </div>
                 )}
-                <div className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-                  <span className="text-xs font-semibold text-slate-500">Holders to add</span>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setAddCount(c => Math.max(1, c - 1))} className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50 font-bold">−</button>
-                    <span className="text-lg font-black w-6 text-center">{addCount}</span>
-                    <button onClick={() => setAddCount(c => c + 1)} className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50 font-bold">+</button>
-                  </div>
-                </div>
-                <div className="rounded-xl bg-slate-900 px-4 py-3 flex items-center justify-between">
+
+                {/* Holders to add counter */}
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white">Amount</p>
-                    <p className="text-[10px] text-white/70">${ppc}/cert × {addCount}</p>
+                    <span className="text-xs font-bold text-slate-800 block">Holders to Add</span>
+                    <span className="text-[11px] text-slate-500">Number of new certificate holder slots</span>
                   </div>
-                  <span className="text-xl font-black text-white">${amount.toFixed(2)}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setAddCount(c => Math.max(1, c - 1))}
+                      className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition shadow-2xs"
+                    >−</button>
+                    <span className="text-xl font-black text-slate-900 w-8 text-center tabular-nums">{addCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAddCount(c => c + 1)}
+                      className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition shadow-2xs"
+                    >+</button>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">Payment</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => setPaid(true)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${paid ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600'}`}>Paid (invoice)</button>
-                    <button onClick={() => setPaid(false)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${!paid ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 text-slate-600'}`}>Pending</button>
+
+                {/* Total amount card */}
+                <div className="rounded-2xl border border-slate-900 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-5 flex items-center justify-between text-white shadow-md">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Amount</p>
+                    <p className="text-xs text-emerald-400 mt-0.5 tabular-nums">${ppc}/cert × {addCount} holder{addCount !== 1 ? 's' : ''}</p>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">{paid ? 'Generates an invoice now; airline can see it.' : 'No invoice yet — mark paid later to generate it.'}</p>
+                  <div className="text-right">
+                    <span className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">${amount.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Payment status */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Invoice Status</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaid(true)}
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        paid
+                          ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/10 text-emerald-800 font-bold'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">Paid (Generate Invoice)</span>
+                      <span className="block text-[10px] text-slate-500 mt-0.5">Issues invoice now</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaid(false)}
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        !paid
+                          ? 'border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/15 text-amber-900 font-bold'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold'
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">Pending (Mark Later)</span>
+                      <span className="block text-[10px] text-slate-500 mt-0.5">No invoice generated yet</span>
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (
               <>
-                <p className="text-[11px] text-slate-500">Choose a plan, then untick the members to remove. Each removed member frees one committed slot from <span className="font-semibold text-slate-700">that</span> plan.</p>
-                {holders.length === 0 && <p className="px-3 py-4 text-xs text-slate-500 text-center rounded-xl border border-slate-200">No holders on file.</p>}
-                <div className="space-y-2.5 max-h-72 overflow-y-auto -mx-1 px-1">
+                <p className="text-xs text-slate-500 leading-relaxed">Choose a plan, then untick the members to remove. Each removed member frees one committed slot from <span className="font-bold text-slate-700">that</span> plan.</p>
+                {holders.length === 0 && <p className="px-4 py-6 text-xs font-medium text-slate-500 text-center rounded-2xl border border-slate-200 bg-slate-50/50">No holders on file.</p>}
+                <div className="space-y-3 max-h-72 overflow-y-auto -mx-1 px-1">
                   {planSections.map(sec => {
                     const keptInSec = sec.holders.filter(h => keep.has(String(h._id))).length
                     const total = sec.holders.length
                     return (
-                      <div key={sec.key} className="rounded-xl border border-slate-200 overflow-hidden">
-                        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
-                          <p className="text-[10px] font-black uppercase tracking-wide text-slate-600 truncate">{sec.label}</p>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-[10px] font-bold text-slate-500">Keep {keptInSec}/{total}</span>
+                      <div key={sec.key} className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-slate-50/80 border-b border-slate-100">
+                          <p className="text-xs font-bold text-slate-800 truncate">{sec.label}</p>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="text-xs font-semibold text-slate-500">Keep {keptInSec}/{total}</span>
                             {total > 0 && (
-                              <button onClick={() => setSectionKeep(sec.holders, keptInSec !== total)}
-                                className="text-[10px] font-bold text-blue-600 hover:underline">
+                              <button
+                                type="button"
+                                onClick={() => setSectionKeep(sec.holders, keptInSec !== total)}
+                                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 underline underline-offset-2 transition"
+                              >
                                 {keptInSec === total ? 'Remove all' : 'Keep all'}
                               </button>
                             )}
                           </div>
                         </div>
                         {total === 0
-                          ? <p className="px-3 py-3 text-[11px] text-slate-500 text-center">No members on file in this plan.</p>
+                          ? <p className="px-4 py-3 text-xs text-slate-400 text-center">No members on file in this plan.</p>
                           : (
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-slate-100 bg-white">
                               {sec.holders.map((h, i) => {
                                 const removing = !keep.has(String(h._id))
                                 return (
-                                  <label key={String(h._id || i)} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50 ${removing ? 'bg-red-50/40' : ''}`}>
-                                    <input type="checkbox" checked={keep.has(String(h._id))} onChange={() => toggleKeep(String(h._id))} className="w-4 h-4 accent-blue-600" />
+                                  <label key={String(h._id || i)} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 transition ${removing ? 'bg-red-50/40' : ''}`}>
+                                    <input type="checkbox" checked={keep.has(String(h._id))} onChange={() => toggleKeep(String(h._id))} className="w-4 h-4 accent-slate-900 rounded" />
                                     <div className="min-w-0 flex-1">
                                       <p className={`text-xs font-bold truncate ${removing ? 'text-red-600 line-through' : 'text-slate-800'}`}>{h.fullName || '(unnamed)'}</p>
-                                      <p className="text-[10px] text-slate-500 truncate">{h.iacraFtnNumber || h.faaCertificateNumber || ''}</p>
+                                      <p className="text-[11px] text-slate-400 truncate">{h.iacraFtnNumber ? `FTN: ${h.iacraFtnNumber}` : (h.faaCertificateNumber || '—')}</p>
                                     </div>
-                                    {removing && <span className="text-[9px] font-bold uppercase tracking-wide text-red-500 flex-shrink-0">Remove</span>}
+                                    {removing && <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-100/70 border border-red-200 px-2 py-0.5 rounded-md flex-shrink-0">Remove</span>}
                                   </label>
                                 )
                               })}
@@ -2976,17 +3392,27 @@ function AdminHolderCountModal({ record, onClose, onSaved }) {
                     )
                   })}
                 </div>
-                <div className="flex items-center justify-between rounded-lg bg-slate-900 px-3.5 py-2.5">
-                  <span className="text-[11px] font-bold text-white">Keeping {keep.size} of {holders.length}</span>
-                  <span className="text-[11px] font-semibold text-white/80">New committed: <span className="font-black text-white">{decreaseResult.newCommitted}</span></span>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-2xs">
+                  <span className="text-xs font-bold text-white">Keeping {keep.size} of {holders.length}</span>
+                  <span className="text-xs font-semibold text-white/80">New committed: <span className="font-black text-white tabular-nums">{decreaseResult.newCommitted}</span></span>
                 </div>
               </>
             )}
           </div>
 
-          <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50 flex gap-2.5 flex-shrink-0">
-            <button onClick={onClose} disabled={busy} className="flex-1 rounded-xl border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-600">Cancel</button>
-            <button onClick={submit} disabled={busy} className="flex-1 rounded-xl py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition disabled:opacity-50">
+          <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-3 flex-shrink-0">
+            <button
+              onClick={onClose}
+              disabled={busy}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-sm font-bold text-slate-700 transition disabled:opacity-50 shadow-2xs"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy}
+              className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sm font-bold text-white transition disabled:opacity-50 shadow-sm"
+            >
               {busy ? 'Saving…' : mode === 'increase' ? (paid ? 'Add & Generate Invoice' : 'Add (Pending)') : 'Apply Reduction'}
             </button>
           </div>
@@ -3075,23 +3501,23 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
           onClick={e => e.stopPropagation()}>
           <div className="border-b border-slate-100 px-6 py-5 flex items-center justify-between bg-slate-50 flex-shrink-0">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Airline — Record</p>
-              <h2 className="text-lg font-extrabold text-slate-900">{record.airlineName || 'Airline'}</h2>
+              <p className="text-xs font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 mb-1.5">Airline, Record</p>
+              <h2 className="text-xl font-extrabold text-slate-900">{record.airlineName || 'Airline'}</h2>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowInvoices(v => !v)}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${showInvoices ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-xs font-bold transition ${showInvoices ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
               >
                 All Invoices
               </button>
               {record.__noPlan && (
-                <button onClick={() => onManagePlan?.(record)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition">
+                <button onClick={() => onManagePlan?.(record)} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition">
                   Add Plan
                 </button>
               )}
-              <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
+              <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
                 Edit
               </button>
               <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition">✕</button>
@@ -3099,7 +3525,7 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
           </div>
           <div className="px-6 py-5 space-y-6 overflow-y-auto flex-1">
             <div><SectionHead label="Status & Subscription" badge="Base Plan" />
-              <p className="-mt-2 mb-3 text-[11px] text-slate-500">Plan, holder count, dates and pricing below are for the <span className="font-semibold text-slate-600">base plan</span>. To edit any plan's details or its added holders, use <span className="font-semibold text-slate-600">Edit</span>.</p>
+              <p className="-mt-2 mb-3 text-xs text-slate-600">Plan, holder count, dates and pricing below are for the <span className="font-semibold text-slate-800">base plan</span>. To edit any plan's details or its added holders, use <span className="font-semibold text-slate-800">Edit</span>.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <ViewField label="Status" value={<StatusText value={record.status === 'Inactive' ? 'Inactive' : (record.isPaid ? 'Active' : (record.status || 'Pending'))} type="status" isPaid={record.isPaid} />} />
                 <ViewField label="Base Plan Status" value={<StatusText value={record.isPaid ? 'Active' : 'Inactive'} type="status" isPaid={record.isPaid} />} />
@@ -3121,8 +3547,8 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                 <div className="mb-4 flex items-center gap-3">
                   <img src={record.logoUrl} alt="Company logo" className="w-14 h-14 rounded-xl object-contain border border-slate-200 bg-white" />
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Company Logo</p>
-                    <p className="text-xs text-slate-500 truncate max-w-[200px]">{record.airlineName}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-0.5">Company Logo</p>
+                    <p className="text-sm font-semibold text-slate-700 truncate max-w-[200px]">{record.airlineName}</p>
                   </div>
                 </div>
               )}
@@ -3152,12 +3578,12 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                 <div className="border-t border-slate-100 pt-5">
                   <div className="flex items-center justify-between mb-2">
                     <SectionHead label="Subscription Plans" />
-                    <button onClick={() => setShowHolderCount(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-600 bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700 hover:border-blue-700 transition-all duration-150 shadow-sm shadow-blue-500/10">Manage Plans</button>
+                    <button onClick={() => setShowHolderCount(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-900 bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition-all duration-150 shadow-sm">Manage Plans</button>
                   </div>
                   <AdminCancellationBanner record={record} type="airline" onRecordUpdated={onRecordUpdated} onDeleteRegistration={onDeleteRegistration} />
                   <AdminPlanCredits record={record} type="airline" />
                   <div className="space-y-2">
-                    {/* BASE PLAN — main subscription driving holder capacity */}
+                    {/* BASE PLAN, main subscription driving holder capacity */}
                     {(() => {
                       const totalGroupSlots = allGroupSlots(record.holderGroups)
                       const baseCommitted = Math.max(0, Number(record.committedCount || record.holderCountValue || 0) - totalGroupSlots)
@@ -3173,43 +3599,43 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                           onClick={() => setGroupModal({ __base: true })}
                           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setGroupModal({ __base: true }) } }}
                           title="View base-plan holders & manage"
-                          className="rounded-xl border-2 border-blue-300 bg-blue-50/60 px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
+                          className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition"
                         >
                           <div>
-                            <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                              <span className="text-[9px] font-black uppercase tracking-widest text-white bg-blue-600 rounded-full px-2 py-0.5">Base Plan</span>
+                            <p className="text-sm font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-950 bg-[#34E06E] rounded-full px-2.5 py-0.5">Base Plan</span>
                               {planShort(record.subscriptionPlan, record.multiYearCount)}
-                              {baseQueued && <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border bg-emerald-50 border-emerald-200 text-emerald-700">Renewed</span>}
-                              {!baseQueued && baseExpiry && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${baseExpiry.cls}`}>{baseExpiry.label}</span>}
+                              {baseQueued && <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald-50 border-emerald-200 text-emerald-700">Renewed</span>}
+                              {!baseQueued && baseExpiry && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${baseExpiry.cls}`}>{baseExpiry.label}</span>}
                             </p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">
+                            <p className="text-xs text-slate-600 mt-1 font-medium">
                               ${basePpc}/cert · ${Number(basePpc * baseCommitted).toLocaleString('en-US', { minimumFractionDigits: 2 })} · {baseUnlimited ? 'No expiry' : (record.expirationDate ? `expires ${fmtDate(record.expirationDate)}` : '—')}{record.invoiceNumber ? ` · ${record.invoiceNumber}` : ''}
                             </p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Main plan — holder capacity depends on this. Renew before expiry.</p>
+                            <p className="text-xs text-slate-500 mt-0.5">Main plan, holder capacity depends on this. Renew before expiry.</p>
                             {baseQueued && (
-                              <p className="text-[10px] font-bold text-emerald-700 mt-0.5">
-                                Renewal queued — {planShort(record.nextRenewal.plan)} activates {record.nextRenewal.activationDate ? fmtDate(record.nextRenewal.activationDate) : 'at expiry'}
+                              <p className="text-xs font-bold text-emerald-700 mt-0.5">
+                                Renewal queued, {planShort(record.nextRenewal.plan)} activates {record.nextRenewal.activationDate ? fmtDate(record.nextRenewal.activationDate) : 'at expiry'}
                               </p>
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                            <span className="text-[10px] font-bold text-slate-600">{baseFilled}/{baseCommitted}</span>
+                            <span className="text-xs font-bold text-slate-700">{baseFilled}/{baseCommitted}</span>
                             {!baseUnlimited && !baseQueued && (
                               <button onClick={(e) => { e.stopPropagation(); setRenewTarget({ group: null }) }}
-                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 transition">
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 transition">
                                 Renew
                               </button>
                             )}
                             {!baseUnlimited && !baseQueued && onRequestConvert && (
                               <button onClick={(e) => { e.stopPropagation(); onRequestConvert(record._id, { holderGroupId: null }) }}
-                                title="Upgrade base plan to Unlimited — unused time credited on the invoice"
-                                className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white hover:bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 transition">
+                                title="Upgrade base plan to Unlimited, unused time credited on the invoice"
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 transition">
                                 Upgrade
                               </button>
                             )}
                             {baseQueued && (
                               <button onClick={(e) => { e.stopPropagation(); handleActivateBaseRenewal() }} disabled={activatingBase}
-                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 disabled:opacity-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 transition">
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 disabled:opacity-50 px-2.5 py-1 text-xs font-bold text-emerald-700 transition">
                                 {activatingBase ? 'Activating…' : 'Activate Now'}
                               </button>
                             )}
@@ -3218,7 +3644,7 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                       )
                     })()}
 
-                    {hasGroups && <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 pt-1">Added Holder Plans ({record.holderGroups.length})</p>}
+                    {hasGroups && <p className="text-xs font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 pt-1">Added Holder Plans ({record.holderGroups.length})</p>}
                     {hasGroups && record.holderGroups.map((g, gi) => {
                       const filled = (record.certificateHolders || []).filter(h => String(h.holderGroupId || '') === String(g._id)).length
                       const pending = g.paymentStatus === 'pending'
@@ -3231,28 +3657,28 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                           onClick={() => setGroupModal(g)}
                           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setGroupModal(g) } }}
                           title="View holders & manage this plan"
-                          className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition"
+                          className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 flex items-center justify-between gap-3 cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition"
                         >
                           <div>
-                            <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                            <p className="text-sm font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
                               {planShort(g.plan, g.multiYearCount)} <span className="text-slate-500 font-semibold">upgrade</span>
-                              <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${g.isActive === false ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{g.isActive === false ? 'Inactive' : 'Active'}</span>
-                              <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${pending ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{pending ? 'Pending' : 'Paid'}</span>
-                              {!g.nextRenewal?.paidAt && gExpiry && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${gExpiry.cls}`}>{gExpiry.label}</span>}
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${g.isActive === false ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{g.isActive === false ? 'Inactive' : 'Active'}</span>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${pending ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>{pending ? 'Pending' : 'Paid'}</span>
+                              {!g.nextRenewal?.paidAt && gExpiry && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${gExpiry.cls}`}>{gExpiry.label}</span>}
                             </p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">${g.pricePerCert}/cert · ${Number(g.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} · {g.plan === 'Unlimited Plan' ? 'No expiry' : (g.expirationDate ? `expires ${fmtDate(g.expirationDate)}` : '—')}{g.invoiceNumber ? ` · ${g.invoiceNumber}` : ''}</p>
+                            <p className="text-xs text-slate-600 mt-1 font-medium">${g.pricePerCert}/cert · ${Number(g.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} · {g.plan === 'Unlimited Plan' ? 'No expiry' : (g.expirationDate ? `expires ${fmtDate(g.expirationDate)}` : '—')}{g.invoiceNumber ? ` · ${g.invoiceNumber}` : ''}</p>
                             {g.nextRenewal?.paidAt && (
-                              <div className="mt-0.5 flex items-center gap-2 flex-wrap">
-                                <p className="text-[10px] font-bold text-emerald-700">Renewal queued — {planShort(g.nextRenewal.plan)}{g.nextRenewal.count ? ` · ${g.nextRenewal.count} holders` : ''}{g.nextRenewal.price ? ` · $${Number(g.nextRenewal.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''} activates {g.nextRenewal.activationDate ? fmtDate(g.nextRenewal.activationDate) : 'at expiry'}</p>
+                              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                                <p className="text-xs font-bold text-emerald-700">Renewal queued, {planShort(g.nextRenewal.plan)}{g.nextRenewal.count ? ` · ${g.nextRenewal.count} holders` : ''}{g.nextRenewal.price ? ` · $${Number(g.nextRenewal.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : ''} activates {g.nextRenewal.activationDate ? fmtDate(g.nextRenewal.activationDate) : 'at expiry'}</p>
                                 <button onClick={(e) => { e.stopPropagation(); handleActivateGroupRenewal(g) }} disabled={activatingGroupId === String(g._id)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 disabled:opacity-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 transition">
+                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 disabled:opacity-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 transition">
                                   {activatingGroupId === String(g._id) ? 'Activating…' : 'Activate Now'}
                                 </button>
                               </div>
                             )}
                             {pending && (
                               <button onClick={(e) => { e.stopPropagation(); handleMarkGroupPaid(g._id) }} disabled={markingPaidId === String(g._id)}
-                                className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-2.5 py-1 text-[10px] font-bold text-white transition">
+                                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-3 py-1 text-xs font-bold text-white transition">
                                 {markingPaidId === String(g._id)
                                   ? (g.invoiceNumber ? 'Marking…' : 'Generating…')
                                   : (g.invoiceNumber ? 'Mark Paid' : 'Mark Paid & Generate Invoice')}
@@ -3260,22 +3686,22 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                            <span className="text-[10px] font-bold text-slate-600">{filled}/{g.count}</span>
+                            <span className="text-xs font-bold text-slate-700">{filled}/{g.count}</span>
                             {g.plan !== 'Unlimited Plan' && !g.nextRenewal?.paidAt && (
                               <button onClick={(e) => { e.stopPropagation(); setRenewTarget({ group: g }) }}
-                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 transition">
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 transition">
                                 Renew
                               </button>
                             )}
                             {g.plan !== 'Unlimited Plan' && !g.nextRenewal?.paidAt && !pending && onRequestConvert && (
                               <button onClick={(e) => { e.stopPropagation(); onRequestConvert(record._id, { holderGroupId: String(g._id) }) }}
-                                title="Upgrade this add-on plan to Unlimited — unused time credited on the invoice"
-                                className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-white hover:bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 transition">
+                                title="Upgrade this add-on plan to Unlimited, unused time credited on the invoice"
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 transition">
                                 Upgrade
                               </button>
                             )}
                             <button onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g) }} disabled={deletingGroupId === String(g._id)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white hover:bg-red-50 disabled:opacity-50 px-2 py-0.5 text-[10px] font-bold text-red-600 transition">
+                              className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white hover:bg-red-50 disabled:opacity-50 px-2.5 py-1 text-xs font-bold text-red-600 transition">
                               {deletingGroupId === String(g._id) ? 'Deleting…' : 'Delete plan'}
                             </button>
                           </div>
@@ -3309,16 +3735,16 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                     {record.certificateHolders.map((h, i) => (
                       <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                         <div className="flex items-center justify-between gap-2 mb-3">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Holder #{i + 1}</p>
+                          <p className="text-xs font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4">Holder #{i + 1}</p>
                           {(() => {
                             const p = holderPlan(h)
                             const exp = getExpiryStatus(p.expiry, { unlimited: p.unlimited })
                             return (
                               <span className="flex flex-wrap items-center gap-1 justify-end">
-                                <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${p.isGroup ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${p.isGroup ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                                   {p.label}{p.isGroup ? ' · upgrade' : ''}
                                 </span>
-                                {exp && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${exp.cls}`}>{exp.label}</span>}
+                                {exp && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${exp.cls}`}>{exp.label}</span>}
                               </span>
                             )
                           })()}
@@ -3359,17 +3785,32 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 40, scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-              className="w-full max-w-lg lg:w-[420px] flex-shrink-0 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-y-auto max-h-[85vh] lg:max-h-[78vh]"
+              className="w-full max-w-lg lg:w-[460px] flex-shrink-0 rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-950/25 overflow-hidden max-h-[85vh] lg:max-h-[80vh] flex flex-col"
               onClick={e => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 bg-slate-900 px-4 py-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 bg-slate-900 px-5 py-4 flex items-center justify-between border-b border-slate-800 flex-shrink-0">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-0.5">Invoice History</p>
-                  <p className="text-sm font-bold text-white truncate max-w-[180px]">{record.airlineName || 'Airline'}</p>
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    Invoice History
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white truncate max-w-[240px] tracking-tight">{record.airlineName || 'Airline'}</h3>
+                    <div className="w-full h-0.5 rounded-full mt-1" style={{ backgroundColor: '#34E06E' }} />
+                  </div>
                 </div>
-                <button onClick={() => setShowInvoices(false)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">✕</button>
+                <button
+                  onClick={() => setShowInvoices(false)}
+                  aria-label="Close invoice drawer"
+                  className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700/80 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition shadow-2xs"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <AdminInvoicesPanel registrationId={record._id} registrationModel="Airlines" record={record} drawerMode={true} onGenerateInvoice={onGenerateInvoice} />
+              <div className="overflow-y-auto flex-1">
+                <AdminInvoicesPanel registrationId={record._id} registrationModel="Airlines" record={record} drawerMode={true} onGenerateInvoice={onGenerateInvoice} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -3416,7 +3857,7 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
       : plan === 'Unlimited Plan' ? 'Unlimited'
         : plan === '1 Year Subscription Plan' ? '1 Year' : (plan || '—')
 
-  // Base mode: group is null or flagged __base — manage the main subscription's
+  // Base mode: group is null or flagged __base, manage the main subscription's
   // holders (those with no holderGroupId). Otherwise manage one upgrade group.
   const isBase = !group || group.__base
   const gid = isBase ? '' : String(group._id || '')
@@ -3459,7 +3900,7 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  // ── Queued renewal (nextRenewal) — editable so admin changes sync to client ──
+  // ── Queued renewal (nextRenewal), editable so admin changes sync to client ──
   const queuedRenewal = isBase
     ? (record.nextRenewal?.paidAt ? record.nextRenewal : null)
     : (group?.nextRenewal?.paidAt ? group.nextRenewal : null)
@@ -3559,7 +4000,7 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
   }
 
   const lbl = 'block text-[11px] font-semibold text-slate-500 mb-1'
-  const inp = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition'
+  const inp = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 transition'
   const filled = rows.length
   const stat = (label, value) => (
     <div className="min-w-0">
@@ -3579,8 +4020,8 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
           {/* Header */}
           <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{isBase ? 'Base Plan' : 'Holder Upgrade Plan'}</p>
-              <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">{planShort(planVal, multiVal)}{isBase ? '' : ' upgrade'}</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4">{isBase ? 'Base Plan' : 'Holder Upgrade Plan'}</p>
+              <h3 className="text-lg font-extrabold text-slate-900 mt-1">{planShort(planVal, multiVal)}{isBase ? '' : ' upgrade'}</h3>
             </div>
             <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-600 transition">✕</button>
           </div>
@@ -3612,7 +4053,7 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
             {rows.map((h, i) => (
               <div key={h._id || `new-${i}`} className="rounded-xl border border-slate-200 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-600">Holder {i + 1}{!h._id && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wide text-blue-600 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5">New</span>}</span>
+                  <span className="text-[11px] font-bold text-slate-600">Holder {i + 1}{!h._id && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wide text-slate-950 bg-[#34E06E] rounded px-1.5 py-0.5">New</span>}</span>
                   <button onClick={() => removeRow(i)} className="text-[11px] font-semibold text-slate-500 hover:text-red-600 transition">Remove</button>
                 </div>
 
@@ -3654,7 +4095,7 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
 
                 {/* Secondary certificate */}
                 <label className="flex items-center gap-2 pt-1 cursor-pointer select-none">
-                  <input type="checkbox" className="w-4 h-4 accent-blue-600" checked={h.hasSecondaryCertificate}
+                  <input type="checkbox" className="w-4 h-4 accent-[#34E06E]" checked={h.hasSecondaryCertificate}
                     onChange={e => setField(i, 'hasSecondaryCertificate', e.target.checked)} />
                   <span className="text-xs font-semibold text-slate-600">Has a secondary certificate</span>
                 </label>
@@ -3682,11 +4123,11 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
             ))}
 
             <button onClick={addRow} disabled={!canAdd}
-              className={`w-full rounded-xl border-2 border-dashed py-2.5 text-sm font-bold transition ${canAdd ? 'border-blue-300 text-blue-600 hover:bg-blue-50' : 'border-slate-200 text-slate-300 cursor-not-allowed'}`}>
+              className={`w-full rounded-xl border-2 border-dashed py-2.5 text-sm font-bold transition ${canAdd ? 'border-slate-300 text-slate-700 hover:border-[#34E06E] hover:text-slate-900 hover:bg-[#34E06E]/5' : 'border-slate-200 text-slate-300 cursor-not-allowed'}`}>
               {canAdd ? `+ Add holder (${capacity - filled} slot${capacity - filled !== 1 ? 's' : ''} left)` : 'All slots filled'}
             </button>
 
-            {/* ── Edit queued renewal plan — syncs to client side ── */}
+            {/* ── Edit queued renewal plan, syncs to client side ── */}
             {queuedRenewal && (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 overflow-hidden">
                 <button onClick={() => setShowRenewalEdit(v => !v)}
@@ -3756,14 +4197,14 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between gap-2">
+          <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between gap-2 bg-slate-50">
             {onRenew && planVal !== 'Unlimited Plan' ? (
-              <button onClick={() => onRenew(isBase ? null : group)} className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition">Renew this plan</button>
+              <button onClick={() => onRenew(isBase ? null : group)} className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition">Renew this plan</button>
             ) : <span />}
             <div className="flex items-center gap-2">
-              <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Close</button>
+              <button onClick={onClose} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">Close</button>
               <button onClick={save} disabled={busy}
-                className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 px-5 py-2 text-sm font-bold text-white transition">
+                className="rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 px-5 py-2 text-sm font-bold text-white transition">
                 {busy ? 'Saving…' : 'Save changes'}
               </button>
             </div>
@@ -3775,7 +4216,7 @@ function AdminGroupHoldersModal({ record, group, onClose, onSaved, onRenew }) {
 }
 
 // ─── Upgrade-to-Unlimited confirm modal (replaces window.confirm) ───────────────
-// Shows the priced breakdown — target total, unused-time credit, net to bill —
+// Shows the priced breakdown, target total, unused-time credit, net to bill —
 // before the admin continues to the invoice editor.
 function UpgradeConfirmModal({ quote, targetLabel, onCancel, onConfirm }) {
   const unlimitedTotal = Number(quote?.unlimitedTotal || 0)
@@ -3792,14 +4233,14 @@ function UpgradeConfirmModal({ quote, targetLabel, onCancel, onConfirm }) {
           className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
           <div className="px-6 pt-6 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center flex-shrink-0 text-white">
+                <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Upgrade Plan</p>
-                <h3 className="text-base font-extrabold text-slate-900 leading-tight">Upgrade to {targetLabel}</h3>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4">Upgrade Plan</p>
+                <h3 className="text-base font-extrabold text-slate-900 leading-tight mt-0.5">Upgrade to {targetLabel}</h3>
               </div>
             </div>
           </div>
@@ -3811,7 +4252,7 @@ function UpgradeConfirmModal({ quote, targetLabel, onCancel, onConfirm }) {
             </div>
             {credit > 0 && (
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">Credit — unused {quote?.oldPlanLabel || 'current plan'}</span>
+                <span className="text-slate-600">Credit, unused {quote?.oldPlanLabel || 'current plan'}</span>
                 <span className="font-semibold text-emerald-600 tabular-nums">-{money(credit)}</span>
               </div>
             )}
@@ -3822,10 +4263,10 @@ function UpgradeConfirmModal({ quote, targetLabel, onCancel, onConfirm }) {
             <p className="text-[11px] text-slate-500 pt-1">You can edit the invoice on the next screen before generating it.</p>
           </div>
 
-          <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-2">
-            <button onClick={onCancel} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+          <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-2 bg-slate-50">
+            <button onClick={onCancel} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">Cancel</button>
             <button onClick={onConfirm}
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-sm font-bold text-white transition">Continue to invoice</button>
+              className="rounded-xl bg-slate-900 hover:bg-slate-800 px-5 py-2 text-sm font-bold text-white transition">Continue to invoice</button>
           </div>
         </motion.div>
       </div>
@@ -3833,7 +4274,7 @@ function UpgradeConfirmModal({ quote, targetLabel, onCancel, onConfirm }) {
   )
 }
 
-// ─── Admin Renew Modal (renew on customer's behalf — no payment) ────────────────
+// ─── Admin Renew Modal (renew on customer's behalf, no payment) ────────────────
 function AdminRenewModal({ record, model, group = null, onClose, onSaved }) {
   const isAirline = model === 'Airlines'
   const isGroup = !!group
@@ -3856,7 +4297,7 @@ function AdminRenewModal({ record, model, group = null, onClose, onSaved }) {
     ? (record.certificateHolders || []).filter(h => String(h.holderGroupId || '') === String(group._id))
     : []
   // Holders attached to the unit being renewed (group's holders, or base-plan
-  // holders) — these are the participants carried into the renewed term.
+  // holders), these are the participants carried into the renewed term.
   const unitHolders = isAirline
     ? (isGroup ? groupHolders : (record.certificateHolders || []).filter(h => !h.holderGroupId))
     : []
@@ -3879,7 +4320,7 @@ function AdminRenewModal({ record, model, group = null, onClose, onSaved }) {
   const isMulti = plan === 'Multiple Years Subscription Plan'
   const isUnlimited = plan === 'Unlimited Plan'
 
-  // Any renewal stacks on whatever coverage is still active — tier read at the
+  // Any renewal stacks on whatever coverage is still active, tier read at the
   // cumulative position (anchor + count). SINGLE SOURCE: activeCoverageAnchor, same
   // helper the airline-side modal + backend pricing use (excludeBase for base renewal,
   // excludeGroupId for an add-on). Base renewal therefore stacks on active add-ons too.
@@ -3936,61 +4377,152 @@ function AdminRenewModal({ record, model, group = null, onClose, onSaved }) {
     } finally { setBusy(false) }
   }
 
-  const lbl = 'block text-[11px] font-semibold text-slate-500 mb-1'
-  const inp = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-900 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition'
+  const lbl = 'block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5'
+  const inp = 'w-full px-3.5 py-2.5 rounded-xl border border-slate-200/90 text-xs font-semibold text-slate-900 bg-white outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 shadow-2xs placeholder:text-slate-400 placeholder:font-normal transition'
 
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-[101] flex items-start justify-center p-4 pt-20 overflow-y-auto">
+        className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
         <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12 }}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[88vh]" onClick={e => e.stopPropagation()}>
+          className="w-full max-w-xl sm:max-w-2xl max-h-[90vh] rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-950/30 overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+          
           {/* Header */}
-          <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100">
+          <div className="border-b border-slate-100 px-6 sm:px-8 pt-6 pb-4 flex items-start justify-between bg-white flex-shrink-0">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Admin Renewal · No payment</p>
-              <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">{isGroup ? `Renew ${planShort(group.plan)} upgrade` : 'Renew Subscription'}</h3>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-[11px] font-bold uppercase tracking-wider mb-2">
+                <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                Admin Renewal · No Payment
+              </div>
+              <div>
+                <div className="inline-block">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{isGroup ? `Renew ${planShort(group.plan)} Upgrade` : 'Renew Subscription'}</h3>
+                  <div className="w-full h-0.5 rounded-full mt-1.5 mb-1" style={{ backgroundColor: '#34E06E' }} />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Issue an administrative subscription renewal and generate the corresponding invoice.</p>
+              </div>
             </div>
-            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-600 transition">✕</button>
+            <button
+              onClick={onClose}
+              aria-label="Close modal"
+              className="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition shadow-2xs flex-shrink-0 mt-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
-          <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-            {err && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{err}</div>}
+          <div className="px-6 sm:px-8 py-5 space-y-4 overflow-y-auto flex-1">
+            {err && (
+              <div className="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 text-xs font-semibold text-red-700 flex items-center gap-2">
+                <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                </svg>
+                {err}
+              </div>
+            )}
 
-            <div className={`rounded-lg border px-3 py-2 text-xs font-semibold ${curUnlimited ? 'border-blue-100 bg-blue-50 text-blue-700' : willQueue ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-amber-100 bg-amber-50 text-amber-700'}`}>
-              {curUnlimited
-                ? 'Current plan is Unlimited (no expiry) — the selected plan activates immediately from today.'
+            {/* Queue / Activation Status Banner */}
+            <div className={`rounded-2xl border p-4 text-xs font-semibold flex items-center gap-3 ${
+              curUnlimited
+                ? 'border-slate-200 bg-slate-50 text-slate-700'
                 : willQueue
-                  ? `Current period active until ${fmtDate(curExpiry)} — renewal will queue and activate then.`
-                  : 'Plan is expired — renewal activates immediately from today.'}
+                  ? 'border-emerald-200/90 bg-emerald-50/70 text-emerald-800'
+                  : 'border-amber-200/90 bg-amber-50/70 text-amber-800'
+            }`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              <span>
+                {curUnlimited
+                  ? 'Current plan is Unlimited (no expiry). The selected renewal plan activates immediately from today.'
+                  : willQueue
+                    ? `Current period active until ${fmtDate(curExpiry)}. Renewal will queue and activate automatically upon expiration.`
+                    : 'Plan is currently expired. Renewal activates immediately from today.'}
+              </span>
             </div>
 
-            <div>
-              <label className={lbl}>Renewal plan</label>
-              <select className={inp} value={plan} onChange={e => setPlan(e.target.value)}>
-                {PLAN_OPTS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
+            {/* Renewal Plan Selection */}
+            <div className="space-y-2">
+              <label className={lbl}>Renewal Plan</label>
+              <div className={`grid gap-3 ${PLAN_OPTS.length === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
+                {PLAN_OPTS.map(p => {
+                  const isSel = plan === p.value
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setPlan(p.value)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                        isSel
+                          ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-500/10 shadow-sm'
+                          : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-sm font-bold ${isSel ? 'text-slate-900' : 'text-slate-700'}`}>{p.label} Plan</span>
+                        {isSel && (
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#34E06E' }} />
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-500 mt-1">
+                        {p.value === 'Unlimited Plan' ? 'Permanent lifetime' : p.value === 'Multiple Years Subscription Plan' ? 'Multi-year term' : '12-month extension'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
+
+            {/* Multi-Year counter */}
+            {isMulti && (
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">Number of Years</span>
+                  <span className="text-[11px] text-slate-500">Duration of multi-year coverage</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setYears(y => Math.max(2, y - 1))}
+                    className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition shadow-2xs"
+                  >−</button>
+                  <span className="text-xl font-black text-slate-900 w-8 text-center tabular-nums">{years}</span>
+                  <button
+                    type="button"
+                    onClick={() => setYears(y => y + 1)}
+                    className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition shadow-2xs"
+                  >+</button>
+                </div>
+              </div>
+            )}
 
             {/* Participants carried into the renewed term */}
             {isAirline && unitHolders.length > 0 && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Participants renewed with this plan</p>
-                  <span className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 rounded-full px-2 py-0.5">{unitHolders.length}</span>
+              <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">Participants Renewed with this Plan</span>
+                    <span className="text-[11px] text-slate-500">
+                      {isGroup ? `${planShort(group.plan)} upgrade` : 'Base plan'}, these holders carry into the renewed term.
+                      {isDecreasing && ` Count lowered to ${count}, select the ${count} holder${count !== 1 ? 's' : ''} to keep.`}
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 bg-white border border-slate-200/80 px-2.5 py-0.5 rounded-full shadow-2xs tabular-nums">
+                    {unitHolders.length}
+                  </span>
                 </div>
-                <p className="text-[10px] text-slate-500 mb-2">
-                  {isGroup ? `${planShort(group.plan)} upgrade` : 'Base plan'} — these holders carry into the renewed term.
-                  {isDecreasing && ` Count lowered to ${count} — tick the ${count} holder${count !== 1 ? 's' : ''} to KEEP; the rest are dropped.`}
-                </p>
-                <div className="space-y-1 max-h-44 overflow-y-auto">
+                <div className="space-y-1.5 max-h-48 overflow-y-auto -mx-1 px-1">
                   {unitHolders.map((h, i) => {
                     const id = String(h._id || i)
                     const checked = isDecreasing ? selectedHolderIds.has(id) : true
                     const disabled = isDecreasing && !checked && selectedHolderIds.size >= count
                     return (
-                      <label key={id} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 select-none ${!checked ? 'border-red-200 bg-red-50/50' : 'border-slate-200 bg-white'} ${isDecreasing ? (disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer') : ''}`}>
+                      <label key={id} className={`flex items-center gap-3 rounded-xl border px-3 py-2 select-none transition ${!checked ? 'border-red-200 bg-red-50/50' : 'border-slate-200/80 bg-white hover:border-slate-300'} ${isDecreasing ? (disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer') : ''}`}>
                         {isDecreasing ? (
                           <input
                             type="checkbox"
@@ -4002,113 +4534,163 @@ function AdminRenewModal({ record, model, group = null, onClose, onSaved }) {
                               else if (next.size < count) next.add(id)
                               return next
                             })}
-                            className="w-4 h-4 rounded flex-shrink-0 accent-slate-800"
+                            className="w-4 h-4 rounded flex-shrink-0 accent-slate-900"
                           />
                         ) : (
-                          <span className="w-5 h-5 rounded-full bg-slate-100 text-[9px] font-black text-slate-500 flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                          <span className="w-5 h-5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-600 flex items-center justify-center flex-shrink-0">{i + 1}</span>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className={`text-xs font-semibold truncate ${!checked ? 'text-red-600 line-through' : 'text-slate-800'}`}>{h.fullName || '(unnamed)'}</p>
+                          <p className={`text-xs font-bold truncate ${!checked ? 'text-red-600 line-through' : 'text-slate-800'}`}>{h.fullName || '(unnamed)'}</p>
                           <p className="text-[10px] text-slate-400 truncate">{h.certificateType || '—'} · FTN {h.iacraFtnNumber || '—'}</p>
                         </div>
                         {!checked
-                          ? <span className="text-[9px] font-bold uppercase tracking-wide text-red-600 flex-shrink-0">Dropped</span>
-                          : <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>}
+                          ? <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-100/70 border border-red-200 px-2 py-0.5 rounded-md flex-shrink-0">Dropped</span>
+                          : <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md flex-shrink-0">Kept</span>}
                       </label>
                     )
                   })}
                 </div>
                 {isDecreasing && (
-                  <p className={`text-[10px] font-semibold mt-1.5 ${selectionValid ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {selectedHolderIds.size} of {count} kept{!selectionValid && ' — select at least 1'}
+                  <p className={`text-xs font-bold pt-1 ${selectionValid ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {selectedHolderIds.size} of {count} kept{!selectionValid && ', select at least 1'}
                   </p>
                 )}
               </div>
             )}
 
-            {isMulti && (
-              <div>
-                <label className={lbl}>Number of years</label>
-                <input className={inp} type="number" min={2} value={years} onChange={e => setYears(Math.max(2, Number(e.target.value) || 2))} />
-              </div>
-            )}
-
+            {/* Certificate Holders Count Stepper */}
             {isAirline && (
-              <div>
-                <label className={lbl}>Certificate holders (count)</label>
-                <div className="flex items-center gap-3">
-                  <input className={`${inp} flex-1`} type="number" min={1} value={count} onChange={e => setCount(Math.max(1, Number(e.target.value) || 1))} />
-                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-blue-100 bg-blue-50/60 px-4 py-1.5 min-w-[88px]">
-                    <span className="text-3xl font-black text-slate-900 tabular-nums leading-none">{isGroup ? totalCount : count}</span>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">total</span>
+              <div className="space-y-2">
+                <label className={lbl}>Certificate Holders (Count)</label>
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">Committed Slots</span>
+                    <span className="text-[11px] text-slate-500">Tier rate: ${ppc}/cert</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCount(c => Math.max(1, c - 1))}
+                      className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition shadow-2xs"
+                    >−</button>
+                    <div className="flex flex-col items-center justify-center min-w-[48px]">
+                      <span className="text-xl font-black text-slate-900 tabular-nums">{isGroup ? totalCount : count}</span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 -mt-0.5">total</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCount(c => c + 1)}
+                      className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center transition shadow-2xs"
+                    >+</button>
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">Tier rate: ${ppc}/cert</p>
                 {isGroup && tierAnchor > 0 && (
-                  <p className="text-[10px] text-slate-500 mt-0.5 font-semibold">
-                    Add-on stacks on active base ({tierAnchor}) — holders {tierAnchor + 1}–{totalCount}. Tier priced at {totalCount}.
+                  <p className="text-[11px] text-slate-500 font-medium px-1">
+                    Add-on stacks on active base ({tierAnchor}), holders {tierAnchor + 1}–{totalCount}. Tier priced at {totalCount}.
                   </p>
                 )}
               </div>
             )}
 
-            <div>
-              <label className={lbl}>Invoice number <span className="font-normal text-slate-500">(optional — auto if blank)</span></label>
-              <div className="flex gap-2">
+            {/* Invoice Number */}
+            <div className="space-y-1.5">
+              <label className={lbl}>Invoice Number <span className="font-normal text-slate-400">(optional, auto if blank)</span></label>
+              <div className="flex items-center gap-2">
                 <div className="relative flex-1 min-w-0">
-                  <input className={`${inp} pr-8`} value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="Invoice US-…" />
+                  <input
+                    className="w-full text-xs font-bold border border-slate-200/90 rounded-xl pl-3 pr-8 py-2.5 bg-white text-slate-900 shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 placeholder:font-normal placeholder:text-slate-400 transition"
+                    value={invoiceNumber}
+                    onChange={e => setInvoiceNumber(e.target.value)}
+                    placeholder="Leave blank to auto-generate"
+                  />
                   <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col">
-                    <button type="button" aria-label="Increase invoice number"
+                    <button
+                      type="button"
+                      aria-label="Increase invoice number"
                       onClick={() => setInvoiceNumber(cur => {
                         const m = String(cur || '').trim().match(/^(.*?US-)(\d+)(-\d{2})(.*)$/i)
                         if (m) return `${m[1]}${Math.max(1, Number(m[2]) + 1)}${m[3]}${m[4]}`
                         const g = String(cur || '').trim().match(/^(\D*?)(\d+)(.*)$/)
                         return g ? `${g[1]}${Math.max(1, Number(g[2]) + 1)}${g[3]}` : cur
                       })}
-                      className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 15 6-6 6 6" /></svg>
+                      className="h-3.5 w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m6 15 6-6 6 6" /></svg>
                     </button>
-                    <button type="button" aria-label="Decrease invoice number"
+                    <button
+                      type="button"
+                      aria-label="Decrease invoice number"
                       onClick={() => setInvoiceNumber(cur => {
                         const m = String(cur || '').trim().match(/^(.*?US-)(\d+)(-\d{2})(.*)$/i)
                         if (m) return `${m[1]}${Math.max(1, Number(m[2]) - 1)}${m[3]}${m[4]}`
                         const g = String(cur || '').trim().match(/^(\D*?)(\d+)(.*)$/)
                         return g ? `${g[1]}${Math.max(1, Number(g[2]) - 1)}${g[3]}` : cur
                       })}
-                      className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
+                      className="h-3.5 w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
                     </button>
                   </div>
                 </div>
-                <button onClick={genInvoice} disabled={genBusy} className="flex-shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={genInvoice}
+                  disabled={genBusy}
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50 shadow-2xs"
+                >
+                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                   {genBusy ? '…' : 'Generate'}
                 </button>
               </div>
             </div>
 
-            <div>
-              <label className={lbl}>Amount</label>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500 text-sm">$</span>
-                <input className={inp} type="number" min={0} step="0.01" value={priceOverride} onChange={e => setPriceOverride(e.target.value)} placeholder={computed.toFixed(2)} />
+            {/* Amount / Price Override */}
+            <div className="space-y-1.5">
+              <label className={lbl}>Amount / Price Override</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">$</span>
+                <input
+                  className={`${inp} pl-7`}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={priceOverride !== '' ? priceOverride : computed.toFixed(2)}
+                  onChange={e => setPriceOverride(e.target.value)}
+                />
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Auto: ${computed.toFixed(2)}{isAirline ? ` (${ppc} × ${count}${isMulti ? ` × ${Math.max(2, years)}y` : ''})` : ''}. Leave blank to use this, or override.
+              <p className="text-[11px] text-slate-500 font-medium px-1">
+                Auto-calculated{isAirline ? ` (${ppc} × ${count}${isMulti ? ` × ${Math.max(2, years)}y` : ''})` : ''} — edit the field above to override.
               </p>
             </div>
 
-            <div className="rounded-xl bg-slate-900 px-4 py-3 flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-white/80">Invoice total</span>
-              <span className="text-xl font-black text-white">${Number(finalPrice).toFixed(2)}</span>
+            {/* Total Amount Banner */}
+            <div className="rounded-2xl border border-slate-900 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-5 flex items-center justify-between text-white shadow-md">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Invoice Amount</p>
+                <p className="text-xs text-emerald-400 mt-0.5 font-medium">Renewal billed without online card charge</p>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tight">${Number(finalPrice).toFixed(2)}</span>
+              </div>
             </div>
           </div>
 
-          <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-2">
-            <button onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-            <button onClick={submit} disabled={busy || !selectionValid}
+          {/* Footer */}
+          <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-end gap-3 flex-shrink-0">
+            <button
+              onClick={onClose}
+              disabled={busy}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-sm font-bold text-slate-700 transition disabled:opacity-50 shadow-2xs"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={busy || !selectionValid}
               title={!selectionValid ? 'Select at least 1 holder to keep' : undefined}
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 px-5 py-2 text-sm font-bold text-white transition">
-              {busy ? 'Renewing…' : (willQueue ? 'Queue renewal + invoice' : 'Renew now + invoice')}
+              className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sm font-bold text-white transition disabled:opacity-50 shadow-sm"
+            >
+              {busy ? 'Renewing…' : (willQueue ? 'Queue Renewal + Invoice' : 'Renew Now + Invoice')}
             </button>
           </div>
         </motion.div>
@@ -4133,8 +4715,8 @@ function IndividualEditModal({ record, onClose, onSave, onRequestConvert, saving
     record.subscriptionPlan !== 'Unlimited Plan' && (
       planRank(form.subscriptionPlan) > planRank(record.subscriptionPlan) ||
       (form.subscriptionPlan === 'Multiple Years Subscription Plan' &&
-       record.subscriptionPlan === 'Multiple Years Subscription Plan' &&
-       targetYears > (Number(record.multiYearCount) || 2))
+        record.subscriptionPlan === 'Multiple Years Subscription Plan' &&
+        targetYears > (Number(record.multiYearCount) || 2))
     )
 
   // ── Live plan + unused-time credit preview ───────────────────────────────────
@@ -4152,7 +4734,7 @@ function IndividualEditModal({ record, onClose, onSave, onRequestConvert, saving
     if (planUnlimited) return null
     const price = Number(form.price) || 0
     if (!expDate || !(expDate > nowD) || price <= 0) return 0
-    // Unused-time fraction — mirrors backend computeConversionCharge:
+    // Unused-time fraction, mirrors backend computeConversionCharge:
     // credit = price × (remaining ÷ term), term = start→expiry.
     const oldYears = form.subscriptionPlan === 'Multiple Years Subscription Plan'
       ? Math.max(2, Number(form.multiYearCount) || 2) : 1
@@ -4191,7 +4773,7 @@ function IndividualEditModal({ record, onClose, onSave, onRequestConvert, saving
           onClick={e => e.stopPropagation()}>
           <div className="flex-shrink-0 border-b border-slate-100 px-6 py-5 flex items-center justify-between bg-slate-50">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Edit Individual</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 mb-1">Edit Individual</p>
               <h2 className="text-lg font-extrabold text-slate-900">{fullName}</h2>
             </div>
             <button onClick={() => onClose()} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition">✕</button>
@@ -4209,7 +4791,7 @@ function IndividualEditModal({ record, onClose, onSave, onRequestConvert, saving
                 </div>
               </div>
             )}
-            {/* Live plan + unused-time credit summary — updates as the admin edits below */}
+            {/* Live plan + unused-time credit summary, updates as the admin edits below */}
             <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-3.5 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -4288,14 +4870,14 @@ function IndividualEditModal({ record, onClose, onSave, onRequestConvert, saving
                 <Field label="IACRA / FTN"><input className={inputCls} value={form.iacraTrackingNumber || ''} onChange={e => set('iacraTrackingNumber', e.target.value)} /></Field>
                 <div className="sm:col-span-2">
                   <label className="flex items-center gap-2 cursor-pointer mb-3">
-                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${form.hasSecondaryCertificate ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${form.hasSecondaryCertificate ? 'bg-[#34E06E] border-[#34E06E]' : 'bg-white border-slate-300'}`}
                       onClick={() => set('hasSecondaryCertificate', !form.hasSecondaryCertificate)}>
-                      {form.hasSecondaryCertificate && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      {form.hasSecondaryCertificate && <svg className="w-2.5 h-2.5 text-slate-950 font-bold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                     </div>
                     <span className="text-xs font-semibold text-slate-700">Has secondary certificate</span>
                   </label>
                   {form.hasSecondaryCertificate && (
-                    <div className="grid sm:grid-cols-2 gap-3 ml-2 pl-4 border-l-2 border-blue-200">
+                    <div className="grid sm:grid-cols-2 gap-3 ml-2 pl-4 border-l-2 border-slate-200">
                       <Field label="Secondary Cert Type"><select className={selectCls} value={form.secondaryCertificate || ''} onChange={e => set('secondaryCertificate', e.target.value)}><option value="">— Select —</option><option value="Part 61 - Pilot">Part 61 - Pilot</option><option value="Part 61 - Flight or Ground Instructor">Part 61 - Instructor</option><option value="Part 65 - Aircraft Dispatcher">Part 65 - Dispatcher</option><option value="Part 107 - Remote Pilot">Part 107 - Remote Pilot</option></select></Field>
                       <Field label="Secondary FAA Cert #"><input className={inputCls} value={form.secondaryFaaCertificateNumber || ''} onChange={e => set('secondaryFaaCertificateNumber', e.target.value)} /></Field>
                       <Field label="Secondary IACRA FTN #"><input className={inputCls} value={form.secondaryIacraTrackingNumber || ''} onChange={e => set('secondaryIacraTrackingNumber', e.target.value)} /></Field>
@@ -4308,7 +4890,7 @@ function IndividualEditModal({ record, onClose, onSave, onRequestConvert, saving
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field label="Plan Status">
                   <select className={selectCls} value={String(form.isPaid === true)} onChange={e => {
-                    // Plan active/inactive ONLY — decoupled from payment so admin can keep
+                    // Plan active/inactive ONLY, decoupled from payment so admin can keep
                     // the plan Active while the invoice stays Pending.
                     const active = e.target.value === 'true'
                     set('isPaid', active)
@@ -4325,10 +4907,10 @@ function IndividualEditModal({ record, onClose, onSave, onRequestConvert, saving
           </div>
           <div className="flex-shrink-0 flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
             {isUpgrade && (
-              <p className="mr-auto self-center text-[11px] font-semibold text-blue-600">Plan upgrade: you'll confirm the amount &amp; edit the invoice next.</p>
+              <p className="mr-auto self-center text-[11px] font-semibold text-slate-600">Plan upgrade: you'll confirm the amount &amp; edit the invoice next.</p>
             )}
             <button onClick={() => onClose()} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition disabled:opacity-50 bg-blue-600 hover:bg-blue-700">
+            <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition disabled:opacity-50 bg-slate-900 hover:bg-slate-800 shadow-sm">
               {saving && <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>}
               {saving ? 'Saving…' : isUpgrade ? 'Upgrade Plan →' : 'Save Changes'}
             </button>
@@ -4493,7 +5075,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
           onClick={e => e.stopPropagation()}>
           <div className="flex-shrink-0 border-b border-slate-100 px-6 py-5 flex items-center justify-between bg-slate-50">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Edit Airline</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 mb-1">Edit Airline</p>
               <h2 className="text-lg font-extrabold text-slate-900">{record.airlineName || 'Airline'}</h2>
             </div>
             <button onClick={() => onClose()} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition">✕</button>
@@ -4523,18 +5105,23 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                       const newBase = Math.max(0, v - gs) // overall edits flow into the base plan's own count
                       return { ...p, baseOwnCount: newBase, totalServiceFees: newBase * (Number(p.pricePerCertificate ?? p.pricePerCert) || 0) }
                     })} />
-                  <p className="text-[10px] text-slate-500 mt-1">Total across all plans{groupSlotsTotal > 0 ? <> — editing adjusts the base ({baseOwnCount}); add-ons fixed at <strong className="text-slate-700">{groupSlotsTotal}</strong> slot{groupSlotsTotal !== 1 ? 's' : ''}</> : null}.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Total across all plans{groupSlotsTotal > 0 ? <>, editing adjusts the base ({baseOwnCount}); add-ons fixed at <strong className="text-slate-700">{groupSlotsTotal}</strong> slot{groupSlotsTotal !== 1 ? 's' : ''}</> : null}.</p>
                 </Field>
-                <Field label="Holder Count Range"><input className={inputCls} placeholder="e.g. 3 to 5" value={form.holderCount || ''} onChange={e => set('holderCount', e.target.value)} /></Field>
+                <Field label="Holder Count Range">
+                  <select className={selectCls} value={form.holderCount || ''} onChange={e => set('holderCount', e.target.value)}>
+                    <option value="">— Select —</option>
+                    {airlineTiers().map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                  </select>
+                </Field>
               </div>
             </div>
 
-            {/* ── BASE PLAN — subscription + payment + invoice grouped together ── */}
+            {/* ── BASE PLAN, subscription + payment + invoice grouped together ── */}
             <div><SectionHead label="Base Plan" />
-              <div className="rounded-xl border-2 border-blue-200 bg-blue-50/40 p-4 space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-white bg-blue-600 rounded-full px-2 py-0.5">Base Plan</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-950 bg-[#34E06E] rounded-full px-2.5 py-0.5">Base Plan</span>
                     <span className="text-xs font-black text-slate-700">Main Subscription</span>
                   </div>
                   <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${form.paymentStatus === 'paid' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>{form.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}</span>
@@ -4560,7 +5147,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                           className="w-8 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-100 transition flex-shrink-0 text-base font-bold border-l border-slate-200">+</button>
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1">
-                        Base plan only.{groupSlotsTotal > 0 ? <> Overall committed = <strong className="text-slate-700">{overallCommitted}</strong> (base {baseOwnCount} + {groupSlotsTotal} add-on slot{groupSlotsTotal !== 1 ? 's' : ''}).</> : null} Raw correction only — to bill an increase or remove holders use <span className="font-bold">Manage Plans</span>.
+                        Base plan only.{groupSlotsTotal > 0 ? <> Overall committed = <strong className="text-slate-700">{overallCommitted}</strong> (base {baseOwnCount} + {groupSlotsTotal} add-on slot{groupSlotsTotal !== 1 ? 's' : ''}).</> : null} Raw correction only, to bill an increase or remove holders use <span className="font-bold">Manage Plans</span>.
                       </p>
                     </Field>
                     <Field label="Base Price/Cert (USD)"><input className={inputCls} type="number" step="0.01" min="0"
@@ -4578,12 +5165,12 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                 </div>
 
                 {/* Payment & invoice for the base plan */}
-                <div className="border-t border-blue-100 pt-3.5">
+                <div className="border-t border-slate-200 pt-3.5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2.5">Payment & Invoice</p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <Field label="Plan Status">
                       <select className={selectCls} value={String(form.isPaid === true)} onChange={e => {
-                        // Plan active/inactive ONLY — decoupled from payment so admin can keep
+                        // Plan active/inactive ONLY, decoupled from payment so admin can keep
                         // the plan Active while the invoice stays Pending.
                         const active = e.target.value === 'true'
                         set('isPaid', active)
@@ -4601,7 +5188,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
             </div>
             {groupOpts.length > 0 && (
               <div><SectionHead label={`Holder Upgrade Plans (${groupOpts.length})`} />
-                <p className="text-[10px] text-slate-500 mb-3 -mt-1">Each upgrade batch is its own plan. Edits here are raw corrections — except switching a plan to <span className="font-bold">Unlimited</span>, which bills the conversion and generates an invoice on Save.</p>
+                <p className="text-[10px] text-slate-500 mb-3 -mt-1">Each upgrade batch is its own plan. Edits here are raw corrections, except switching a plan to <span className="font-bold">Unlimited</span>, which bills the conversion and generates an invoice on Save.</p>
                 <div className="space-y-4">
                   {groupOpts.map((g, gi) => (
                     <div key={String(g._id || gi)} className="rounded-xl border-2 border-slate-200 bg-slate-50/40 p-4 space-y-4">
@@ -4646,7 +5233,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                       </div>
                       {g.nextRenewal?.paidAt && (
                         <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Queued Renewal — what the user paid for</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Queued Renewal, what the user paid for</p>
                           <div className="grid sm:grid-cols-2 gap-4">
                             <Field label="Queued Plan"><select className={selectCls} value={g.nextRenewal.plan || ''} onChange={e => setGroupRenewal(gi, 'plan', e.target.value)}><option value="1 Year Subscription Plan">1 Year</option><option value="Unlimited Plan">Unlimited</option></select></Field>
                             <Field label="Holder Count"><input className={inputCls} type="number" min="1" value={g.nextRenewal.count ?? ''} onChange={e => setGroupRenewal(gi, 'count', parseFloat(e.target.value) || 0)} /></Field>
@@ -4672,7 +5259,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                                         const n = cur.match(/^(\D*?)(\d+)(.*)$/)
                                         return n ? `${n[1]}${Math.max(1, Number(n[2]) + 1)}${n[3]}` : cur
                                       })())}
-                                      className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors">
+                                      className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
                                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 15 6-6 6 6" /></svg>
                                     </button>
                                     <button type="button" aria-label="Decrease invoice number"
@@ -4683,7 +5270,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                                         const n = cur.match(/^(\D*?)(\d+)(.*)$/)
                                         return n ? `${n[1]}${Math.max(1, Number(n[2]) - 1)}${n[3]}` : cur
                                       })())}
-                                      className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors">
+                                      className="h-[14px] w-5 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
                                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
                                     </button>
                                   </div>
@@ -4751,7 +5338,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                   {form.certificateHolders?.map((h, idx) => (
                     <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Holder #{idx + 1}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4">Holder #{idx + 1}</p>
                         <button type="button" onClick={() => removeHolder(idx)}
                           className="text-[10px] font-bold text-red-500 hover:text-red-700 border border-red-200 hover:bg-red-50 rounded-md px-2 py-1 transition">Remove</button>
                       </div>
@@ -4775,14 +5362,14 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                         <div className="sm:col-span-2"><Field label="Email"><input className={inputCls} type="email" placeholder="holder@example.com" value={h.email || ''} onChange={e => setHolder(idx, 'email', e.target.value)} /></Field></div>
                         <div className="sm:col-span-2">
                           <label className="flex items-center gap-2 cursor-pointer mb-3">
-                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${h.hasSecondaryCertificate ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${h.hasSecondaryCertificate ? 'bg-[#34E06E] border-[#34E06E]' : 'bg-white border-slate-300'}`}
                               onClick={() => setHolder(idx, 'hasSecondaryCertificate', !h.hasSecondaryCertificate)}>
-                              {h.hasSecondaryCertificate && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                              {h.hasSecondaryCertificate && <svg className="w-2.5 h-2.5 text-slate-950 font-bold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                             </div>
                             <span className="text-xs font-semibold text-slate-700">Has secondary certificate</span>
                           </label>
                           {h.hasSecondaryCertificate && (
-                            <div className="grid sm:grid-cols-2 gap-3 ml-2 pl-4 border-l-2 border-blue-200">
+                            <div className="grid sm:grid-cols-2 gap-3 ml-2 pl-4 border-l-2 border-slate-200">
                               <Field label="Secondary Cert Type"><select className={selectCls} value={h.secondaryCertificateType || ''} onChange={e => setHolder(idx, 'secondaryCertificateType', e.target.value)}><option value="">— Select —</option><option value="Part 61 - Pilot">Part 61 - Pilot</option><option value="Part 61 - Flight or Ground Instructor">Part 61 - Instructor</option><option value="Part 65 - Aircraft Dispatcher">Part 65 - Dispatcher</option><option value="Part 107 - Remote Pilot">Part 107 - Remote Pilot</option></select></Field>
                               <Field label="Secondary FAA Cert #"><input className={inputCls} value={h.secondaryFaaCertificateNumber || ''} onChange={e => setHolder(idx, 'secondaryFaaCertificateNumber', e.target.value)} /></Field>
                               <Field label="Secondary IACRA FTN #"><input className={inputCls} value={h.secondaryIacraFtnNumber || ''} onChange={e => setHolder(idx, 'secondaryIacraFtnNumber', e.target.value)} /></Field>
@@ -4794,7 +5381,7 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
                   ))}
                 </div>
                 <button type="button" onClick={addHolder} disabled={!canAddHolder}
-                  className={`mt-3 w-full rounded-xl border-2 border-dashed py-2.5 text-sm font-bold transition ${canAddHolder ? 'border-blue-300 text-blue-600 hover:bg-blue-50' : 'border-slate-200 text-slate-300 cursor-not-allowed'}`}>
+                  className={`mt-3 w-full rounded-xl border-2 border-dashed py-2.5 text-sm font-bold transition ${canAddHolder ? 'border-slate-300 text-slate-700 hover:border-[#34E06E] hover:text-slate-900 hover:bg-[#34E06E]/5' : 'border-slate-200 text-slate-300 cursor-not-allowed'}`}>
                   {canAddHolder ? '+ Add Certificate Holder' : `All ${committedSlots} committed slots filled`}
                 </button>
               </div>
@@ -4802,10 +5389,10 @@ function AirlineEditModal({ record, onClose, onSave, onRequestConvert, saving })
           </div>
           <div className="flex-shrink-0 flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
             {convertingToUnlimited && (
-              <p className="mr-auto self-center text-[11px] font-semibold text-blue-600">{pendingGroupConvert && !convertingBaseToUnlimited ? 'Add-on plan' : 'Plan'} → Unlimited: you'll confirm the amount &amp; edit the invoice next.</p>
+              <p className="mr-auto self-center text-[11px] font-semibold text-slate-600">{pendingGroupConvert && !convertingBaseToUnlimited ? 'Add-on plan' : 'Plan'} → Unlimited: you'll confirm the amount &amp; edit the invoice next.</p>
             )}
             <button onClick={() => onClose()} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition disabled:opacity-50 bg-blue-600 hover:bg-blue-700">
+            <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition disabled:opacity-50 bg-slate-900 hover:bg-slate-800 shadow-sm">
               {saving && <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>}
               {saving ? 'Saving…' : convertingToUnlimited ? 'Convert to Unlimited →' : 'Save Changes'}
             </button>
@@ -4825,7 +5412,7 @@ function hex(h) {
 const BACKEND_LOGO_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api')
   .replace('/api', '') + '/assets/IFOA_USA_white.png'
 
-// Returns { url, filename } — caller decides whether to preview or download
+// Returns { url, filename }, caller decides whether to preview or download
 async function generateIFOAInvoicePDF(inv) {
   const RED = hex('#c0392b')
   const DARK = hex('#0f172a')
@@ -5035,7 +5622,7 @@ function triggerDownload({ url, filename }) {
 }
 
 // ─── Admin Invoice Modal ───────────────────────────────────────────────────────
-// initialStep: 'select' (default) | 'edit'  — which step to open at
+// initialStep: 'select' (default) | 'edit' , which step to open at
 // autoPreview: if true, generates and opens the PDF preview immediately on mount
 // previewOnly: if true, only shows preview modal (for existing invoices)
 function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep = 'select', autoPreview = false, previewOnly = false, convertMode = false }) {
@@ -5075,8 +5662,8 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
     // Base-plan invoice: always base rate × base holders (paidTotal mixes in add-on
     // groups, so don't let it inflate the base line).
     ? (isBasePlanInvoice
-        ? computedAirlineTotal
-        : (wireMode ? paidTotal : (paidConfirmed && paidTotal > 0 ? Math.max(paidTotal, computedAirlineTotal) : computedAirlineTotal)))
+      ? computedAirlineTotal
+      : (wireMode ? paidTotal : (paidConfirmed && paidTotal > 0 ? Math.max(paidTotal, computedAirlineTotal) : computedAirlineTotal)))
     : (paidConfirmed && paidTotal > 0 ? paidTotal : fallbackTotal)
   const unitPrice = isAirline
     ? (isBasePlanInvoice ? pricePerCert : Number((totalAmt / holderCount).toFixed(2)))
@@ -5275,7 +5862,7 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
     if (previewOnly) onClose()
   }
 
-  const iCls = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition'
+  const iCls = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 transition'
 
   return (
     <AnimatePresence>
@@ -5292,7 +5879,7 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
               {/* Header */}
               <div className="flex-shrink-0 border-b border-slate-100 bg-white px-6 py-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#0000ff' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-slate-900 text-[#34E06E]">
                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -5331,12 +5918,12 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
                   <div className="grid sm:grid-cols-2 gap-4 mb-8">
                     {[
                       { val: 'card', label: 'Credit / Debit Card', sub: 'Stripe / instant payment', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="2" y="5" width="20" height="14" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" /></svg> },
-                      ...(isAirline ? [{ val: 'wire', label: 'Wire Transfer', sub: 'Bank transfer — REVOLT21', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> }] : []),
+                      ...(isAirline ? [{ val: 'wire', label: 'Wire Transfer', sub: 'Bank transfer, REVOLT21', icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> }] : []),
                     ].map(opt => (
                       <button key={opt.val} onClick={() => setPaymentMethodSel(opt.val)}
                         className={`rounded-2xl border-2 p-5 text-left transition-all ${paymentMethodSel === opt.val
-                            ? 'border-slate-900 bg-slate-900'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-slate-900 bg-slate-900'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
                           }`}>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${paymentMethodSel === opt.val ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'
                           }`}>{opt.icon}</div>
@@ -5348,13 +5935,13 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
                   {isAirline && (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 mb-6 flex items-start gap-2">
                       <svg className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      <span><span className="font-bold text-slate-700">Wire Transfer recommended</span> — wire details appear in the invoice footer automatically.</span>
+                      <span><span className="font-bold text-slate-700">Wire Transfer recommended</span>, wire details appear in the invoice footer automatically.</span>
                     </div>
                   )}
                   <div className="flex justify-end">
                     <button onClick={handleProceed} disabled={!paymentMethodSel}
-                      style={paymentMethodSel ? { background: '#0000ff' } : {}}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition disabled:opacity-40 disabled:bg-slate-300">
+                      style={paymentMethodSel ? { background: '#020617' } : {}}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition disabled:opacity-40 disabled:bg-slate-300 hover:bg-slate-800 shadow-sm">
                       {hasInvoice ? 'Edit Invoice →' : 'Generate Invoice →'}
                     </button>
                   </div>
@@ -5375,7 +5962,7 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
 
                   {autoPreview && previewLoading && (
                     <div className="flex items-center justify-center py-3">
-                      <svg className="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>
+                      <svg className="w-5 h-5 animate-spin text-[#34E06E]" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>
                     </div>
                   )}
 
@@ -5384,7 +5971,7 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
                       <svg className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       <div>
                         <p className="text-xs font-bold text-slate-700 mb-0.5">Editing existing invoice</p>
-                        <p className="text-[11px] text-slate-500 leading-snug">Changes update the invoice document only — payment status, subscription plan, and holder count remain unchanged.</p>
+                        <p className="text-[11px] text-slate-500 leading-snug">Changes update the invoice document only, payment status, subscription plan, and holder count remain unchanged.</p>
                       </div>
                     </div>
                   )}
@@ -5460,9 +6047,9 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
                       <div className="divide-y divide-slate-100">
                         {inv.lineItems.map((item, i) => (
                           <div key={i} className="grid grid-cols-12 gap-2 px-3 py-2 items-center">
-                            <input className="col-span-5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-blue-500" value={item.description} onChange={e => setItem(i, 'description', e.target.value)} placeholder="Service description" />
-                            <input className="col-span-2 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-blue-500 text-center" type="number" min="1" value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} />
-                            <input className="col-span-2 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-blue-500 text-right" type="number" step="0.01" min="0" value={item.unitPrice} onChange={e => setItem(i, 'unitPrice', e.target.value)} />
+                            <input className="col-span-5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-slate-900" value={item.description} onChange={e => setItem(i, 'description', e.target.value)} placeholder="Service description" />
+                            <input className="col-span-2 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-slate-900 text-center" type="number" min="1" value={item.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} />
+                            <input className="col-span-2 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-slate-900 text-right" type="number" step="0.01" min="0" value={item.unitPrice} onChange={e => setItem(i, 'unitPrice', e.target.value)} />
                             <div className="col-span-2 text-xs font-bold text-slate-900 text-right">${Number(item.totalPrice).toFixed(2)}</div>
                             <button onClick={() => removeItem(i)} disabled={inv.lineItems.length <= 1}
                               className="col-span-1 w-6 h-6 flex items-center justify-center rounded-full text-slate-500 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-20 mx-auto">
@@ -5472,7 +6059,7 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
                         ))}
                       </div>
                       <div className="border-t border-slate-200 px-3 py-2 flex items-center justify-between bg-slate-50">
-                        <button onClick={addItem} className="text-xs font-semibold text-blue-600 hover:underline">+ Add Line Item</button>
+                        <button onClick={addItem} className="text-xs font-bold text-slate-900 underline decoration-[#34E06E] decoration-2 underline-offset-4 hover:opacity-80 transition">+ Add Line Item</button>
                         <div className="text-sm font-black text-slate-900">Total: <span className="text-red-600">${totalSum.toFixed(2)} USD</span></div>
                       </div>
                     </div>
@@ -5521,8 +6108,8 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
                       <button
                         onClick={handleSaveInvoice}
                         disabled={savingInvoice || previewLoading}
-                        style={{ background: '#0000ff' }}
-                        className="inline-flex items-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition disabled:opacity-60"
+                        style={{ background: '#020617' }}
+                        className="inline-flex items-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition disabled:opacity-60 hover:bg-slate-800 shadow-sm"
                       >
                         {(savingInvoice || previewLoading)
                           ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" /><path fill="currentColor" d="M12 2a10 10 0 0 1 10 10h-4a6 6 0 0 0-6-6V2Z" /></svg>Saving…</>
@@ -5553,7 +6140,7 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
               <div className="border-b border-slate-100 bg-slate-50 px-6 py-5 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Invoice {previewOnly ? 'Preview' : 'Saved'} ✓</p>
-                  <h2 className="text-lg font-extrabold text-slate-900">Preview — {previewData.filename}</h2>
+                  <h2 className="text-lg font-extrabold text-slate-900">Preview, {previewData.filename}</h2>
                 </div>
                 <button onClick={closePreviewModal}
                   className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition">✕</button>
@@ -5581,8 +6168,8 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
                   </button>
                   <button
                     onClick={handleDownloadFromPreview}
-                    style={{ background: '#0000ff' }}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition"
+                    style={{ background: '#020617' }}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 text-white font-bold rounded-xl text-sm transition hover:bg-slate-800 shadow-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0-3-3m3 3 3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
                     Download PDF
@@ -5598,22 +6185,30 @@ function AdminInvoiceModal({ record, type, onClose, onSaveInvoice, initialStep =
 }
 
 
-const accents = {
-  blue: 'border-blue-100 bg-blue-50/40',
-  emerald: 'border-emerald-100 bg-emerald-50/40',
-  violet: 'border-violet-100 bg-violet-50/40',
-  amber: 'border-amber-100 bg-amber-50/40',
-  default: 'border-slate-200 bg-white',
-}
-
-function StatCard({ label, value, sub, icon, accent = 'default' }) {
-  const iconColors = { blue: 'text-blue-600', emerald: 'text-emerald-600', violet: 'text-violet-600', amber: 'text-amber-600', default: 'text-slate-500' }
+function StatCard({ label, value, sub, icon, onClick }) {
   return (
-    <div className={`rounded-2xl border p-5 ${accents[accent]}`}>
-      {icon && <div className={`mb-3 ${iconColors[accent]}`}>{icon}</div>}
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">{label}</p>
-      <p className="text-2xl font-black text-slate-900">{value}</p>
-      {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
+    <div
+      onClick={onClick}
+      className={`rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300 ${onClick ? 'cursor-pointer' : ''}`}
+    >
+      <div className="flex items-center justify-between gap-3 mb-2.5">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          {label}
+        </span>
+        {icon && (
+          <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0">
+            {icon}
+          </div>
+        )}
+      </div>
+      <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+        {value}
+      </p>
+      {sub && (
+        <p className="mt-1.5 text-xs text-slate-500 font-medium">
+          {sub}
+        </p>
+      )}
     </div>
   )
 }
@@ -5630,7 +6225,7 @@ function EmptyState({ message = 'No records found' }) {
   )
 }
 
-// ─── InvoiceCell — Invoice Preview + Edit/Generate (always same width) ──────────
+// ─── InvoiceCell, Invoice Preview + Edit/Generate (always same width) ──────────
 // Invoice generation is only for admin-added/managed registrations. Airlines created
 // by admin carry addedByAdmin=true; individuals have no such field, so fall back to an
 // existing signal: a self-service registration pays through Stripe checkout (card), so
@@ -5644,77 +6239,70 @@ function isAdminManaged(record) {
 }
 
 function InvoiceCell({ onInvoice, onInvoicePreview, invoiceGenerated, canGenerate = true }) {
-  // Non-admin-added registration with no invoice yet → generation does not apply.
   if (!invoiceGenerated && !canGenerate) {
     return (
       <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-        <span className="text-[11px] text-slate-300 font-semibold" title="Invoice generation is only available for admin-added registrations">—</span>
+        <span className="text-xs text-slate-300 font-semibold" title="Invoice generation is only available for admin-added registrations">—</span>
       </div>
     )
   }
   return (
-    <div className="flex flex-col items-center gap-2" onClick={e => e.stopPropagation()}>
-      <div className="flex flex-nowrap items-center justify-center gap-1.5">
-        {/* Preview icon — always present; greyed for pending */}
-        <button
-          onClick={invoiceGenerated ? onInvoicePreview : undefined}
-          title={invoiceGenerated ? 'Preview Invoice PDF' : 'Invoice not yet generated'}
-          disabled={!invoiceGenerated}
-          className={[
-            'inline-flex items-center justify-center w-7 h-7 rounded-lg border transition',
-            invoiceGenerated
-              ? 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300 cursor-pointer'
-              : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed',
-          ].join(' ')}
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6M9 17h4" />
-          </svg>
-        </button>
+    <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <button
+        onClick={invoiceGenerated ? onInvoicePreview : undefined}
+        title={invoiceGenerated ? 'Preview Invoice PDF' : 'Invoice not yet generated'}
+        disabled={!invoiceGenerated}
+        className={[
+          'inline-flex items-center justify-center w-7 h-7 rounded-lg border transition shadow-2xs',
+          invoiceGenerated
+            ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 cursor-pointer'
+            : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed',
+        ].join(' ')}
+      >
+        <FileText className="w-3.5 h-3.5" />
+      </button>
 
-        {/* Edit / Generate — same slot, different label+style */}
-        {invoiceGenerated ? (
-          <button
-            onClick={onInvoice}
-            title="Edit Invoice"
-            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition whitespace-nowrap"
-          >
-            <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
-            </svg>
-            Invoice
-          </button>
-        ) : (
-          <button
-            onClick={onInvoice}
-            title="Generate Invoice"
-            className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition whitespace-nowrap"
-          >
-            <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Generate
-          </button>
-        )}
-      </div>
+      {invoiceGenerated ? (
+        <button
+          onClick={onInvoice}
+          title="Edit Invoice"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition whitespace-nowrap shadow-2xs"
+        >
+          <Pencil className="w-3 h-3 text-slate-400" />
+          Invoice
+        </button>
+      ) : (
+        <button
+          onClick={onInvoice}
+          title="Generate Invoice"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition whitespace-nowrap shadow-2xs"
+        >
+          <FilePlus className="w-3 h-3 text-slate-400" />
+          Generate
+        </button>
+      )}
     </div>
   )
 }
 
-// ─── RowActions — View + Delete ──────────────────────────────────────────────────
+// ─── RowActions, View + Delete ──────────────────────────────────────────────────
 function RowActions({ onView, onDelete, isDeleting }) {
   return (
     <div className="flex flex-nowrap items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
-      <button onClick={onView}
-        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition whitespace-nowrap">
-        <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" /></svg>
+      <button
+        onClick={onView}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 transition whitespace-nowrap shadow-2xs"
+      >
+        <Eye className="w-3.5 h-3.5 text-slate-400" />
         View
       </button>
-      <button onClick={onDelete} disabled={isDeleting}
-        className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition disabled:opacity-40 whitespace-nowrap">
-        <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" /></svg>
-        {isDeleting ? '…' : 'Del'}
+      <button
+        onClick={onDelete}
+        disabled={isDeleting}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition disabled:opacity-40 whitespace-nowrap shadow-2xs"
+      >
+        <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+        {isDeleting ? '…' : 'Delete'}
       </button>
     </div>
   )
@@ -5760,19 +6348,19 @@ function IndividualsTable({ data, onView, onDelete, onInvoice, onInvoicePreview,
             <tr>
               <th className="px-3 py-3.5 w-10">
                 <input type="checkbox" checked={allSelected} onChange={() => onToggleSelectAll(allIds)}
-                  className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer" />
+                  className="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
               </th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-36">Contact</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-36">Email / Phone</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-20">Country</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-24">Plan</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-20">Price</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-28">Sub Start</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-28">Expiry</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-28">Status</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-20">Payment</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-36">Invoice Preview</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-24">Actions</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-44">Contact</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-44">Email / Phone</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Country</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Plan</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-24">Price</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-32">Sub Start</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-32">Expiry</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-32">Status</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Payment</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Invoice Preview</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -5789,37 +6377,37 @@ function IndividualsTable({ data, onView, onDelete, onInvoice, onInvoicePreview,
                   <tr
                     ref={String(primary._id) === String(highlightedId) ? highlightRef : null}
                     className={`border-b border-slate-100 transition-colors cursor-pointer ${isSelected
-                        ? 'bg-blue-50'
-                        : String(primary._id) === String(highlightedId)
-                          ? 'bg-amber-50 outline outline-2 outline-amber-400'
-                          : isOpen ? 'bg-slate-50' : 'hover:bg-slate-50/60'
+                      ? 'bg-slate-100/90'
+                      : String(primary._id) === String(highlightedId)
+                        ? 'bg-amber-50 outline outline-2 outline-amber-400'
+                        : isOpen ? 'bg-slate-50' : 'hover:bg-slate-50/60'
                       }`}
                     onClick={() => hasMany ? toggle(key) : onView(primary)}>
                     <td className="px-3 py-4" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect(primary._id)}
-                        className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer" />
+                        className="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-black flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-black flex items-center justify-center flex-shrink-0">
                           {initials}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 text-sm leading-tight truncate max-w-[130px]">
+                          <p className="font-bold text-slate-900 text-sm leading-tight truncate max-w-[160px]">
                             {[primary.firstName, primary.lastName].filter(Boolean).join(' ') || '—'}
                           </p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[130px]">{primary.primaryCertificate || 'No cert type'}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[160px]">{primary.primaryCertificate || 'No cert type'}</p>
                           {primary.convertedFromAirlineName && (
-                            <span className="inline-block mt-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 truncate max-w-[130px]" title={`Converted from ${primary.convertedFromAirlineName}`}>
+                            <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 truncate max-w-[160px]" title={`Converted from ${primary.convertedFromAirlineName}`}>
                               ↗ {primary.convertedFromAirlineName}
                             </span>
                           )}
                           {hasMany && (
                             <button
                               onClick={e => { e.stopPropagation(); toggle(key) }}
-                              className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-300 px-2 py-0.5 text-[9px] font-black text-amber-700 hover:bg-amber-100 transition whitespace-nowrap"
+                              className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-300 px-2.5 py-0.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition whitespace-nowrap"
                             >
-                              <svg className={`w-2.5 h-2.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <svg className={`w-3 h-3 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                               </svg>
                               Multiple Subscriptions ({group.length})
@@ -5829,25 +6417,25 @@ function IndividualsTable({ data, onView, onDelete, onInvoice, onInvoicePreview,
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <p className="text-slate-700 text-xs truncate max-w-[140px]">{primary.email || '—'}</p>
-                      <p className="text-slate-500 text-[11px] mt-0.5">{primary.phone || '—'}</p>
+                      <p className="text-slate-800 text-sm font-medium truncate max-w-[170px]">{primary.email || '—'}</p>
+                      <p className="text-slate-500 text-xs mt-0.5">{primary.phone || '—'}</p>
                     </td>
-                    <td className="px-4 py-4"><p className="text-slate-600 text-xs truncate max-w-[80px]">{primary.country || '—'}</p></td>
-                    <td className="px-4 py-4"><span className="text-xs text-slate-700 font-medium">{planLabel(primary.subscriptionPlan)}</span></td>
-                    <td className="px-4 py-4 font-semibold text-slate-900 text-sm whitespace-nowrap">{fmtMoney(primary.price)}</td>
-                    <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">{primary.subscriptionDate ? fmtDateMDY(primary.subscriptionDate) : (primary.isPaid ? '—' : <span className="text-slate-300">Pending</span>)}</td>
+                    <td className="px-4 py-4"><p className="text-slate-700 text-sm font-medium truncate max-w-[120px]">{primary.country || '—'}</p></td>
+                    <td className="px-4 py-4"><span className="text-sm text-slate-800 font-semibold">{planLabel(primary.subscriptionPlan)}</span></td>
+                    <td className="px-4 py-4 font-bold text-slate-900 text-sm whitespace-nowrap">{fmtMoney(primary.price)}</td>
+                    <td className="px-4 py-4 text-sm text-slate-600 font-medium whitespace-nowrap">{primary.subscriptionDate ? fmtDateMDY(primary.subscriptionDate) : (primary.isPaid ? '—' : <span className="text-slate-400">Pending</span>)}</td>
                     <td className="px-4 py-4">
                       {primary.subscriptionPlan === 'Unlimited Plan'
-                        ? <span className="text-xs font-semibold text-indigo-600">Never</span>
+                        ? <span className="text-sm font-bold text-slate-900">Never</span>
                         : primary.expirationDate
-                          ? <span className={`text-xs font-semibold whitespace-nowrap ${new Date(primary.expirationDate) < new Date() ? 'text-red-600' : new Date(primary.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? 'text-amber-600' : 'text-slate-600'}`}>{fmtDateMDY(primary.expirationDate)}</span>
-                          : <span className="text-slate-300 text-xs">—</span>}
+                          ? <span className={`text-sm font-semibold whitespace-nowrap ${new Date(primary.expirationDate) < new Date() ? 'text-red-600' : new Date(primary.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? 'text-amber-600' : 'text-slate-700'}`}>{fmtDateMDY(primary.expirationDate)}</span>
+                          : <span className="text-slate-400 text-sm">—</span>}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1 items-center">
                         <Badge value={primary.status === 'Inactive' ? 'Inactive' : (primary.isPaid ? 'Active' : (primary.status || 'Pending'))} type="status" isPaid={primary.isPaid} />
                         {primary.nextRenewal?.paidAt && (
-                          <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] whitespace-nowrap">Renewed</span>
+                          <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Renewed</span>
                         )}
                       </div>
                     </td>
@@ -5855,7 +6443,7 @@ function IndividualsTable({ data, onView, onDelete, onInvoice, onInvoicePreview,
                       <div className="flex flex-col items-center gap-1">
                         <Badge value={aggregatePaymentStatus(primary)} />
                         {primary.wirePaymentRequested && (
-                          <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-blue-700">Wire Requested</span>
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-700">Wire Requested</span>
                         )}
                       </div>
                     </td>
@@ -5878,11 +6466,11 @@ function IndividualsTable({ data, onView, onDelete, onInvoice, onInvoicePreview,
 
                   {hasMany && isOpen && group.map((sub, si) => (
                     <tr key={sub._id + '-sub'}
-                      className={`border-b border-slate-100 transition-colors cursor-pointer ${selectedIds.has(sub._id) ? 'bg-blue-50' : 'bg-amber-50/30 hover:bg-amber-50/60'}`}
+                      className={`border-b border-slate-100 transition-colors cursor-pointer ${selectedIds.has(sub._id) ? 'bg-slate-100/90' : 'bg-amber-50/30 hover:bg-amber-50/60'}`}
                       onClick={() => onView(sub)}>
                       <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                         <input type="checkbox" checked={selectedIds.has(sub._id)} onChange={() => onToggleSelect(sub._id)}
-                          className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer" />
+                          className="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 pl-4">
@@ -5891,29 +6479,29 @@ function IndividualsTable({ data, onView, onDelete, onInvoice, onInvoicePreview,
                             <div className="w-2 h-2 rounded-sm bg-amber-300 border border-white" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-0.5">Sub #{si + 1}</p>
-                            <p className="text-xs font-semibold text-slate-700 truncate max-w-[110px]">{[sub.firstName, sub.lastName].filter(Boolean).join(' ') || '—'}</p>
-                            <p className="text-[10px] text-slate-500 truncate max-w-[110px]">{sub.primaryCertificate || '—'}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-0.5">Sub #{si + 1}</p>
+                            <p className="text-sm font-semibold text-slate-800 truncate max-w-[130px]">{[sub.firstName, sub.lastName].filter(Boolean).join(' ') || '—'}</p>
+                            <p className="text-xs text-slate-500 truncate max-w-[130px]">{sub.primaryCertificate || '—'}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3"><p className="text-slate-600 text-xs truncate max-w-[140px]">{sub.email || '—'}</p><p className="text-slate-500 text-[11px] mt-0.5">{sub.phone || '—'}</p></td>
-                      <td className="px-4 py-3"><p className="text-slate-500 text-xs">{sub.country || '—'}</p></td>
-                      <td className="px-4 py-3"><span className="text-xs text-slate-600 font-medium">{planLabel(sub.subscriptionPlan)}</span></td>
-                      <td className="px-4 py-3 text-xs font-semibold text-slate-700 whitespace-nowrap">{fmtMoney(sub.price)}</td>
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{sub.subscriptionDate ? fmtDateMDY(sub.subscriptionDate) : '—'}</td>
+                      <td className="px-4 py-3"><p className="text-slate-700 text-sm truncate max-w-[160px]">{sub.email || '—'}</p><p className="text-slate-500 text-xs mt-0.5">{sub.phone || '—'}</p></td>
+                      <td className="px-4 py-3"><p className="text-slate-600 text-sm">{sub.country || '—'}</p></td>
+                      <td className="px-4 py-3"><span className="text-sm text-slate-700 font-medium">{planLabel(sub.subscriptionPlan)}</span></td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-800 whitespace-nowrap">{fmtMoney(sub.price)}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{sub.subscriptionDate ? fmtDateMDY(sub.subscriptionDate) : '—'}</td>
                       <td className="px-4 py-3">
                         {sub.subscriptionPlan === 'Unlimited Plan'
-                          ? <span className="text-xs font-semibold text-indigo-600">Never</span>
+                          ? <span className="text-sm font-bold text-slate-900">Never</span>
                           : sub.expirationDate
-                            ? <span className={`text-xs font-semibold whitespace-nowrap ${new Date(sub.expirationDate) < new Date() ? 'text-red-600' : 'text-slate-600'}`}>{fmtDateMDY(sub.expirationDate)}</span>
-                            : <span className="text-slate-300 text-xs">—</span>}
+                            ? <span className={`text-sm font-semibold whitespace-nowrap ${new Date(sub.expirationDate) < new Date() ? 'text-red-600' : 'text-slate-700'}`}>{fmtDateMDY(sub.expirationDate)}</span>
+                            : <span className="text-slate-400 text-sm">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1 items-center">
                           <Badge value={sub.status === 'Inactive' ? 'Inactive' : (sub.isPaid ? 'Active' : (sub.status || 'Pending'))} type="status" isPaid={sub.isPaid} />
                           {sub.nextRenewal?.paidAt && (
-                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] whitespace-nowrap">Renewed</span>
+                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Renewed</span>
                           )}
                         </div>
                       </td>
@@ -5921,7 +6509,7 @@ function IndividualsTable({ data, onView, onDelete, onInvoice, onInvoicePreview,
                         <div className="flex flex-col items-center gap-1">
                           <Badge value={aggregatePaymentStatus(sub)} />
                           {sub.wirePaymentRequested && (
-                            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-blue-700">Wire Requested</span>
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-700">Wire Requested</span>
                           )}
                         </div>
                       </td>
@@ -5993,19 +6581,19 @@ function AirlinesTable({ data, onView, onDelete, onInvoice, onInvoicePreview, de
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="px-3 py-3.5 w-10">
                 <input type="checkbox" checked={allSelected} onChange={() => onToggleSelectAll(allIds)}
-                  className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer" />
+                  className="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
               </th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-40">Airline & Contact</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-32">Email</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-16">Country</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-20">Plan</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-20">Holders / Total</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-28">Sub Start</th>
-              <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500 w-28">Expiry</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-28">Status</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-20">Payment</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-36">Invoice Preview</th>
-              <th className="px-4 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 w-24">Actions</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-44">Airline & Contact</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-44">Email</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Country</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Plan</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-32">Holders / Total</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-32">Sub Start</th>
+              <th className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500 w-32">Expiry</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-32">Status</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Payment</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-36">Invoice Preview</th>
+              <th className="px-4 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500 w-28">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -6023,35 +6611,35 @@ function AirlinesTable({ data, onView, onDelete, onInvoice, onInvoicePreview, de
                   <tr
                     ref={String(primary._id) === String(highlightedId) ? highlightRef : null}
                     className={`border-b border-slate-100 transition-colors cursor-pointer ${isSelected
-                        ? 'bg-blue-50'
-                        : String(primary._id) === String(highlightedId)
-                          ? 'bg-blue-50 ring-2 ring-inset ring-blue-500'
-                          : isOpen ? 'bg-slate-50' : 'hover:bg-slate-50/60'
+                      ? 'bg-slate-100/90'
+                      : String(primary._id) === String(highlightedId)
+                        ? 'bg-amber-50 ring-2 ring-inset ring-amber-400'
+                        : isOpen ? 'bg-slate-50' : 'hover:bg-slate-50/60'
                       }`}
                     onClick={() => hasMany ? toggle(key) : onView(primary)}>
                     <td className="px-3 py-4" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect(primary._id)}
-                        className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer" />
+                        className="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         {primary.logoUrl ? (
                           <img src={primary.logoUrl} alt={primary.airlineName}
-                            className="w-9 h-9 rounded-xl object-contain border border-slate-200 bg-white flex-shrink-0 transition-transform duration-200 hover:scale-[2.8] hover:shadow-xl relative hover:z-20" />
+                            className="w-10 h-10 rounded-xl object-contain border border-slate-200 bg-white flex-shrink-0 transition-transform duration-200 hover:scale-[2.8] hover:shadow-xl relative hover:z-20" />
                         ) : (
-                          <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center flex-shrink-0">
-                            <Plane className="w-4 h-4" />
+                          <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center flex-shrink-0">
+                            <PlaneTakeoff className="w-5 h-5" />
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 text-sm leading-tight truncate max-w-[130px]">{primary.airlineName || '—'}</p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[130px]">{contactName || primary.city || primary.country || '—'}</p>
+                          <p className="font-bold text-slate-900 text-sm leading-tight truncate max-w-[160px]">{primary.airlineName || '—'}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[160px]">{contactName || primary.city || primary.country || '—'}</p>
                           {hasMany && (
                             <button
                               onClick={e => { e.stopPropagation(); toggle(key) }}
-                              className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-300 px-2 py-0.5 text-[9px] font-black text-amber-700 hover:bg-amber-100 transition whitespace-nowrap"
+                              className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-300 px-2.5 py-0.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition whitespace-nowrap"
                             >
-                              <svg className={`w-2.5 h-2.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <svg className={`w-3 h-3 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                               </svg>
                               Multiple Subscriptions ({group.length})
@@ -6060,33 +6648,33 @@ function AirlinesTable({ data, onView, onDelete, onInvoice, onInvoicePreview, de
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4"><p className="text-slate-700 text-xs truncate max-w-[130px]">{primary.email || primary.contactEmail || '—'}</p></td>
-                    <td className="px-4 py-4"><p className="text-slate-600 text-xs truncate max-w-[80px]">{primary.country || '—'}</p></td>
-                    <td className="px-4 py-4"><span className="text-xs font-medium text-slate-700">{planLabel(primary.subscriptionPlan)}</span></td>
+                    <td className="px-4 py-4"><p className="text-slate-800 text-sm font-medium truncate max-w-[160px]">{primary.email || primary.contactEmail || '—'}</p></td>
+                    <td className="px-4 py-4"><p className="text-slate-700 text-sm font-medium truncate max-w-[120px]">{primary.country || '—'}</p></td>
+                    <td className="px-4 py-4"><span className="text-sm font-semibold text-slate-800">{planLabel(primary.subscriptionPlan)}</span></td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1.5 items-start">
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-md bg-slate-900 text-white text-[11px] font-bold px-1.5">
+                          <span className="inline-flex items-center justify-center min-w-[26px] h-[26px] rounded-md bg-slate-900 text-white text-xs font-bold px-2 shadow-2xs">
                             {primary.holderCountValue || primary.certificateHolders?.length || 0}
                           </span>
-                          <span className="text-[10px] text-slate-500 font-medium">holders</span>
+                          <span className="text-xs text-emerald-700 font-semibold bg-emerald-50/80 px-1.5 py-0.5 rounded border border-emerald-200/60">holders</span>
                         </div>
-                        <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">{fmtAirlineTotal(primary)}</span>
+                        <span className="text-xs font-bold text-slate-900 whitespace-nowrap">{fmtAirlineTotal(primary)}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">{primary.subscriptionDate ? fmtDateMDY(primary.subscriptionDate) : <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-4 text-sm text-slate-600 font-medium whitespace-nowrap">{primary.subscriptionDate ? fmtDateMDY(primary.subscriptionDate) : <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-4">
                       {primary.subscriptionPlan === 'Unlimited Plan'
-                        ? <span className="text-xs font-semibold text-indigo-600">Never</span>
+                        ? <span className="text-sm font-bold text-slate-900">Never</span>
                         : primary.expirationDate
-                          ? <span className={`text-xs font-semibold whitespace-nowrap ${new Date(primary.expirationDate) < new Date() ? 'text-red-600' : new Date(primary.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? 'text-amber-600' : 'text-slate-600'}`}>{fmtDateMDY(primary.expirationDate)}</span>
-                          : <span className="text-slate-300 text-xs">—</span>}
+                          ? <span className={`text-sm font-semibold whitespace-nowrap ${new Date(primary.expirationDate) < new Date() ? 'text-red-600' : new Date(primary.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? 'text-amber-600' : 'text-slate-700'}`}>{fmtDateMDY(primary.expirationDate)}</span>
+                          : <span className="text-slate-400 text-sm">—</span>}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1 items-center">
                         <Badge value={primary.status === 'Inactive' ? 'Inactive' : (primary.isPaid ? 'Active' : (primary.status || 'Pending'))} type="status" isPaid={primary.isPaid} />
                         {primary.nextRenewal?.paidAt && (
-                          <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] whitespace-nowrap">Renewed</span>
+                          <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Renewed</span>
                         )}
                       </div>
                     </td>
@@ -6111,12 +6699,12 @@ function AirlinesTable({ data, onView, onDelete, onInvoice, onInvoicePreview, de
                   {hasMany && isOpen && group.map((sub, si) => (
                     <tr
                       key={sub._id + '-sub'}
-                      className={`border-b border-slate-100 transition-colors cursor-pointer ${selectedIds.has(sub._id) ? 'bg-blue-50' : 'bg-amber-50/30 hover:bg-amber-50/60'}`}
+                      className={`border-b border-slate-100 transition-colors cursor-pointer ${selectedIds.has(sub._id) ? 'bg-slate-100/90' : 'bg-amber-50/30 hover:bg-amber-50/60'}`}
                       onClick={() => onView(sub)}
                     >
                       <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                         <input type="checkbox" checked={selectedIds.has(sub._id)} onChange={() => onToggleSelect(sub._id)}
-                          className="w-4 h-4 rounded border-slate-300 accent-blue-600 cursor-pointer" />
+                          className="w-4 h-4 rounded border-slate-300 accent-slate-900 cursor-pointer" />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 pl-4">
@@ -6125,33 +6713,33 @@ function AirlinesTable({ data, onView, onDelete, onInvoice, onInvoicePreview, de
                             <div className="w-2 h-2 rounded-sm bg-amber-300 border border-white" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-0.5">Sub #{si + 1}</p>
-                            <p className="text-xs font-semibold text-slate-700 truncate max-w-[100px]">{sub.airlineName || '—'}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-0.5">Sub #{si + 1}</p>
+                            <p className="text-sm font-semibold text-slate-800 truncate max-w-[130px]">{sub.airlineName || '—'}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3"><p className="text-slate-600 text-xs truncate max-w-[130px]">{sub.email || sub.contactEmail || '—'}</p></td>
-                      <td className="px-4 py-3"><p className="text-slate-500 text-xs">{sub.country || '—'}</p></td>
-                      <td className="px-4 py-3"><span className="text-xs text-slate-600 font-medium">{planLabel(sub.subscriptionPlan)}</span></td>
+                      <td className="px-4 py-3"><p className="text-slate-700 text-sm truncate max-w-[160px]">{sub.email || sub.contactEmail || '—'}</p></td>
+                      <td className="px-4 py-3"><p className="text-slate-600 text-sm">{sub.country || '—'}</p></td>
+                      <td className="px-4 py-3"><span className="text-sm text-slate-700 font-medium">{planLabel(sub.subscriptionPlan)}</span></td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1 items-center">
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold">{sub.certificateHolders?.length || 0}</span>
-                          <span className="text-[10px] text-slate-500 font-medium whitespace-nowrap">{fmtAirlineTotal(sub)}</span>
+                          <span className="inline-flex items-center justify-center min-w-[24px] h-[24px] rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold px-1.5">{sub.certificateHolders?.length || 0}</span>
+                          <span className="text-xs text-slate-600 font-medium whitespace-nowrap">{fmtAirlineTotal(sub)}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{sub.subscriptionDate ? fmtDateMDY(sub.subscriptionDate) : <span className="text-slate-300">—</span>}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{sub.subscriptionDate ? fmtDateMDY(sub.subscriptionDate) : <span className="text-slate-400">—</span>}</td>
                       <td className="px-4 py-3">
                         {sub.subscriptionPlan === 'Unlimited Plan'
-                          ? <span className="text-xs font-semibold text-indigo-600">Never</span>
+                          ? <span className="text-sm font-bold text-slate-900">Never</span>
                           : sub.expirationDate
-                            ? <span className={`text-xs font-semibold whitespace-nowrap ${new Date(sub.expirationDate) < new Date() ? 'text-red-600' : new Date(sub.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? 'text-amber-600' : 'text-slate-600'}`}>{fmtDateMDY(sub.expirationDate)}</span>
-                            : <span className="text-slate-300 text-xs">—</span>}
+                            ? <span className={`text-sm font-semibold whitespace-nowrap ${new Date(sub.expirationDate) < new Date() ? 'text-red-600' : 'text-slate-700'}`}>{fmtDateMDY(sub.expirationDate)}</span>
+                            : <span className="text-slate-400 text-sm">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1 items-center">
                           <Badge value={sub.status === 'Inactive' ? 'Inactive' : (sub.isPaid ? 'Active' : (sub.status || 'Pending'))} type="status" isPaid={sub.isPaid} />
                           {sub.nextRenewal?.paidAt && (
-                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] whitespace-nowrap">Renewed</span>
+                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider whitespace-nowrap">Renewed</span>
                           )}
                         </div>
                       </td>
@@ -6183,109 +6771,615 @@ function AirlinesTable({ data, onView, onDelete, onInvoice, onInvoicePreview, de
   )
 }
 
-const COUNTRY_NAMES = { AF:'Afghanistan',AL:'Albania',DZ:'Algeria',AD:'Andorra',AO:'Angola',AG:'Antigua and Barbuda',AR:'Argentina',AM:'Armenia',AU:'Australia',AT:'Austria',AZ:'Azerbaijan',BS:'Bahamas',BH:'Bahrain',BD:'Bangladesh',BB:'Barbados',BY:'Belarus',BE:'Belgium',BZ:'Belize',BJ:'Benin',BT:'Bhutan',BO:'Bolivia',BA:'Bosnia and Herzegovina',BW:'Botswana',BR:'Brazil',BN:'Brunei',BG:'Bulgaria',BF:'Burkina Faso',BI:'Burundi',CV:'Cabo Verde',KH:'Cambodia',CM:'Cameroon',CA:'Canada',CF:'Central African Republic',TD:'Chad',CL:'Chile',CN:'China',CO:'Colombia',KM:'Comoros',CG:'Congo',CR:'Costa Rica',HR:'Croatia',CU:'Cuba',CY:'Cyprus',CZ:'Czech Republic',DK:'Denmark',DJ:'Djibouti',DM:'Dominica',DO:'Dominican Republic',EC:'Ecuador',EG:'Egypt',SV:'El Salvador',GQ:'Equatorial Guinea',ER:'Eritrea',EE:'Estonia',SZ:'Eswatini',ET:'Ethiopia',FJ:'Fiji',FI:'Finland',FR:'France',GA:'Gabon',GM:'Gambia',GE:'Georgia',DE:'Germany',GH:'Ghana',GR:'Greece',GD:'Grenada',GT:'Guatemala',GN:'Guinea',GW:'Guinea-Bissau',GY:'Guyana',HT:'Haiti',HN:'Honduras',HU:'Hungary',IS:'Iceland',IN:'India',ID:'Indonesia',IR:'Iran',IQ:'Iraq',IE:'Ireland',IL:'Israel',IT:'Italy',JM:'Jamaica',JP:'Japan',JO:'Jordan',KZ:'Kazakhstan',KE:'Kenya',KI:'Kiribati',KW:'Kuwait',KG:'Kyrgyzstan',LA:'Laos',LV:'Latvia',LB:'Lebanon',LS:'Lesotho',LR:'Liberia',LY:'Libya',LI:'Liechtenstein',LT:'Lithuania',LU:'Luxembourg',MG:'Madagascar',MW:'Malawi',MY:'Malaysia',MV:'Maldives',ML:'Mali',MT:'Malta',MH:'Marshall Islands',MR:'Mauritania',MU:'Mauritius',MX:'Mexico',FM:'Micronesia',MD:'Moldova',MC:'Monaco',MN:'Mongolia',ME:'Montenegro',MA:'Morocco',MZ:'Mozambique',MM:'Myanmar',NA:'Namibia',NR:'Nauru',NP:'Nepal',NL:'Netherlands',NZ:'New Zealand',NI:'Nicaragua',NE:'Niger',NG:'Nigeria',NO:'Norway',OM:'Oman',PK:'Pakistan',PW:'Palau',PA:'Panama',PG:'Papua New Guinea',PY:'Paraguay',PE:'Peru',PH:'Philippines',PL:'Poland',PT:'Portugal',QA:'Qatar',RO:'Romania',RU:'Russia',RW:'Rwanda',KN:'Saint Kitts and Nevis',LC:'Saint Lucia',VC:'Saint Vincent and the Grenadines',WS:'Samoa',SM:'San Marino',ST:'Sao Tome and Principe',SA:'Saudi Arabia',SN:'Senegal',RS:'Serbia',SC:'Seychelles',SL:'Sierra Leone',SG:'Singapore',SK:'Slovakia',SI:'Slovenia',SB:'Solomon Islands',SO:'Somalia',ZA:'South Africa',SS:'South Sudan',ES:'Spain',LK:'Sri Lanka',SD:'Sudan',SR:'Suriname',SE:'Sweden',CH:'Switzerland',SY:'Syria',TW:'Taiwan',TJ:'Tajikistan',TZ:'Tanzania',TH:'Thailand',TL:'Timor-Leste',TG:'Togo',TO:'Tonga',TT:'Trinidad and Tobago',TN:'Tunisia',TR:'Turkey',TM:'Turkmenistan',TV:'Tuvalu',UG:'Uganda',UA:'Ukraine',AE:'United Arab Emirates',GB:'United Kingdom',US:'United States',UY:'Uruguay',UZ:'Uzbekistan',VU:'Vanuatu',VE:'Venezuela',VN:'Vietnam',YE:'Yemen',ZM:'Zambia',ZW:'Zimbabwe' }
+const COUNTRY_NAMES = { AF: 'Afghanistan', AL: 'Albania', DZ: 'Algeria', AD: 'Andorra', AO: 'Angola', AG: 'Antigua and Barbuda', AR: 'Argentina', AM: 'Armenia', AU: 'Australia', AT: 'Austria', AZ: 'Azerbaijan', BS: 'Bahamas', BH: 'Bahrain', BD: 'Bangladesh', BB: 'Barbados', BY: 'Belarus', BE: 'Belgium', BZ: 'Belize', BJ: 'Benin', BT: 'Bhutan', BO: 'Bolivia', BA: 'Bosnia and Herzegovina', BW: 'Botswana', BR: 'Brazil', BN: 'Brunei', BG: 'Bulgaria', BF: 'Burkina Faso', BI: 'Burundi', CV: 'Cabo Verde', KH: 'Cambodia', CM: 'Cameroon', CA: 'Canada', CF: 'Central African Republic', TD: 'Chad', CL: 'Chile', CN: 'China', CO: 'Colombia', KM: 'Comoros', CG: 'Congo', CR: 'Costa Rica', HR: 'Croatia', CU: 'Cuba', CY: 'Cyprus', CZ: 'Czech Republic', DK: 'Denmark', DJ: 'Djibouti', DM: 'Dominica', DO: 'Dominican Republic', EC: 'Ecuador', EG: 'Egypt', SV: 'El Salvador', GQ: 'Equatorial Guinea', ER: 'Eritrea', EE: 'Estonia', SZ: 'Eswatini', ET: 'Ethiopia', FJ: 'Fiji', FI: 'Finland', FR: 'France', GA: 'Gabon', GM: 'Gambia', GE: 'Georgia', DE: 'Germany', GH: 'Ghana', GR: 'Greece', GD: 'Grenada', GT: 'Guatemala', GN: 'Guinea', GW: 'Guinea-Bissau', GY: 'Guyana', HT: 'Haiti', HN: 'Honduras', HU: 'Hungary', IS: 'Iceland', IN: 'India', ID: 'Indonesia', IR: 'Iran', IQ: 'Iraq', IE: 'Ireland', IL: 'Israel', IT: 'Italy', JM: 'Jamaica', JP: 'Japan', JO: 'Jordan', KZ: 'Kazakhstan', KE: 'Kenya', KI: 'Kiribati', KW: 'Kuwait', KG: 'Kyrgyzstan', LA: 'Laos', LV: 'Latvia', LB: 'Lebanon', LS: 'Lesotho', LR: 'Liberia', LY: 'Libya', LI: 'Liechtenstein', LT: 'Lithuania', LU: 'Luxembourg', MG: 'Madagascar', MW: 'Malawi', MY: 'Malaysia', MV: 'Maldives', ML: 'Mali', MT: 'Malta', MH: 'Marshall Islands', MR: 'Mauritania', MU: 'Mauritius', MX: 'Mexico', FM: 'Micronesia', MD: 'Moldova', MC: 'Monaco', MN: 'Mongolia', ME: 'Montenegro', MA: 'Morocco', MZ: 'Mozambique', MM: 'Myanmar', NA: 'Namibia', NR: 'Nauru', NP: 'Nepal', NL: 'Netherlands', NZ: 'New Zealand', NI: 'Nicaragua', NE: 'Niger', NG: 'Nigeria', NO: 'Norway', OM: 'Oman', PK: 'Pakistan', PW: 'Palau', PA: 'Panama', PG: 'Papua New Guinea', PY: 'Paraguay', PE: 'Peru', PH: 'Philippines', PL: 'Poland', PT: 'Portugal', QA: 'Qatar', RO: 'Romania', RU: 'Russia', RW: 'Rwanda', KN: 'Saint Kitts and Nevis', LC: 'Saint Lucia', VC: 'Saint Vincent and the Grenadines', WS: 'Samoa', SM: 'San Marino', ST: 'Sao Tome and Principe', SA: 'Saudi Arabia', SN: 'Senegal', RS: 'Serbia', SC: 'Seychelles', SL: 'Sierra Leone', SG: 'Singapore', SK: 'Slovakia', SI: 'Slovenia', SB: 'Solomon Islands', SO: 'Somalia', ZA: 'South Africa', SS: 'South Sudan', ES: 'Spain', LK: 'Sri Lanka', SD: 'Sudan', SR: 'Suriname', SE: 'Sweden', CH: 'Switzerland', SY: 'Syria', TW: 'Taiwan', TJ: 'Tajikistan', TZ: 'Tanzania', TH: 'Thailand', TL: 'Timor-Leste', TG: 'Togo', TO: 'Tonga', TT: 'Trinidad and Tobago', TN: 'Tunisia', TR: 'Turkey', TM: 'Turkmenistan', TV: 'Tuvalu', UG: 'Uganda', UA: 'Ukraine', AE: 'United Arab Emirates', GB: 'United Kingdom', US: 'United States', UY: 'Uruguay', UZ: 'Uzbekistan', VU: 'Vanuatu', VE: 'Venezuela', VN: 'Vietnam', YE: 'Yemen', ZM: 'Zambia', ZW: 'Zimbabwe' }
 const countryName = (code) => COUNTRY_NAMES[String(code).toUpperCase()] || code
 
 function OverviewPanel({ individuals, airlines }) {
+  const navigate = useNavigate()
   const indTotal = individuals.reduce((s, r) => s + (Number(r.price) || 0), 0)
   const airTotal = airlines.reduce((s, r) => s + getAirlineTotal(r), 0)
+  const grandTotal = indTotal + airTotal
   const indPaid = individuals.filter(r => r.isPaid === true || (r.isPaid == null && r.paymentStatus === 'paid')).length
   const airPaid = airlines.filter(r => r.isPaid === true || (r.isPaid == null && r.paymentStatus === 'paid')).length
   const allHolders = airlines.reduce((s, r) => s + (r.certificateHolders?.length || 0), 0)
   const allRegs = [...individuals, ...airlines]
+  const totalPaid = indPaid + airPaid
+  const totalPending = allRegs.length - totalPaid
+  const paidPct = allRegs.length > 0 ? Math.round((totalPaid / allRegs.length) * 100) : 100
+  const avgFee = allRegs.length > 0 ? Math.round(grandTotal / allRegs.length) : 0
+
   const planCounts = {
-    '1 Year': allRegs.filter(r => r.subscriptionPlan === '1 Year Subscription Plan').length,
-    'Multi-Year': allRegs.filter(r => r.subscriptionPlan === 'Multiple Years Subscription Plan').length,
-    'Unlimited': allRegs.filter(r => r.subscriptionPlan === 'Unlimited Plan').length,
+    '1 Year Plan': allRegs.filter(r => r.subscriptionPlan === '1 Year Subscription Plan').length,
+    'Multi-Year Plan': allRegs.filter(r => r.subscriptionPlan === 'Multiple Years Subscription Plan').length,
+    'Unlimited Plan': allRegs.filter(r => r.subscriptionPlan === 'Unlimited Plan').length,
   }
+
   const countryCounts = {}
   allRegs.forEach(r => { if (r.country) countryCounts[r.country] = (countryCounts[r.country] || 0) + 1 })
-  const topCountries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]).slice(0, 8)
+  const topCountries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]).slice(0, 6)
+  const maxCountryCount = topCountries[0]?.[1] || 1
+
+  const indPct = grandTotal > 0 ? Math.round((indTotal / grandTotal) * 100) : 0
+  const airPct = grandTotal > 0 ? Math.round((airTotal / grandTotal) * 100) : 0
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* ── Top 4 Clean & Unified Stat Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Individuals"
-          value={individuals.length}
-          sub="Registered"
-          accent="blue"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><circle cx="9.5" cy="7" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /></svg>}
+          label="Total Revenue"
+          value={`$${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          sub={`$${indTotal.toLocaleString()} Pilot · $${airTotal.toLocaleString()} Fleet`}
+          icon={<DollarSign className="w-4 h-4 text-emerald-600" />}
         />
+
         <StatCard
-          label="Airlines"
-          value={airlines.length}
-          sub="Operators"
-          accent="violet"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" /></svg>}
+          label="Registered Accounts"
+          value={allRegs.length}
+          sub={`${individuals.length} Pilots · ${airlines.length} Airlines`}
+          onClick={() => navigate('/admin/individuals')}
+          icon={<Users className="w-4 h-4 text-slate-700" />}
         />
+
         <StatCard
-          label="Cert Holders"
+          label="Certificate Holders"
           value={allHolders}
-          sub="Airline total"
-          accent="amber"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><rect x="3" y="4" width="18" height="16" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6M15 16l-1 3 2-1 2 1-1-3" /><circle cx="16" cy="14" r="2" /></svg>}
+          sub="Airline fleet authorized holders"
+          icon={<ShieldCheck className="w-4 h-4 text-slate-700" />}
         />
+
         <StatCard
-          label="Indiv. Revenue"
-          value={'$' + indTotal.toLocaleString('en-US')}
-          sub="Individual fees"
-          accent="emerald"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12M15 8H10.5a2.5 2.5 0 0 0 0 5h3a2.5 2.5 0 0 1 0 5H9" /></svg>}
-        />
-        <StatCard
-          label="Airline Revenue"
-          value={'$' + airTotal.toLocaleString('en-US')}
-          sub="Airline fees"
-          accent="emerald"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 12h.01M18 12h.01" /></svg>}
-        />
-        <StatCard
-          label="Paid"
-          value={indPaid + airPaid}
-          sub={`${indPaid} ind · ${airPaid} air`}
-          accent="emerald"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+          label="Pending Payments"
+          value={totalPending}
+          sub={`${totalPaid} settled · ${paidPct}% paid`}
+          icon={<AlertCircle className="w-4 h-4 text-amber-600" />}
         />
       </div>
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-5">Plan Distribution</p>
-          <div className="space-y-4">
-            {Object.entries(planCounts).map(([plan, count]) => {
-              const pct = allRegs.length ? Math.round((count / allRegs.length) * 100) : 0
-              return (
-                <div key={plan}>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-semibold text-slate-700">{plan}</span>
-                    <span className="font-bold text-slate-900">{count} <span className="text-slate-500 font-normal">({pct}%)</span></span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div className="h-full bg-slate-700 rounded-full" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.7, ease: 'easeOut' }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-5">Top Countries — All Registrations</p>
-          <div className="space-y-2">
-            {topCountries.length === 0 ? <p className="text-sm text-slate-500">No data yet.</p> : topCountries.map(([country, count]) => (
-              <div key={country} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
-                <span className="text-sm text-slate-700 font-medium">{countryName(country)}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.round((count / allRegs.length) * 100)}%` }} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-600 w-4 text-right">{count}</span>
-                </div>
+
+      {/* ── Main Performance Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        {/* ── Left 7 Cols: Revenue & Plan Distribution ── */}
+        <div className="lg:col-span-7 space-y-6">
+
+          {/* Revenue Breakdown Card */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Revenue Performance</p>
+                <h3 className="text-lg font-black text-slate-900 mt-0.5">Stream Breakdown</h3>
               </div>
-            ))}
+              <div className="text-right">
+                <span className="text-lg font-black text-slate-900">${grandTotal.toLocaleString()}</span>
+                <p className="text-xs text-slate-500">Total volume</p>
+              </div>
+            </div>
+
+            {/* Segmented Revenue Ratio Bar */}
+            <div className="my-4">
+              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex gap-1 p-0.5">
+                <div
+                  style={{ width: `${airPct || 50}%` }}
+                  className="bg-slate-900 h-full rounded-full transition-all duration-500"
+                  title={`Airline Fleet: $${airTotal.toLocaleString()} (${airPct}%)`}
+                />
+                <div
+                  style={{ width: `${indPct || 50}%` }}
+                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                  title={`Individual Pilots: $${indTotal.toLocaleString()} (${indPct}%)`}
+                />
+              </div>
+            </div>
+
+            {/* Two Stream Detail Tiles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/60">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Airline Fleet</span>
+                  <span className="text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shadow-2xs">{airPct}%</span>
+                </div>
+                <p className="text-xl font-black text-slate-900">${airTotal.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">{airlines.length} operator{airlines.length !== 1 ? 's' : ''} ({allHolders} holders)</p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/60">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Individual Pilots</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 shadow-2xs">{indPct}%</span>
+                </div>
+                <p className="text-xl font-black text-slate-900">${indTotal.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">{individuals.length} registered pilot{individuals.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-500">
+              <span>Average Fee per Registration</span>
+              <span className="text-sm font-bold text-slate-900">${avgFee.toLocaleString()}</span>
+            </div>
           </div>
+
+          {/* Plan Distribution Card (Sleek Tier Grid) */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Subscription Tiers</p>
+                <h3 className="text-lg font-black text-slate-900 mt-0.5">Plan Distribution</h3>
+              </div>
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                {allRegs.length} Total Plans
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { title: '1-Year Plan', count: planCounts['1 Year Plan'], sub: 'Standard Annual' },
+                { title: 'Multi-Year Plan', count: planCounts['Multi-Year Plan'], sub: 'Multi-Year Validity' },
+                { title: 'Unlimited Plan', count: planCounts['Unlimited Plan'], sub: 'Lifetime Access' },
+              ].map((tier) => {
+                const pct = allRegs.length ? Math.round((tier.count / allRegs.length) * 100) : 0
+                return (
+                  <div key={tier.title} className="p-4 rounded-xl border border-slate-200/80 bg-white hover:border-slate-300 transition shadow-2xs">
+                    <p className="text-xs font-bold text-slate-600 truncate">{tier.title}</p>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <span className="text-2xl font-black text-slate-900">{tier.count}</span>
+                      <span className="text-xs font-semibold text-slate-500">{pct}%</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 truncate">{tier.sub}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
         </div>
+
+        {/* ── Right 5 Cols: Top Countries & Quick Actions ── */}
+        <div className="lg:col-span-5 space-y-6">
+
+          {/* Top Countries Card */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Global Coverage</p>
+                <h3 className="text-lg font-black text-slate-900 mt-0.5">Top Countries</h3>
+              </div>
+              <span className="text-xs font-semibold text-slate-500">
+                {Object.keys(countryCounts).length} Countries
+              </span>
+            </div>
+
+            {topCountries.length === 0 ? (
+              <p className="text-sm text-slate-400 py-6 text-center">No registration country data yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {topCountries.map(([country, count], i) => {
+                  const pct = Math.round((count / (allRegs.length || 1)) * 100)
+                  return (
+                    <div key={country} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-5 text-xs font-bold text-slate-400 flex-shrink-0">#{i + 1}</span>
+                        <span className="text-sm font-semibold text-slate-800 truncate">
+                          {countryName(country)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs font-bold text-slate-900">{count}</span>
+                        <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Operations & Directory Jump Card */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm">
+            <div className="mb-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Quick Navigation</p>
+              <h3 className="text-lg font-black text-slate-900 mt-0.5">Directory Shortcuts</h3>
+            </div>
+
+            <div className="space-y-2.5">
+              <div
+                onClick={() => navigate('/admin/individuals')}
+                className="group flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Individual Directory</p>
+                    <p className="text-xs text-slate-500">{individuals.length} registered accounts</p>
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition flex items-center gap-1">
+                  View →
+                </span>
+              </div>
+
+              <div
+                onClick={() => navigate('/admin/airlines')}
+                className="group flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition">
+                    <PlaneTakeoff className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Airline Operators</p>
+                    <p className="text-xs text-slate-500">{airlines.length} operators ({allHolders} holders)</p>
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition flex items-center gap-1">
+                  View →
+                </span>
+              </div>
+
+              <div
+                onClick={() => navigate('/dashboard/admin-invoices')}
+                className="group flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-900 group-hover:text-white transition">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Invoices & Billing</p>
+                    <p className="text-xs text-slate-500">Manage PDF invoices & receipts</p>
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition flex items-center gap-1">
+                  Open →
+                </span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
+  )
+}
+
+// ─── Admin Guide Modal ──────────────────────────────────────────────────────
+// ─── Admin Guide Modal ──────────────────────────────────────────────────────
+// Plain-language "how do I change something" walkthrough, opened from the "i"
+// button next to the Individuals/Airlines page title. Tab-aware content —
+// each step names the exact button/label the admin will actually see.
+const ADMIN_GUIDE_STEPS = {
+  individuals: [
+    {
+      category: 'Registration',
+      title: 'Register a pilot manually',
+      body: 'Click "Add Individual" (top right, next to Add Airline) if the admin is creating the account instead of the pilot signing up themselves.',
+      example: 'Top Navigation → "Add Individual" → Fill Pilot Details & Select Plan → Submit',
+    },
+    {
+      category: 'Lookup & Access',
+      title: 'Open a registration',
+      body: 'Find the row (search bar or filters at the top), then click the eye "View" button in the Actions column, or click anywhere on the row.',
+      example: 'Search by name or email → click View button (or double-click row)',
+    },
+    {
+      category: 'Details & Edits',
+      title: 'Edit basic details',
+      body: 'Inside the record view, click "Edit" to change name, certificate info, country, or address.',
+      example: 'Open record → click "Edit" → modify certificate or contact details → click "Save"',
+    },
+    {
+      category: 'Plans & Pricing',
+      title: 'Change the plan or price',
+      body: 'Use "Manage Plan" / "Upgrade Plan" inside the record to switch between 1 Year, Multiple Years, and Unlimited. The Amount/Price field auto-calculates — edit it directly only to override the tiered rate.',
+      example: 'Open record → "Upgrade Plan" → choose "Unlimited Lifetime" → review credit → Save Invoice & Upgrade',
+    },
+    {
+      category: 'Billing & Invoices',
+      title: 'Mark a payment as paid, or issue an invoice',
+      body: 'Click the document icon under "Invoice Preview" to preview, or "Invoice" to edit/generate. Use "Generate" next to Invoice Number for a fresh unused number, or type your own.',
+      example: 'Open record → "Invoice" → set Payment Method (e.g. Wire Transfer) → mark "Paid" → Save',
+    },
+    {
+      category: 'Danger Zone',
+      title: 'Delete a registration',
+      body: 'Trash icon in Actions. This is permanent and releases the invoice number for reuse — only use it for test/duplicate entries.',
+      example: 'Actions column → click Trash icon → Confirm irreversible deletion',
+    },
+    {
+      category: 'Batch Actions',
+      title: 'Act on several accounts at once',
+      body: 'Tick the checkbox on each row (or select all), then use the toolbar that appears above the table: "Send Renewal Reminder" (email), "Generate Invoice" (bulk), or "Delete Selected".',
+      example: 'Select multiple rows → Top batch toolbar appears → Send Reminder or Generate Bulk Invoice',
+    },
+    {
+      category: 'Smart Filters',
+      title: 'Find sign-ups with no plan yet',
+      body: 'Switch the "All accounts / With plan only / No plan only" dropdown next to Search to "No plan only" — these are people who created an account but never picked a plan.',
+      example: 'Filter dropdown next to Search → switch to "No plan only" to audit incomplete sign-ups',
+    },
+  ],
+  airlines: [
+    {
+      category: 'Registration',
+      title: 'Register a fleet manually',
+      body: 'Click "Add Airline" (top right) if the admin is creating the fleet subscription instead of the operator signing up themselves.',
+      example: 'Top Navigation → "Add Airline" → Fill Fleet details, tier bracket & holder count → Submit',
+    },
+    {
+      category: 'Lookup & Access',
+      title: 'Open a fleet registration',
+      body: 'Search or filter at the top, then click "View" in the Actions column (or click anywhere on the row).',
+      example: 'Search airline name or FAA Code in search bar → click View row',
+    },
+    {
+      category: 'Seat Management',
+      title: 'Add more certificate holders',
+      body: 'Inside the record, click "Add Holder" on the active plan card. Set how many seats and which plan (1 Year / Unlimited) — pricing re-tiers automatically based on total holders.',
+      example: 'Open record → click "Add Holder" → set seat quantity → mark paid → Save',
+    },
+    {
+      category: 'Plans & Upgrades',
+      title: 'Convert a plan to Unlimited',
+      body: '"Convert to Unlimited" appears on the base plan or any add-on row. It prices the conversion, credits unused time from the current term, and lets you edit the invoice before saving.',
+      example: 'Open record → click "Convert to Unlimited" → inspect credit calculation → Save Invoice & Upgrade',
+    },
+    {
+      category: 'Tier Settings',
+      title: 'Edit holder count range or overall count',
+      body: 'Edit → "Overall Holder Count" (the real number used for pricing) and "Holder Count Range" (display-only tier label, dropdown selection).',
+      example: 'Open record → "Edit" → adjust Overall Holder Count & select Tier label dropdown → Save',
+    },
+    {
+      category: 'Danger Zone',
+      title: 'Delete a fleet registration',
+      body: 'Trash icon in Actions. Permanent — releases its invoice number. Use only for test/duplicate entries.',
+      example: 'Actions column → click Trash icon → Confirm irreversible deletion',
+    },
+    {
+      category: 'Batch Actions',
+      title: 'Act on several fleets at once',
+      body: 'Tick the checkbox on each row (or select all), then use the toolbar that appears above the table: "Send Renewal Reminder" (email), "Generate Invoice" (bulk), or "Delete Selected".',
+      example: 'Select multiple airline rows → Top batch toolbar appears → Send Reminder or Bulk Invoices',
+    },
+    {
+      category: 'Smart Filters',
+      title: 'Find sign-ups with no plan yet',
+      body: 'Switch the "All accounts / With plan only / No plan only" dropdown next to Search to "No plan only" — these are operators who created an account but never picked a plan.',
+      example: 'Filter dropdown next to Search → switch to "No plan only" to audit pending operators',
+    },
+  ],
+}
+
+function AdminGuideModal({ tab, onClose }) {
+  const [activeTab, setActiveTab] = useState(tab === 'airlines' ? 'airlines' : 'individuals')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const allSteps = ADMIN_GUIDE_STEPS[activeTab] || ADMIN_GUIDE_STEPS.individuals
+
+  const filteredSteps = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return allSteps
+    return allSteps.filter(
+      s =>
+        s.title.toLowerCase().includes(q) ||
+        s.body.toLowerCase().includes(q) ||
+        (s.example && s.example.toLowerCase().includes(q)) ||
+        (s.category && s.category.toLowerCase().includes(q))
+    )
+  }, [allSteps, searchQuery])
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-sm transition-all"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-[201] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 16, scale: 0.96 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-5xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-200/90 bg-white shadow-2xl overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Top Header */}
+          <div className="flex-shrink-0 bg-slate-900 text-white px-6 sm:px-8 py-5 border-b border-slate-800">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 text-slate-300 text-[10px] font-bold uppercase tracking-wider mb-2">
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                  Admin Guide & Workflow Manual
+                </div>
+                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+                  How do I change something?
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl font-normal">
+                  Step-by-step guides for creating accounts, modifying pilot & fleet records, managing tiered pricing, and generating invoices.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white border border-white/10 transition duration-150"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Interactive Tab Switcher & Quick Search Filter */}
+            <div className="mt-5 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Tab Selector Buttons */}
+              <div className="inline-flex rounded-xl bg-slate-950/70 p-1 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('individuals')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'individuals'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Individual Pilots
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${activeTab === 'individuals' ? 'bg-slate-100 text-slate-800' : 'bg-slate-800 text-slate-400'}`}>
+                    {ADMIN_GUIDE_STEPS.individuals.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('airlines')}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'airlines'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <PlaneTakeoff className="w-3.5 h-3.5" />
+                  Airline Fleets
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${activeTab === 'airlines' ? 'bg-slate-100 text-slate-800' : 'bg-slate-800 text-slate-400'}`}>
+                    {ADMIN_GUIDE_STEPS.airlines.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Live Search Input */}
+              <div className="relative flex-1 sm:max-w-xs">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Filter guide actions..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Cards Body - Clean 2-Column Grid */}
+          <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 bg-slate-50/60">
+            {filteredSteps.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-base font-bold text-slate-700">No actions found matching "{searchQuery}"</p>
+                <p className="text-xs text-slate-500 mt-1">Try searching for keywords like "plan", "invoice", "tier", or "edit".</p>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="mt-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition"
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredSteps.map((s, idx) => {
+                  return (
+                    <div
+                      key={s.title}
+                      className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Card Header: Step Pill & Category Tag */}
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="inline-flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-slate-900 text-white text-xs font-black flex items-center justify-center shadow-sm flex-shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm font-bold text-slate-900">
+                              {s.title}
+                            </span>
+                          </div>
+                          {s.category && (
+                            <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                              {s.category}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Card Body */}
+                        <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                          {s.body}
+                        </p>
+                      </div>
+
+                      {/* Workflow Example Callout Box */}
+                      {s.example && (() => {
+                        const parts = s.example.split('→').map(p => p.trim())
+                        return (
+                          <div className="mt-3.5 rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                              Action Path
+                            </div>
+                            <div className="space-y-1.5">
+                              {parts.map((part, pIdx) => {
+                                const isLast = pIdx === parts.length - 1
+                                return (
+                                  <div
+                                    key={pIdx}
+                                    className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+                                      isLast
+                                        ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                                        : 'bg-white text-slate-800 border-slate-200 shadow-sm'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ${
+                                        isLast ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                                      }`}
+                                    >
+                                      {pIdx + 1}
+                                    </span>
+                                    <span className="leading-snug">{part}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="flex-shrink-0 border-t border-slate-200 bg-white px-6 sm:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-slate-500 font-medium">
+              Viewing {filteredSteps.length} of {allSteps.length} actions for{' '}
+              <strong className="text-slate-800 font-semibold">{activeTab === 'airlines' ? 'Airline Fleets' : 'Individual Pilots'}</strong>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-sm transition active:scale-[0.98]"
+            >
+              Got it, Close Guide
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
   )
 }
 
@@ -6329,6 +7423,7 @@ export default function AdminDashboard() {
   const [viewType, setViewType] = useState(null)
   const [basePlanRec, setBasePlanRec] = useState(null)
   const [editRec, setEditRec] = useState(null)
+  const [showGuide, setShowGuide] = useState(false)
   const [editType, setEditType] = useState(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(null)
@@ -6336,7 +7431,7 @@ export default function AdminDashboard() {
   const [highlightedAirlineId, setHighlightedAirlineId] = useState(null)
   const [highlightedIndividualId, setHighlightedIndividualId] = useState(null)
   const [invoiceModal, setInvoiceModal] = useState(null)
-  // Upgrade-to-Unlimited confirmation: { id, opts, q } — shows the priced breakdown
+  // Upgrade-to-Unlimited confirmation: { id, opts, q }, shows the priced breakdown
   // before opening the invoice editor. Replaces the native window.confirm.
   const [convertConfirm, setConvertConfirm] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -6585,7 +7680,7 @@ export default function AdminDashboard() {
       const credit = Number(q.credit || 0)
       const lineItems = [
         { description: `Agent For Service - ${tLabel}`, quantity: q.baseCount, unitPrice: q.unlimitedPpc, totalPrice: q.unlimitedTotal },
-        ...(credit > 0 ? [{ description: `Credit — unused ${q.oldPlanLabel} subscription`, quantity: 1, unitPrice: -credit, totalPrice: -credit }] : []),
+        ...(credit > 0 ? [{ description: `Credit, unused ${q.oldPlanLabel} subscription`, quantity: 1, unitPrice: -credit, totalPrice: -credit }] : []),
       ]
       const seeded = {
         ...rec,
@@ -6601,7 +7696,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // Direct upgrade (no invoice popup) — the dedicated upgrade modal edits the invoice
+  // Direct upgrade (no invoice popup), the dedicated upgrade modal edits the invoice
   // inline, then applies the conversion + issues the invoice in one call. Throws on
   // failure so the modal can show the error and stay open.
   const handleDirectConvert = async (id, { targetPlan = 'Unlimited Plan', targetYears = null, invoiceNumber, invoiceDraft, type = 'individual' } = {}) => {
@@ -6609,8 +7704,8 @@ export default function AdminDashboard() {
     const res = await adminConvertToUnlimited(id, model, {
       targetPlan,
       targetMultiYearCount: targetYears || undefined,
-      invoiceNumber:        invoiceNumber || undefined,
-      invoiceDraft:         invoiceDraft || undefined,
+      invoiceNumber: invoiceNumber || undefined,
+      invoiceDraft: invoiceDraft || undefined,
     })
     const saved = res.data?.data
     if (saved) {
@@ -6618,7 +7713,7 @@ export default function AdminDashboard() {
       else setIndividuals(p => p.map(x => x._id === id ? { ...x, ...saved } : x))
       setViewRec(prev => (prev && prev._id === id ? { ...prev, ...saved } : prev))
     }
-    showToast('Plan upgraded — invoice generated', 'success')
+    showToast('Plan upgraded, invoice generated', 'success')
     loadData(false)
   }
 
@@ -6631,11 +7726,11 @@ export default function AdminDashboard() {
       if (invoiceModal?.convert) {
         const cv = invoiceModal.convert
         const res = await adminConvertToUnlimited(id, model, {
-          holderGroupId:        cv.holderGroupId || null,
-          targetPlan:           cv.targetPlan || 'Unlimited Plan',
+          holderGroupId: cv.holderGroupId || null,
+          targetPlan: cv.targetPlan || 'Unlimited Plan',
           targetMultiYearCount: cv.targetYears || undefined,
-          invoiceNumber:        payload.invoiceNumber,
-          invoiceDraft:         payload.invoiceDraft,
+          invoiceNumber: payload.invoiceNumber,
+          invoiceDraft: payload.invoiceDraft,
         })
         const saved = res.data?.data
         if (saved) {
@@ -6645,7 +7740,7 @@ export default function AdminDashboard() {
         // Clear the convert flag so a second save edits the draft normally (and the
         // backend would anyway reject a re-convert of an already-upgraded plan).
         setInvoiceModal(prev => prev ? { ...prev, convert: null } : prev)
-        showToast('Plan upgraded — invoice generated')
+        showToast('Plan upgraded, invoice generated')
         return
       }
 
@@ -6709,44 +7804,44 @@ export default function AdminDashboard() {
       }
 
       // Additive wire invoices (renewal / holder-upgrade) get their OWN dedicated
-      // Invoice doc — they must NOT overwrite the registration's invoiceNumber, which
+      // Invoice doc, they must NOT overwrite the registration's invoiceNumber, which
       // still points at the base/current plan. Writing the additive number here would
       // fail uniqueness (the doc we just created already owns it) → "already exists".
       const registrationUpdate = wirePurpose
         ? {
-            invoiceStatus: payload.invoiceStatus,
-            invoiceGenerated: payload.invoiceGenerated,
-            // The wire invoice lives in its own doc with its own number — stash that
-            // number on wireRequestDetails so the wire-request panel shows the
-            // generated number (US-4-..), not the base plan's invoiceNumber.
-            wireRequestDetails: {
-              ...(invoiceModal?.record?.wireRequestDetails || {}),
-              invoiceNumber: payload.invoiceNumber,
-            },
-          }
-        : {
-            invoiceStatus: payload.invoiceStatus,
-            invoiceGenerated: payload.invoiceGenerated,
+          invoiceStatus: payload.invoiceStatus,
+          invoiceGenerated: payload.invoiceGenerated,
+          // The wire invoice lives in its own doc with its own number, stash that
+          // number on wireRequestDetails so the wire-request panel shows the
+          // generated number (US-4-..), not the base plan's invoiceNumber.
+          wireRequestDetails: {
+            ...(invoiceModal?.record?.wireRequestDetails || {}),
             invoiceNumber: payload.invoiceNumber,
-            invoiceDraft: payload.invoiceDraft,
-          }
+          },
+        }
+        : {
+          invoiceStatus: payload.invoiceStatus,
+          invoiceGenerated: payload.invoiceGenerated,
+          invoiceNumber: payload.invoiceNumber,
+          invoiceDraft: payload.invoiceDraft,
+        }
 
       const mergeRecord = (x, saved) => wirePurpose
         ? {
-            ...x, ...saved,
-            // Ensure the generated wire invoice number is reflected immediately,
-            // even if the backend response doesn't echo wireRequestDetails.
-            wireRequestDetails: {
-              ...(x.wireRequestDetails || {}),
-              ...(saved.wireRequestDetails || {}),
-              invoiceNumber: payload.invoiceNumber,
-            },
-          }
-        : {
-            ...x, ...saved,
-            invoiceDraft: payload.invoiceDraft,
+          ...x, ...saved,
+          // Ensure the generated wire invoice number is reflected immediately,
+          // even if the backend response doesn't echo wireRequestDetails.
+          wireRequestDetails: {
+            ...(x.wireRequestDetails || {}),
+            ...(saved.wireRequestDetails || {}),
             invoiceNumber: payload.invoiceNumber,
-          }
+          },
+        }
+        : {
+          ...x, ...saved,
+          invoiceDraft: payload.invoiceDraft,
+          invoiceNumber: payload.invoiceNumber,
+        }
 
       if (type === 'airline') {
         const res = await updateAirlinesSubscription(id, registrationUpdate)
@@ -6764,7 +7859,7 @@ export default function AdminDashboard() {
         setViewRec(prev => prev && prev._id === id ? mergeRecord(prev, saved) : prev)
       }
 
-      showToast('Invoice saved — user will see updated invoice')
+      showToast('Invoice saved, user will see updated invoice')
     } catch (e) {
       showToast(e?.response?.data?.message || 'Could not save invoice changes', 'error')
       throw e
@@ -6791,21 +7886,21 @@ export default function AdminDashboard() {
 
     // Generate flow (forceFresh): always suggest a brand-new, unused number instead of
     // reusing the registration's existing invoiceNumber (which is already taken by a prior
-    // invoice and would collide on save). Uses peek — no counter burned until saved.
+    // invoice and would collide on save). Uses peek, no counter burned until saved.
     if (forceFresh) {
       // Wire renewal/upgrade/convert flows seed their own purpose-specific draft
-      // (line items, credit, etc.) before opening — preserve it. Only a plain new
+      // (line items, credit, etc.) before opening, preserve it. Only a plain new
       // invoice should drop the registration's stale persisted draft.
       const keepSeededDraft = Boolean(record._wireInvoicePurpose)
       try {
         const genRes = await generateInvoiceNumber()
         const newNum = genRes.data?.invoiceNumber
         if (newNum) resolved = { ...resolved, invoiceNumber: newNum, ...(keepSeededDraft ? {} : { invoiceDraft: null }) }
-      } catch { /* fall through — keep existing */ }
+      } catch { /* fall through, keep existing */ }
       return resolved
     }
 
-    // Always check Invoice collection first — it is the canonical source of truth.
+    // Always check Invoice collection first, it is the canonical source of truth.
     // Sync invoice number AND draft data so the modal opens with the latest saved data.
     // For wire renewal/upgrade invoices, filter to same-purpose docs so we don't
     // accidentally reuse the current-plan's invoice number.
@@ -6835,7 +7930,7 @@ export default function AdminDashboard() {
       }
     } catch { /* fall through */ }
 
-    // Still no number — generate one. Only persist to DB when persist=true (edit/preview flow).
+    // Still no number, generate one. Only persist to DB when persist=true (edit/preview flow).
     if (!resolved.invoiceNumber) {
       try {
         const genRes = await generateInvoiceNumber()
@@ -6991,7 +8086,7 @@ export default function AdminDashboard() {
             {toast.type === 'error' && (
               <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01" /></svg>
             )}
-            {toast.type === 'airline' && <Plane className="w-4 h-4 flex-shrink-0 mt-0.5" />}
+            {toast.type === 'airline' && <PlaneTakeoff className="w-4 h-4 flex-shrink-0 mt-0.5" />}
             {toast.type === 'individual' && (
               <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="8" r="3.5" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.582-6 8-6s8 2 8 6" /></svg>
             )}
@@ -7043,7 +8138,7 @@ export default function AdminDashboard() {
           onSaved={() => {
             const type = basePlanRec.role === 'airline' ? 'airline' : 'individual'
             setBasePlanRec(null)
-            showToast('Base plan set — account now has an active subscription', type)
+            showToast('Base plan set, account now has an active subscription', type)
             loadData(false)
           }}
         />
@@ -7110,11 +8205,83 @@ export default function AdminDashboard() {
         />
       )}
 
-      <div className="mb-4 text-center">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Admin Control Center</p>
-        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-wide text-slate-900">Registrations Dashboard</h1>
+      {/* ── Modern Executive Header ── */}
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 pb-5">
+        <div>
+          <div className="inline-block">
+            <div className="inline-flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+                {tab === 'overview' ? 'Overview & Analytics' : tab === 'individuals' ? 'Individual Registrations' : tab === 'airlines' ? 'Airline Fleet Registrations' : 'Registrations Dashboard'}
+              </h1>
+              {(tab === 'individuals' || tab === 'airlines') && (
+                <button
+                  onClick={() => setShowGuide(true)}
+                  title="How do I change something? Open the step-by-step guide"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 px-2.5 py-1 text-[11px] font-black transition flex-shrink-0"
+                >
+                  <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] flex-shrink-0">i</span>
+                  Admin Guide
+                </button>
+              )}
+            </div>
+            <div className="h-0.5 w-full bg-emerald-500 rounded-full mt-1.5 mb-2" />
+          </div>
+          <p className="text-sm font-medium text-slate-500">
+            {tab === 'overview'
+              ? 'Real-time overview of pilot accounts, fleet subscriptions, revenue streams, and global distribution.'
+              : tab === 'individuals'
+                ? 'Manage registered individual pilots, FAA agent services, certificates, and invoices.'
+                : 'Manage commercial airline fleet operators, added holder plans, and renewals.'}
+          </p>
+        </div>
 
+        {/* Global Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {tab !== 'add-airline' && (
+            <button
+              onClick={() => navigate('/admin/add-airline')}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2.5 text-xs font-bold text-white transition shadow-sm"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+              </svg>
+              Add Airline
+            </button>
+          )}
+          {tab !== 'add-individual' && (
+            <button
+              onClick={() => navigate('/admin/add-individual')}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 transition shadow-sm"
+            >
+              <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+              </svg>
+              Add Individual
+            </button>
+          )}
+          {tab !== 'overview' && tab !== 'add-airline' && tab !== 'add-individual' && (
+            <a
+              href={tab === 'individuals' ? exportIndividualsExcel() : exportAirlinesExcel()}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 transition shadow-sm"
+            >
+              <FileDown className="w-4 h-4 text-slate-500" />
+              Export
+            </a>
+          )}
+          <button
+            onClick={() => loadData(true)}
+            title="Refresh dashboard data"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
+          >
+            <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v5h5M20 20v-5h-5" />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {showGuide && <AdminGuideModal tab={tab} onClose={() => setShowGuide(false)} />}
 
       {loadErr && (
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
@@ -7124,79 +8291,82 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {tab !== 'add-airline' && tab !== 'add-individual' && (
-        <div className="flex flex-wrap items-center gap-3 mb-6 px-1">
-          {tab !== 'overview' && (
-            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-              <div className="relative flex-grow sm:flex-grow-0">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><circle cx="11" cy="11" r="7" /><path strokeLinecap="round" strokeLinejoin="round" d="m20 20-3.5-3.5" /></svg>
-                <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 w-full sm:w-48 bg-white transition shadow-sm" />
-              </div>
-              <select value={accountView} onChange={e => setAccountView(e.target.value)}
-                title="Show all signed-up accounts, or only those that have a plan"
-                className="flex-grow sm:flex-grow-0 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl bg-white outline-none focus:border-blue-500 text-slate-600 transition shadow-sm h-[38px]">
-                <option value="all">All accounts</option>
-                <option value="withPlan">With plan only</option>
-                <option value="noPlan">No plan only</option>
-              </select>
-              <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)}
-                className="flex-grow sm:flex-grow-0 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl bg-white outline-none focus:border-blue-500 text-slate-600 transition shadow-sm h-[38px]">
-                {PLANS.map(p => <option key={p} value={p}>{p === 'All' ? 'All Plans' : p}</option>)}
-              </select>
-              <select value={filterPayment} onChange={e => setFilterPayment(e.target.value)}
-                className="flex-grow sm:flex-grow-0 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl bg-white outline-none focus:border-blue-500 text-slate-600 transition shadow-sm h-[38px]">
-                {PAYMENTS.map(p => <option key={p} value={p}>{p === 'All' ? 'All Payments' : p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-              </select>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                className="flex-grow sm:flex-grow-0 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl bg-white outline-none focus:border-blue-500 text-slate-600 transition shadow-sm h-[38px]">
-                {STATUSES.map(s => <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>)}
-              </select>
-              <select value={filterExpiry} onChange={e => setFilterExpiry(e.target.value)}
-                className="flex-grow sm:flex-grow-0 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl bg-white outline-none focus:border-blue-500 text-slate-600 transition shadow-sm h-[38px]">
-                <option value="All">All Dates</option>
-                <option value="Expired">Expired</option>
-                <option value="ExpiringSoon">Expiring in 30 days</option>
-              </select>
-              {hasActiveFilters && (
-                <button onClick={clearFilters} className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition h-[38px]">Clear</button>
-              )}
+      {/* ── Table Filter Toolbar (only on table tabs) ── */}
+      {tab !== 'overview' && tab !== 'add-airline' && tab !== 'add-individual' && (
+        <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-white rounded-2xl border border-slate-200/90 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2.5 w-full">
+            <div className="relative flex-grow sm:flex-grow-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search accounts, names, emails…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9 pr-4 py-2 text-sm font-medium border border-slate-200 rounded-xl outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-100 w-full sm:w-64 bg-slate-50/50 hover:bg-white focus:bg-white transition h-[38px]"
+              />
             </div>
-          )}
-          <div className="flex items-center gap-2 w-full lg:w-auto lg:ml-auto">
-            {tab !== 'overview' && (
-              <a href={tab === 'individuals' ? exportIndividualsExcel() : exportAirlinesExcel()} className="flex-1 lg:flex-none justify-center inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white transition shadow-sm shadow-emerald-200/50">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v10m0 0-4-4m4 4 4-4M4 20h16" /></svg>
-                Export
-              </a>
-            )}
-            {tab === 'individuals' && (
-              <button onClick={() => navigate('/admin/add-individual')} className="flex-1 lg:flex-none justify-center inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition shadow-sm shadow-slate-900/10" style={{ background: '#000021' }}>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
-                Add New
+            <CustomSelect
+              value={accountView}
+              onChange={setAccountView}
+              className="flex-grow sm:flex-grow-0 w-full sm:w-40"
+              triggerClassName="!h-[38px] !py-1.5 !px-3 !text-xs !rounded-xl !bg-slate-50/50 hover:!bg-white !border-slate-200 !text-slate-700 font-semibold"
+              options={[
+                { value: 'all', label: 'All accounts' },
+                { value: 'withPlan', label: 'With plan only' },
+                { value: 'noPlan', label: 'No plan only' },
+              ]}
+            />
+            <CustomSelect
+              value={filterPlan}
+              onChange={setFilterPlan}
+              className="flex-grow sm:flex-grow-0 w-full sm:w-36"
+              triggerClassName="!h-[38px] !py-1.5 !px-3 !text-xs !rounded-xl !bg-slate-50/50 hover:!bg-white !border-slate-200 !text-slate-700 font-semibold"
+              options={PLANS.map(p => ({ value: p, label: p === 'All' ? 'All Plans' : p }))}
+            />
+            <CustomSelect
+              value={filterPayment}
+              onChange={setFilterPayment}
+              className="flex-grow sm:flex-grow-0 w-full sm:w-36"
+              triggerClassName="!h-[38px] !py-1.5 !px-3 !text-xs !rounded-xl !bg-slate-50/50 hover:!bg-white !border-slate-200 !text-slate-700 font-semibold"
+              options={PAYMENTS.map(p => ({ value: p, label: p === 'All' ? 'All Payments' : p.charAt(0).toUpperCase() + p.slice(1) }))}
+            />
+            <CustomSelect
+              value={filterStatus}
+              onChange={setFilterStatus}
+              className="flex-grow sm:flex-grow-0 w-full sm:w-36"
+              triggerClassName="!h-[38px] !py-1.5 !px-3 !text-xs !rounded-xl !bg-slate-50/50 hover:!bg-white !border-slate-200 !text-slate-700 font-semibold"
+              options={STATUSES.map(s => ({ value: s, label: s === 'All' ? 'All Statuses' : s }))}
+            />
+            <CustomSelect
+              value={filterExpiry}
+              onChange={setFilterExpiry}
+              className="flex-grow sm:flex-grow-0 w-full sm:w-40"
+              triggerClassName="!h-[38px] !py-1.5 !px-3 !text-xs !rounded-xl !bg-slate-50/50 hover:!bg-white !border-slate-200 !text-slate-700 font-semibold"
+              options={[
+                { value: 'All', label: 'All Dates' },
+                { value: 'Expired', label: 'Expired' },
+                { value: 'ExpiringSoon', label: 'Expiring in 30 days' },
+              ]}
+            />
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition h-[38px]"
+              >
+                Clear
               </button>
             )}
-            {tab === 'airlines' && (
-              <button onClick={() => navigate('/admin/add-airline')} className="flex-1 lg:flex-none justify-center inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition shadow-sm shadow-slate-900/10" style={{ background: '#000021' }}>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" /></svg>
-                Add New
-              </button>
-            )}
-            <button onClick={() => loadData(true)} className="flex-grow lg:flex-none justify-center inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition h-[40px]">
-              <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v5h5M20 20v-5h-5" />
-              </svg>
-              Refresh
-            </button>
           </div>
         </div>
       )}
 
       {tab !== 'overview' && tab !== 'add-airline' && tab !== 'add-individual' && !loading && (
         <div className="flex items-center gap-3 mb-4 px-1">
-          <p className="text-sm text-slate-500">
-            Showing <span className="font-semibold text-slate-800">{uniqueAccountCount}</span> account{uniqueAccountCount !== 1 ? 's' : ''}{' '}
-            <span className="text-slate-500">({filtered.length} total subscription{filtered.length !== 1 ? 's' : ''})</span>
+          <p className="text-sm text-slate-500 flex items-center gap-2">
+            <span>Showing <span className="font-semibold text-slate-800">{uniqueAccountCount}</span> account{uniqueAccountCount !== 1 ? 's' : ''}</span>
+            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-200/60 px-2 py-0.5 rounded-md">
+              {filtered.length} total subscription{filtered.length !== 1 ? 's' : ''}
+            </span>
           </p>
           {selectedIds.size > 0 && (
             <div className="ml-auto flex items-center gap-2">
@@ -7212,7 +8382,7 @@ export default function AdminDashboard() {
               <button
                 onClick={handleBulkGenerateInvoice}
                 disabled={bulkGenerating || bulkDeleting}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 px-3 py-1.5 text-xs font-bold text-white transition"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 px-3 py-1.5 text-xs font-bold text-white transition shadow-sm"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 {bulkGenerating ? 'Generating…' : 'Generate Invoice'}
@@ -7238,7 +8408,7 @@ export default function AdminDashboard() {
 
       {loading ? (
         <div className="flex items-center justify-center py-40">
-          <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin" />
+          <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-[#34E06E] animate-spin" />
         </div>
       ) : tab === 'overview' ? (
         <OverviewPanel individuals={individuals} airlines={airlines} />
@@ -7252,33 +8422,33 @@ export default function AdminDashboard() {
         </div>
       ) : tab === 'individuals' ? (
         <>
-        <IndividualsTable
-          data={tableData}
-          highlightedId={highlightedIndividualId}
-          onView={r => openView(r, 'individual')}
-          onDelete={handleDelete}
-          deleting={deleting}
-          onInvoice={r => hasExistingInvoice(r) ? openInvoiceEdit(r, 'individual') : openInvoiceGenerate(r, 'individual')}
-          onInvoicePreview={r => openInvoicePreview(r, 'individual')}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-        />
+          <IndividualsTable
+            data={tableData}
+            highlightedId={highlightedIndividualId}
+            onView={r => openView(r, 'individual')}
+            onDelete={handleDelete}
+            deleting={deleting}
+            onInvoice={r => hasExistingInvoice(r) ? openInvoiceEdit(r, 'individual') : openInvoiceGenerate(r, 'individual')}
+            onInvoicePreview={r => openInvoicePreview(r, 'individual')}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+          />
         </>
       ) : (
         <>
-        <AirlinesTable
-          data={tableData}
-          highlightedId={highlightedAirlineId}
-          onView={r => openView(r, 'airline')}
-          onDelete={handleDelete}
-          deleting={deleting}
-          onInvoice={r => hasExistingInvoice(r) ? openInvoiceEdit(r, 'airline') : openInvoiceGenerate(r, 'airline')}
-          onInvoicePreview={r => openInvoicePreview(r, 'airline')}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-        />
+          <AirlinesTable
+            data={tableData}
+            highlightedId={highlightedAirlineId}
+            onView={r => openView(r, 'airline')}
+            onDelete={handleDelete}
+            deleting={deleting}
+            onInvoice={r => hasExistingInvoice(r) ? openInvoiceEdit(r, 'airline') : openInvoiceGenerate(r, 'airline')}
+            onInvoicePreview={r => openInvoicePreview(r, 'airline')}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+          />
         </>
       )}
     </DashboardLayout>

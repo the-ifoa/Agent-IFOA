@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CustomSelect from '../ui/CustomSelect'
 
 const PRIMARY_TYPES = [
   'Part 61 - Pilot',
@@ -65,30 +66,25 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
     `w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-150 placeholder:text-slate-400 ${
       errors[field]
         ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-2 focus:ring-red-100'
-        : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+        : 'border-slate-200 bg-white focus:border-slate-800 focus:ring-2 focus:ring-slate-100'
     }`
 
   return (
     <div className="space-y-6">
       <section className={sectionClass}>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">Primary Certificate</p>
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">Primary Certificate</p>
         <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-slate-950">Enter the primary FAA certificate details.</h3>
 
         <div className="mt-5 space-y-5">
           <Field label="Certificate Type" required error={errors.primaryCertificate}>
-            <select
+            <CustomSelect
               id="field-primaryCertificate"
-              value={data.primaryCertificate}
-              onChange={(e) => update({ primaryCertificate: e.target.value })}
-              className={inputCls('primaryCertificate')}
-            >
-              <option value="">Select certificate type</option>
-              {PRIMARY_TYPES.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+              value={data.primaryCertificate || ''}
+              onChange={(val) => update({ primaryCertificate: val })}
+              options={PRIMARY_TYPES.map((item) => ({ value: item, label: item }))}
+              placeholder="Select certificate type"
+              error={!!errors.primaryCertificate}
+            />
           </Field>
 
           <Field
@@ -132,7 +128,7 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
                           selected ? 'border-white bg-white text-slate-900' : 'border-slate-200 bg-slate-50 text-transparent'
                         }`}
                       >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       </span>
@@ -155,7 +151,7 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
             </Field>
             <Field
               label="IACRA / FTN Tracking Number"
-              helper="Optional — for matching with FAA portal records."
+              helper="Optional, for matching with FAA portal records."
             >
               <input
                 type="text"
@@ -170,7 +166,7 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
       </section>
 
       <section className={sectionClass}>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">Additional Certificate</p>
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">Additional Certificate</p>
         <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-slate-950">Add a secondary FAA certificate if you hold one.</h3>
 
         <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-3xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-400 hover:bg-slate-50">
@@ -191,19 +187,14 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
         {data.hasSecondaryCertificate && (
           <div className="mt-5 space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
             <Field label="Secondary Certificate Type" required error={errors.secondaryCertificate}>
-              <select
+              <CustomSelect
                 id="field-secondaryCertificate"
-                value={data.secondaryCertificate}
-                onChange={(e) => update({ secondaryCertificate: e.target.value })}
-                className={inputCls('secondaryCertificate')}
-              >
-                <option value="">Select certificate type</option>
-                {SECONDARY_TYPES.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
+                value={data.secondaryCertificate || ''}
+                onChange={(val) => update({ secondaryCertificate: val })}
+                options={SECONDARY_TYPES.map((item) => ({ value: item, label: item }))}
+                placeholder="Select certificate type"
+                error={!!errors.secondaryCertificate}
+              />
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -238,9 +229,9 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
       <div className="flex flex-col justify-between gap-3 border-t border-slate-100 pt-2 sm:flex-row">
         <button
           onClick={onBack}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-xs uppercase tracking-wider font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0 5-5m-5 5h12" />
           </svg>
           Back
@@ -250,7 +241,10 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
           onClick={() => {
             if (validate()) onNext()
           }}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
+          className="inline-flex items-center justify-center gap-2 rounded-full px-7 py-3 text-xs uppercase tracking-widest font-extrabold transition-all duration-150 shadow-sm active:scale-95"
+          style={{ background: '#020617', color: '#ffffff' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+          onMouseLeave={e => e.currentTarget.style.background = '#020617'}
         >
           Continue to review
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">

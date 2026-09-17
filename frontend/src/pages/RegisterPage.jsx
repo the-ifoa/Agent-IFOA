@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { individualPrice, airlinePricePerCert, airlineMinHolders, effectiveMultiYears } from '../services/pricing'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion as Motion } from 'framer-motion'
@@ -26,9 +27,10 @@ import logo from '../assets/IFOA_USA_white.png'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
-const B   = '#0000ff'
-const BD  = '#0000e6'
-const BL  = '#3b82f6'
+const B   = '#020617'
+const BRAND = '#34E06E'
+const BD  = '#0f172a'
+const BL  = '#334155'
 const BXL = '#e2e8f0'
 const BM  = '#f8fafc'
 const R   = '#dc2626'
@@ -36,7 +38,7 @@ const RD  = '#b91c1c'
 const RL  = '#ef4444'
 const RM  = '#fef2f2'
 const RX  = '#fecaca'
-const DARK = '#0f172a'
+const DARK = '#020617'
 const GRAY = '#f8fafc'
 
 const INDIVIDUAL_STEPS = [
@@ -102,14 +104,12 @@ function hydrateAirlineFormFromExisting(existing) {
     postalCode: existing.postalCode || '',
     country: existing.country || '',
     holderCount: existing.holderCount || '',
-    holderCountValue: String(existing.holderCountValue || existing.committedCount || existing.certificateHolders?.length || ''),
-    certificateHolders: Array.isArray(existing.certificateHolders) ? existing.certificateHolders : [],
-    paymentEmail: existing.paymentEmail || existing.email || '',
+    holderCountValue: existing.holderCountValue || '',
+    certificateHolders: existing.certificateHolders || [],
+    paymentEmail: existing.paymentEmail || existing.contactEmail || '',
     paymentStatus: existing.paymentStatus || 'pending',
-    paymentMethod: existing.paymentMethod || 'card',
     agreedToTerms: true,
     _id: existing._id,
-    // Payment status fields — needed by ExistingFormBanner
     isPaid: existing.isPaid,
     status: existing.status,
   }
@@ -119,12 +119,12 @@ function hydrateIndividualFormFromExisting(existing) {
   if (!existing) return null
   return {
     subscriptionPlan: existing.subscriptionPlan || makeIndividualInit().subscriptionPlan,
-    price: Number(existing.price ?? existing.totalAmount ?? existing.totalServiceFees ?? makeIndividualInit().price),
-    multiYearCount: existing.multiYearCount || null,
+    price: Number(existing.price ?? makeIndividualInit().price),
+    multiYearCount: Number(existing.multiYearCount) || 2,
     firstName: existing.firstName || '',
     lastName: existing.lastName || '',
     middleName: existing.middleName || '',
-    dateOfBirth: existing.dateOfBirth ? String(existing.dateOfBirth).slice(0, 10) : '',
+    dateOfBirth: existing.dateOfBirth || '',
     addressLine1: existing.addressLine1 || '',
     city: existing.city || '',
     state: existing.state || '',
@@ -134,16 +134,15 @@ function hydrateIndividualFormFromExisting(existing) {
     email: existing.email || '',
     primaryAirmanCertificate: existing.primaryAirmanCertificate || 'EXISTING',
     primaryCertificate: existing.primaryCertificate || '',
-    faaCertificateNumber: existing.faaCertificateNumber || '',
     iacraTrackingNumber: existing.iacraTrackingNumber || '',
-    hasSecondaryCertificate: !!existing.hasSecondaryCertificate,
+    hasSecondaryCertificate: Boolean(existing.hasSecondaryCertificate),
     secondaryCertificate: existing.secondaryCertificate || '',
     secondaryFaaCertificateNumber: existing.secondaryFaaCertificateNumber || '',
     secondaryIacraTrackingNumber: existing.secondaryIacraTrackingNumber || '',
     paymentEmail: existing.paymentEmail || existing.email || '',
     agreedToTerms: true,
     _id: existing._id,
-    // Payment status fields — needed by ExistingFormBanner
+    // Payment status fields, needed by ExistingFormBanner
     isPaid: existing.isPaid,
     paymentStatus: existing.paymentStatus,
     status: existing.status,
@@ -175,7 +174,7 @@ function PortalCards({ regType }) {
 }
 
 // ── Right Sidebar ─────────────────────────────────────────────────────────────
-// Fixed to the right edge of the viewport — always full height, never scrolls with form.
+// Fixed to the right edge of the viewport, always full height, never scrolls with form.
 function RightSidebar({ regType }) {
   const isIndividual = regType === 'individual'
   return (
@@ -248,9 +247,7 @@ function RightSidebar({ regType }) {
             <div className="mt-3 px-1 mb-6">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Quick Tip</p>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                {isIndividual
-                  ? 'Keep your FTN and certificate details ready before moving from Step 1 to Step 2 to finish faster.'
-                  : 'Prepare holder details in advance (name, DOB, FAA certificate, FTN) to complete team registration in one pass.'}
+                Add every certificate holder on your team. Each holder receives an individual certificate notice and full FAA compliance coverage.
               </p>
             </div>
           </div>
@@ -265,10 +262,10 @@ function RightSidebar({ regType }) {
 function AuthModal({ onClose }) {
   const navigate = useNavigate()
   const location = useLocation()
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={onClose} />
       <Motion.div
         initial={{ opacity: 0, scale: 0.94, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 20 }} transition={{ duration: 0.25 }}
@@ -287,7 +284,7 @@ function AuthModal({ onClose }) {
           </div>
           <h3 className="text-xl font-black text-gray-900 mb-2">Account Required</h3>
           <p className="text-gray-500 text-sm leading-relaxed mb-1">Sign in or create a free account to continue.</p>
-          <p className="text-gray-400 text-xs mb-7">Your form data is saved — you won't lose progress.</p>
+          <p className="text-gray-400 text-xs mb-7">Your form data is saved, you won't lose progress.</p>
           <div className="flex flex-col gap-3">
             <button onClick={() => navigate('/signup', { state: { from: location } })}
               className="w-full inline-flex items-center justify-center gap-2 font-bold px-6 py-3 rounded-xl text-sm text-white transition-all"
@@ -297,8 +294,8 @@ function AuthModal({ onClose }) {
               Create Free Account
             </button>
             <button onClick={() => navigate('/login', { state: { from: location } })}
-              className="w-full inline-flex items-center justify-center gap-2 font-semibold px-6 py-3 rounded-xl text-sm text-gray-700 transition-all hover:bg-gray-50"
-              style={{ border: '1px solid #e5e7eb' }}>
+              className="w-full inline-flex items-center justify-center gap-2 font-bold px-6 py-3 rounded-xl text-sm transition-all border border-gray-200 text-gray-700 hover:bg-gray-50"
+              style={{ background: '#fff' }}>
               Sign In to Existing Account
             </button>
           </div>
@@ -367,16 +364,16 @@ function ExistingFormBanner({ regType, data }) {
         <div className="flex-1">
           <p className="text-[11px] font-semibold" style={{ color: BD }}>
             {isPaid
-              ? '✓ Payment confirmed — subscription is active.'
-              : 'Payment is pending — go to Subscription to complete it.'}
+              ? '✓ Payment confirmed, subscription is active.'
+              : 'Payment is pending, go to Subscription to complete it.'}
           </p>
         </div>
         <Link
           to="/dashboard/subscription"
           className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl text-white transition-all"
-          style={{ background: '#0000ff' }}
-          onMouseEnter={e => e.currentTarget.style.background = '#0000e6'}
-          onMouseLeave={e => e.currentTarget.style.background = '#0000ff'}
+          style={{ background: '#020617' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
+          onMouseLeave={e => e.currentTarget.style.background = '#020617'}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0-5 5m5-5H6" />
@@ -478,7 +475,7 @@ function ExistingOrderSummary({ regType, data }) {
 // A record counts as "already submitted" (blocking re-registration) only when
 // payment is actually finalised OR a wire invoice has been requested.
 // A pending-payment record (_id exists but not yet paid) must NOT block the user
-// from completing payment — they should be able to pay by card or request wire.
+// from completing payment, they should be able to pay by card or request wire.
 const isRecordCompleted = (record) => {
   if (!record) return false
   if (record.isFormCompleted === true) return true
@@ -510,7 +507,7 @@ export default function RegisterPage() {
     }
   }, [user])
 
-  // Lock document scroll while RegisterPage is mounted — prevents the right sidebar
+  // Lock document scroll while RegisterPage is mounted, prevents the right sidebar
   // from scrolling with the page when the two-column layout fills the full viewport.
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -564,7 +561,7 @@ export default function RegisterPage() {
   const [existingAirlineRecord, setExistingAirlineRecord] = useState(null)
   const hasExistingSubmissionForType = regType === 'individual' ? hasIndividualSubmission : hasAirlineSubmission
 
-  // Finds any record for this user (pending or completed) — used to hydrate the
+  // Finds any record for this user (pending or completed), used to hydrate the
   // form and jump to step 4 without showing the "already submitted" banner.
   const findAnyRecord = useCallback(async (type) => {
     if (!user) return null
@@ -653,7 +650,7 @@ export default function RegisterPage() {
           const hydrated = hydrateIndividualFormFromExisting(existing)
           if (hydrated && !cancelled) setIndData((prev) => ({ ...prev, ...hydrated }))
         } else {
-          // No completed record — check for a pending (unpaid) record so we can
+          // No completed record, check for a pending (unpaid) record so we can
           // hydrate the form and land the user directly on step 4 to complete payment.
           const pending = await findAnyRecord('individual')
           if (pending && !cancelled) {
@@ -669,7 +666,7 @@ export default function RegisterPage() {
           const hydrated = hydrateAirlineFormFromExisting(existing)
           if (hydrated && !cancelled) setAirData((prev) => ({ ...prev, ...hydrated }))
         } else {
-          // No completed record — check for a pending (unpaid) record so we can
+          // No completed record, check for a pending (unpaid) record so we can
           // hydrate the form and land the user directly on step 4 to complete payment.
           const pending = await findAnyRecord('airline')
           if (pending && !cancelled) {
@@ -759,7 +756,7 @@ export default function RegisterPage() {
       if (opts.returnId) return newId
       setIndSubmitted(true); return null
     } catch (e) {
-      // 409 means a pending record already exists for this email — reuse it for payment
+      // 409 means a pending record already exists for this email, reuse it for payment
       if (e?.response?.status === 409) {
         const existingId = e?.response?.data?.data?._id
         if (existingId) {
@@ -777,7 +774,7 @@ export default function RegisterPage() {
     } finally { setIndSubmitting(false) }
   }
 
-  // Payment success callback — server already activated via /payments/confirm
+  // Payment success callback, server already activated via /payments/confirm
   // (webhook backup). mark-paid is admin-only; the old client call always 403'd.
   const handleIndMarkPaid = async () => {
     setIndSubmitted(true)
@@ -838,7 +835,7 @@ export default function RegisterPage() {
     } finally { setAirSubmitting(false) }
   }
 
-  // Payment success callback — server already activated via /payments/confirm
+  // Payment success callback, server already activated via /payments/confirm
   // (webhook backup). mark-paid is admin-only; the old client call always 403'd.
   const handleAirMarkPaid = async () => {
     setAirSubmitted(true)
@@ -906,8 +903,8 @@ export default function RegisterPage() {
             <div className="flex items-center gap-2 sm:gap-3">
               {user ? (
                 <Link to="/dashboard"
-                  className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors truncate max-w-[120px] sm:max-w-none">
-                  👋 {user.firstName || user.email}
+                  className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors truncate max-w-[120px] sm:max-w-none flex items-center gap-1.5">
+                  <span className="animate-waving-hand">👋</span> {user.firstName || user.email}
                 </Link>
               ) : (
                 <>
@@ -915,10 +912,7 @@ export default function RegisterPage() {
                     Sign In
                   </Link>
                   <Link to="/signup"
-                    className="text-xs sm:text-sm font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-white transition-all"
-                    style={{ background: B }}
-                    onMouseEnter={e => e.currentTarget.style.background = BD}
-                    onMouseLeave={e => e.currentTarget.style.background = B}>
+                    className="text-xs sm:text-sm font-extrabold uppercase tracking-wider px-4 sm:px-5 py-2 rounded-full text-white bg-[#020617] hover:bg-slate-800 transition-all shadow-sm">
                     Create Account
                   </Link>
                 </>
@@ -926,7 +920,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Form content — natural height, no flex-1 stretch */}
+          {/* Form content, natural height, no flex-1 stretch */}
           <div
             ref={formRef}
             className="px-4 sm:px-6 lg:px-10 pt-6 pb-4 sm:pt-8 sm:pb-6 max-w-2xl mx-auto w-full"
@@ -934,7 +928,7 @@ export default function RegisterPage() {
             {/* Page heading */}
             <div className="mb-5">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight mb-1.5" style={{ color: DARK }}>
-                FAA Compliance — Register Now
+                FAA Compliance, Register Now
               </h1>
               <p className="text-sm leading-relaxed" style={{ color: '#64748b' }}>
                 IFOA USA's trusted U.S. Agent for Service.
@@ -947,25 +941,25 @@ export default function RegisterPage() {
                 Step {step}/{STEPS.length}
               </p>
 
-              {/* Type toggle — Company / Individual */}
+              {/* Type toggle, Company / Individual */}
               <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-5 sm:mb-6">
                 <button
                   onClick={() => { setTransitionMode('type'); setSwitchDirection(1); setRegType('airline'); setAirStep(1); scrollToTop() }}
                   className="flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all duration-200 text-left"
-                  style={{ borderColor: regType === 'airline' ? B : '#e5e7eb', background: regType === 'airline' ? '#f0f4ff' : '#fff' }}>
+                  style={{ borderColor: regType === 'airline' ? '#020617' : '#e5e7eb', background: regType === 'airline' ? '#f8fafc' : '#fff' }}>
                   <div className="flex items-center justify-between w-full">
                     <div>
                       <div className="flex items-center gap-2">
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}
-                          style={{ color: regType === 'airline' ? B : '#9ca3af' }}>
+                          style={{ color: regType === 'airline' ? '#020617' : '#9ca3af' }}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
-                        <span className="font-black text-sm" style={{ color: regType === 'airline' ? B : '#374151' }}>Company</span>
+                        <span className="font-black text-sm" style={{ color: regType === 'airline' ? '#020617' : '#374151' }}>Company</span>
                       </div>
                       <p className="text-[11px] mt-0.5 ml-6" style={{ color: '#9ca3af' }}>Aircraft and Carrier Registration Only</p>
                     </div>
                     <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                      style={{ borderColor: regType === 'airline' ? B : '#d1d5db', background: regType === 'airline' ? B : 'transparent' }}>
+                      style={{ borderColor: regType === 'airline' ? '#020617' : '#d1d5db', background: regType === 'airline' ? '#020617' : 'transparent' }}>
                       {regType === 'airline' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                   </div>
@@ -974,20 +968,20 @@ export default function RegisterPage() {
                 <button
                   onClick={() => { setTransitionMode('type'); setSwitchDirection(-1); setRegType('individual'); setIndStep(1); scrollToTop() }}
                   className="flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all duration-200 text-left"
-                  style={{ borderColor: regType === 'individual' ? B : '#e5e7eb', background: regType === 'individual' ? '#f0f4ff' : '#fff' }}>
+                  style={{ borderColor: regType === 'individual' ? '#020617' : '#e5e7eb', background: regType === 'individual' ? '#f8fafc' : '#fff' }}>
                   <div className="flex items-center justify-between w-full">
                     <div>
                       <div className="flex items-center gap-2">
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}
-                          style={{ color: regType === 'individual' ? B : '#9ca3af' }}>
+                          style={{ color: regType === 'individual' ? '#020617' : '#9ca3af' }}>
                           <circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                         </svg>
-                        <span className="font-black text-sm" style={{ color: regType === 'individual' ? B : '#374151' }}>Individual</span>
+                        <span className="font-black text-sm" style={{ color: regType === 'individual' ? '#020617' : '#374151' }}>Individual</span>
                       </div>
                       <p className="text-[11px] mt-0.5 ml-6" style={{ color: '#9ca3af' }}>Pilots, dispatchers & certificate holders</p>
                     </div>
                     <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                      style={{ borderColor: regType === 'individual' ? B : '#d1d5db', background: regType === 'individual' ? B : 'transparent' }}>
+                      style={{ borderColor: regType === 'individual' ? '#020617' : '#d1d5db', background: regType === 'individual' ? '#020617' : 'transparent' }}>
                       {regType === 'individual' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                   </div>
@@ -1000,12 +994,12 @@ export default function RegisterPage() {
                   className="h-full rounded-full"
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.4, ease: 'easeOut' }}
-                  style={{ background: `linear-gradient(90deg, ${BD}, ${B})` }}
+                  style={{ background: '#34E06E' }}
                 />
               </div>
               <div className="flex justify-between">
                 {STEPS.map((s, i) => (
-                  <p key={s.label} className="text-[10px] font-bold" style={{ color: i + 1 <= step ? B : '#cbd5e1' }}>
+                  <p key={s.label} className="text-[10px] font-bold" style={{ color: i + 1 <= step ? '#020617' : '#cbd5e1' }}>
                     {s.label}
                   </p>
                 ))}
@@ -1029,22 +1023,22 @@ export default function RegisterPage() {
               <div className="px-5 pt-5 pb-4 border-b rounded-t-3xl" style={{ borderColor: '#f3f4f6' }}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1" style={{ color: B }}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1 text-slate-800">
                       {regType === 'individual' ? 'Individual' : 'Company / Airline'}
                     </p>
                     <h2 className="text-xl font-black" style={{ color: DARK }}>{activeStep.label}</h2>
                     <p className="text-sm mt-1 max-w-xs" style={{ color: '#6b7280' }}>{activeStep.detail}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="text-xl font-black tabular-nums" style={{ color: B }}>
+                    <span className="text-xl font-black tabular-nums" style={{ color: '#020617' }}>
                       {step}<span className="text-sm font-bold text-gray-400">/{STEPS.length}</span>
                     </span>
                   </div>
                 </div>
                 {!user && (
                   <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
-                    style={{ background: BM, border: `1px solid ${BXL}`, color: B }}>
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                    style={{ background: BM, border: `1px solid ${BXL}`, color: '#020617' }}>
+                    <svg className="w-3 h-3 text-[#020617]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                     Sign in required to proceed past Step 2
@@ -1123,10 +1117,10 @@ export default function RegisterPage() {
               ))}
             </div>
           </div>
-          {/* End of scrollable content — no flex-1 filler below */}
+          {/* End of scrollable content, no flex-1 filler below */}
         </div>
 
-        {/* ── RIGHT: Sticky sidebar — stays at top while left column scrolls ── */}
+        {/* ── RIGHT: Sticky sidebar, stays at top while left column scrolls ── */}
         <RightSidebar regType={regType} />
       </div>
     </>

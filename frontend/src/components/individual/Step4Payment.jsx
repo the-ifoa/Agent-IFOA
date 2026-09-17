@@ -21,34 +21,34 @@ function AlreadySubmittedBanner({ paymentStatus }) {
 
   if (isPaid) {
     return (
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #bfdbfe' }}>
-        {/* Blue header */}
-        <div className="flex items-center gap-3 px-5 py-4" style={{ background: '#0000ff' }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.18)' }}>
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(52, 224, 110, 0.3)' }}>
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4" style={{ background: '#34E06E' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(2,6,23,0.12)' }}>
+            <svg className="w-5 h-5 text-[#020617]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
           </div>
           <div>
-            <p className="text-sm font-black text-white">Already Paid — Registration Complete</p>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            <p className="text-sm font-black text-[#020617]">Already Paid, Registration Complete</p>
+            <p className="text-xs mt-0.5 text-[#020617]/80">
               Your payment has been confirmed and your subscription is active.
             </p>
           </div>
         </div>
-        {/* Blue body — order summary hint */}
-        <div className="px-5 py-3" style={{ background: '#eff6ff', borderTop: '1px solid #bfdbfe' }}>
-          <p className="text-xs font-medium mb-3" style={{ color: '#1d4ed8' }}>
+        {/* Body */}
+        <div className="px-5 py-3" style={{ background: '#f0fdf4', borderTop: '1px solid rgba(52, 224, 110, 0.2)' }}>
+          <p className="text-xs font-medium mb-3 text-[#020617]">
             Review your subscription details and download your invoice from the Subscription page.
           </p>
           <Link
             to="/dashboard/subscription"
-            className="inline-flex items-center gap-2 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all"
-            style={{ background: '#0000ff' }}
-            onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-            onMouseLeave={e => e.currentTarget.style.background = '#0000ff'}
+            className="inline-flex items-center gap-2 font-extrabold text-xs uppercase tracking-widest px-5 py-2.5 rounded-full transition-all"
+            style={{ background: '#020617', color: '#ffffff' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
+            onMouseLeave={e => e.currentTarget.style.background = '#020617'}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-[#34E06E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Go to My Subscription
@@ -79,7 +79,7 @@ function AlreadySubmittedBanner({ paymentStatus }) {
       {/* Red footer */}
       <div className="flex items-center justify-between px-5 py-3" style={{ background: '#fff5f5', borderTop: '1px solid #fecaca' }}>
         <p className="text-xs font-medium" style={{ color: '#dc2626' }}>
-          Payment is pending — go to Subscription to complete it.
+          Payment is pending, go to Subscription to complete it.
         </p>
         <Link
           to="/dashboard/subscription"
@@ -108,7 +108,7 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
 
   // For the plan label, prefer the live DB record (existingRecord) over formData
   // because formData may still be in its INIT state when the component first renders.
-  // For multi-year plans, ALWAYS derive year count from price ($55×yrs) — never
+  // For multi-year plans, ALWAYS derive year count from price ($55×yrs), never
   // trust multiYearCount which defaults to 3 in the DB schema.
   const displayData = existingRecord ?? data
   const selectedPlan = (() => {
@@ -175,7 +175,7 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
           <div>
-            <p className="font-bold mb-0.5">Submission blocked — wrong account type</p>
+            <p className="font-bold mb-0.5">Submission blocked, wrong account type</p>
             <p className="text-amber-700 text-xs leading-relaxed">You are signed in with an <strong>Airlines account</strong>. Only <strong>Individual accounts</strong> can submit this form.</p>
           </div>
         </div>
@@ -186,10 +186,10 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
         {/* Header with total */}
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">Order Summary</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">Order Summary</p>
             <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-slate-950">Final registration amount</h3>
           </div>
-          <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-right flex-shrink-0">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right flex-shrink-0">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Total</p>
             <p className="mt-1 text-2xl font-extrabold tracking-[-0.04em] text-slate-950">${Number(data.price || 0).toFixed(2)}</p>
           </div>
@@ -238,10 +238,10 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
         <>
           {/* Billing email */}
           <section className="rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700 mb-1">Payment</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800 mb-1">Payment</p>
             <h3 className="text-xl font-bold tracking-[-0.03em] text-slate-950 mb-4">Card Payment</h3>
-            <div className="rounded-3xl border border-blue-100 bg-blue-50/80 p-4 text-sm leading-6 text-blue-900 flex items-start gap-2 mb-5">
-              <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0110 0v4" /></svg>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-800 flex items-start gap-2 mb-5">
+              <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0110 0v4" /></svg>
               Enter your billing email. A secure Stripe card entry window will open on the next step.
             </div>
             <div>
@@ -253,7 +253,7 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
                 className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-150 placeholder:text-slate-400 ${
                   errors.paymentEmail
                     ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
-                    : 'border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100'
+                    : 'border-slate-200 bg-white focus:border-slate-800 focus:ring-2 focus:ring-slate-100'
                 }`} />
               {errors.paymentEmail && (
                 <p className="mt-2 flex items-center gap-2 text-xs font-medium text-red-600">
@@ -268,12 +268,12 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
           {/* Terms */}
           <section className={`rounded-[26px] border p-5 sm:p-6 ${errors.agreedToTerms ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-slate-50/80'}`}>
             <label className="flex cursor-pointer items-start gap-3">
-              <input type="checkbox" checked={data.agreedToTerms} onChange={(e) => update({ agreedToTerms: e.target.checked })} className="mt-1 h-4 w-4 accent-blue-600" />
+              <input type="checkbox" checked={data.agreedToTerms} onChange={(e) => update({ agreedToTerms: e.target.checked })} className="mt-1 h-4 w-4 accent-slate-800" />
               <span className="text-sm leading-6 text-slate-700">
                 I confirm the submitted information is accurate, and I agree to the{' '}
-                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('terms') }} className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 transition">Terms of Service</button>
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('terms') }} className="font-semibold text-slate-900 underline underline-offset-2 hover:text-black transition">Terms of Service</button>
                 {' '}and{' '}
-                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('privacy') }} className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 transition">Privacy Policy</button>.
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('privacy') }} className="font-semibold text-slate-900 underline underline-offset-2 hover:text-black transition">Privacy Policy</button>.
               </span>
             </label>
             {errors.agreedToTerms && (
@@ -301,14 +301,18 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
             onClick={handlePayClick}
             disabled={submitting || isBlocked}
             title={isBlocked ? 'You need an Individual account to submit this form' : undefined}
-            className={`inline-flex min-w-[14rem] items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white transition-all ${
+            className={`inline-flex min-w-[14rem] items-center justify-center gap-2 rounded-full px-6 py-3.5 text-xs uppercase tracking-widest font-extrabold transition-all ${
               isBlocked
-                ? 'cursor-not-allowed opacity-60'
-                : 'hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:transform-none'
+                ? 'cursor-not-allowed opacity-60 text-white'
+                : 'hover:-translate-y-0.5 shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:transform-none'
             }`}
-            style={{ background: isBlocked ? '#d1d5db' : '#0000ff' }}
-            onMouseEnter={e => { if (!isBlocked && !submitting) e.currentTarget.style.background = '#0000e6' }}
-            onMouseLeave={e => { if (!isBlocked) e.currentTarget.style.background = '#0000ff' }}
+            style={{
+              background: isBlocked ? '#d1d5db' : '#020617',
+              color: '#ffffff',
+              boxShadow: isBlocked ? 'none' : '0 4px 14px rgba(2, 6, 23, 0.25)',
+            }}
+            onMouseEnter={e => { if (!isBlocked && !submitting) e.currentTarget.style.background = '#1e293b' }}
+            onMouseLeave={e => { if (!isBlocked) e.currentTarget.style.background = '#020617' }}
           >
             {submitting ? (
               <>

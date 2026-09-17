@@ -1,5 +1,5 @@
 /**
- * DashboardLayout — legacy wrapper kept for pages that import it directly.
+ * DashboardLayout, legacy wrapper kept for pages that import it directly.
  * The actual persistent shell (HeaderNav + main) now lives in App.jsx as
  * DashboardShell, which stays mounted across all /dashboard/* navigations.
  *
