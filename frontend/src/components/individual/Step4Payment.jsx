@@ -182,21 +182,21 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
       )}
 
       {/* Order Summary */}
-      <section className="rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
+      <section className="rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 sm:p-7 shadow-xs">
         {/* Header with total */}
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="flex items-start justify-between gap-4 mb-5 sm:mb-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">Order Summary</p>
-            <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-slate-950">Final registration amount</h3>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Order Summary</p>
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900">Final registration amount</h3>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right flex-shrink-0">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Total</p>
-            <p className="mt-1 text-2xl font-extrabold tracking-[-0.04em] text-slate-950">${Number(data.price || 0).toFixed(2)}</p>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 sm:px-5 sm:py-3 text-right flex-shrink-0 shadow-xs">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total</p>
+            <p className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">${Number(data.price || 0).toFixed(2)}</p>
           </div>
         </div>
 
         {/* Registrant & Plan */}
-        <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden divide-y divide-slate-100">
+        <div className="rounded-xl border border-slate-200/70 bg-white overflow-hidden divide-y divide-slate-100 shadow-xs">
           <SummaryItem label="Registrant"    value={`${data.firstName || ''} ${data.lastName || ''}`.trim() || '—'} />
           <SummaryItem label="Service Plan"  value={selectedPlan} />
           <SummaryItem label="Reg. Email"    value={data.email || '—'} />
@@ -206,8 +206,8 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
         </div>
 
         {/* Primary Certificate */}
-        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-4 mb-2 px-1">Primary Certificate</p>
-        <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden divide-y divide-slate-100">
+        <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mt-5 mb-2 px-1">Primary Certificate</p>
+        <div className="rounded-xl border border-slate-200/70 bg-white overflow-hidden divide-y divide-slate-100 shadow-xs">
           <SummaryItem label="Certificate Type"   value={data.primaryCertificate        || '—'} />
           <SummaryItem label="Cert. Status"        value={data.primaryAirmanCertificate  || 'EXISTING'} />
           <SummaryItem label="FAA Certificate #"   value={data.faaCertificateNumber      || '—'} mono />
@@ -217,8 +217,8 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
         {/* Secondary Certificate (conditional) */}
         {data.hasSecondaryCertificate && (
           <>
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-4 mb-2 px-1">Secondary Certificate</p>
-            <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden divide-y divide-slate-100">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mt-5 mb-2 px-1">Secondary Certificate</p>
+            <div className="rounded-xl border border-slate-200/70 bg-white overflow-hidden divide-y divide-slate-100 shadow-xs">
               <SummaryItem label="Sec. Cert. Type"   value={data.secondaryCertificate              || '—'} />
               <SummaryItem label="Sec. FAA Cert #"   value={data.secondaryFaaCertificateNumber     || '—'} mono />
               <SummaryItem label="Sec. IACRA FTN #"  value={data.secondaryIacraTrackingNumber      || '—'} mono />
@@ -227,8 +227,8 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
         )}
 
         {/* Billing */}
-        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-4 mb-2 px-1">Billing</p>
-        <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden divide-y divide-slate-100">
+        <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mt-5 mb-2 px-1">Billing</p>
+        <div className="rounded-xl border border-slate-200/70 bg-white overflow-hidden divide-y divide-slate-100 shadow-xs">
           <SummaryItem label="Billing Email" value={data.paymentEmail || 'Will be entered below'} />
         </div>
       </section>
@@ -237,20 +237,22 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
       {!hasExistingRegistration && (
         <>
           {/* Billing email */}
-          <section className="rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800 mb-1">Payment</p>
-            <h3 className="text-xl font-bold tracking-[-0.03em] text-slate-950 mb-4">Card Payment</h3>
-            <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-800 flex items-start gap-2 mb-5">
+          <section className="rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 sm:p-7 shadow-xs">
+            <div className="mb-4 sm:mb-5">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Payment</p>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900">Card Payment</h3>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs sm:text-sm leading-relaxed text-slate-700 flex items-start gap-2.5 mb-5 shadow-xs">
               <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0110 0v4" /></svg>
-              Enter your billing email. A secure Stripe card entry window will open on the next step.
+              <span>Enter your billing email. A secure Stripe card entry window will open on the next step.</span>
             </div>
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                Billing Email Address <span className="ml-1 text-red-500">*</span>
+              <label className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600 flex items-center gap-1">
+                Billing Email Address <span className="text-red-500 font-bold">*</span>
               </label>
               <input type="email" placeholder="billing@example.com"
                 value={data.paymentEmail || ''} onChange={(e) => update({ paymentEmail: e.target.value })}
-                className={`mt-2 w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-150 placeholder:text-slate-400 ${
+                className={`mt-2 w-full rounded-xl border px-3.5 py-2.5 sm:py-3 text-sm text-slate-900 outline-none transition-all duration-150 placeholder:text-slate-400 ${
                   errors.paymentEmail
                     ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-4 focus:ring-red-100'
                     : 'border-slate-200 bg-white focus:border-slate-800 focus:ring-2 focus:ring-slate-100'
@@ -266,14 +268,14 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
           <LegalModal open={!!legalModal} onClose={() => setLegalModal(null)} type={legalModal} />
 
           {/* Terms */}
-          <section className={`rounded-[26px] border p-5 sm:p-6 ${errors.agreedToTerms ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-slate-50/80'}`}>
+          <section className={`rounded-2xl border p-5 sm:p-6 shadow-xs ${errors.agreedToTerms ? 'border-red-200 bg-red-50/70' : 'border-slate-200/80 bg-slate-50/40'}`}>
             <label className="flex cursor-pointer items-start gap-3">
-              <input type="checkbox" checked={data.agreedToTerms} onChange={(e) => update({ agreedToTerms: e.target.checked })} className="mt-1 h-4 w-4 accent-slate-800" />
-              <span className="text-sm leading-6 text-slate-700">
+              <input type="checkbox" checked={data.agreedToTerms} onChange={(e) => update({ agreedToTerms: e.target.checked })} className="mt-1 h-4 w-4 accent-slate-800 rounded" />
+              <span className="text-xs sm:text-sm leading-relaxed text-slate-700">
                 I confirm the submitted information is accurate, and I agree to the{' '}
-                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('terms') }} className="font-semibold text-slate-900 underline underline-offset-2 hover:text-black transition">Terms of Service</button>
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('terms') }} className="font-bold text-slate-900 underline underline-offset-2 hover:text-black transition">Terms of Service</button>
                 {' '}and{' '}
-                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('privacy') }} className="font-semibold text-slate-900 underline underline-offset-2 hover:text-black transition">Privacy Policy</button>.
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); setLegalModal('privacy') }} className="font-bold text-slate-900 underline underline-offset-2 hover:text-black transition">Privacy Policy</button>.
               </span>
             </label>
             {errors.agreedToTerms && (
@@ -285,12 +287,12 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
         </>
       )}
 
-      {error && <div className="rounded-[26px] border border-red-200 bg-red-50/80 p-5 text-sm leading-6 text-red-700">{error}</div>}
+      {error && <div className="rounded-2xl border border-red-200 bg-red-50/80 p-5 text-xs sm:text-sm leading-relaxed text-red-700">{error}</div>}
 
-      <div className="flex flex-col justify-between gap-3 border-t border-slate-100 pt-2 sm:flex-row">
+      <div className="flex flex-col justify-between gap-3 border-t border-slate-200/80 pt-6 mt-6 sm:flex-row">
         <button type="button" onClick={onBack} disabled={submitting}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4"><path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0 5-5m-5 5h12" /></svg>
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3.5 text-xs uppercase tracking-wider font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}><path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0 5-5m-5 5h12" /></svg>
           Back
         </button>
 
@@ -301,7 +303,7 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
             onClick={handlePayClick}
             disabled={submitting || isBlocked}
             title={isBlocked ? 'You need an Individual account to submit this form' : undefined}
-            className={`inline-flex min-w-[14rem] items-center justify-center gap-2 rounded-full px-6 py-3.5 text-xs uppercase tracking-widest font-extrabold transition-all ${
+            className={`inline-flex min-w-[14rem] items-center justify-center gap-2 rounded-full px-8 py-3.5 text-xs uppercase tracking-widest font-extrabold transition-all cursor-pointer ${
               isBlocked
                 ? 'cursor-not-allowed opacity-60 text-white'
                 : 'hover:-translate-y-0.5 shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:transform-none'
@@ -317,14 +319,14 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
             {submitting ? (
               <>
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} className="opacity-25" />
                   <path fill="currentColor" d="M4 12a8 8 0 0 1 8-8v8Z" className="opacity-75" />
                 </svg>
                 Submitting...
               </>
             ) : (
               <>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
                   <rect x="2" y="5" width="20" height="14" rx="2" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2 10h20" />
                 </svg>
@@ -337,3 +339,5 @@ export default function Step4Payment({ data, update, onBack, onSubmit, onMarkPai
     </div>
   )
 }
+
+

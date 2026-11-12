@@ -8,6 +8,10 @@ import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/layout/footer'
 import { PlaneTakeoff, Zap, Lock, Monitor, MapPin, User, Check, ArrowRight } from 'lucide-react'
+import turbopropImg from '../assets/plans/turboprop.jpg'
+import jetImg from '../assets/plans/jet.jpg'
+import vipImg from '../assets/plans/vip.jpg'
+import airlinesImg from '../assets/plans/airlines.jpg'
 
 // ── Theme Tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -44,7 +48,7 @@ const makePlans = () => [
     features: ['Dedicated U.S. Mailing Address', 'FAA Compliance Guaranteed', 'Real-Time Notification', 'Document Scanning & Forwarding', 'Yearly Payment', 'Unlimited Certificates'],
     cta: 'Subscribe Now',
     to: '/register',
-    img: 'https://theifoa.com/wp-content/uploads/2025/05/ATR-72-1.jpg',
+    img: turbopropImg,
   },
   {
     name: 'Jet Plan',
@@ -53,8 +57,7 @@ const makePlans = () => [
     features: ['20% Discount Yearly', 'Dedicated U.S. Mailing Address', 'FAA Compliance Guaranteed', 'Real-Time Notification', 'Document Scanning & Forwarding', 'One Payment for the Period', 'Unlimited Certificates'],
     cta: 'Subscribe Now',
     to: '/register',
-    img: 'https://theifoa.com/wp-content/uploads/2025/05/Airbus-A321-Neo-e1746283955634.jpg',
-    imgFallback: 'https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?w=600&q=80&auto=format&fit=crop&crop=center',
+    img: jetImg,
   },
   {
     name: 'VIP Plan',
@@ -64,7 +67,7 @@ const makePlans = () => [
     features: ['The Most Economic Flat Rate', 'Dedicated U.S. Mailing Address', 'FAA Compliance Guaranteed', 'Real-Time Notification', 'Document Scanning & Forwarding', 'One Time Lifetime Payment', 'Unlimited Certificates'],
     cta: 'Subscribe Now',
     to: '/register',
-    img: 'https://theifoa.com/wp-content/uploads/2025/05/Global-8000-e1746283913613.jpg',
+    img: vipImg,
   },
   {
     name: 'Airlines Plan',
@@ -74,7 +77,7 @@ const makePlans = () => [
     features: ['Volume Discount', 'Dedicated U.S. Mailing Address', 'FAA Compliance Guaranteed', 'Real-Time Notification', 'Document Scanning & Forwarding', 'Credit Card or Wire payment', 'Unlimited Certificates'],
     cta: 'Subscribe Now',
     to: '/register',
-    img: 'https://theifoa.com/wp-content/uploads/2025/05/Airlines-1980x1050-1.jpg',
+    img: airlinesImg,
   },
 ]
 

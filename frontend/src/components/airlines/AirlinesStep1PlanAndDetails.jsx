@@ -25,16 +25,23 @@ const COUNT_OPTIONS = {
 const HOLDER_COUNTS = ['3 to 5', '5 to 10', 'More than 10']
 const SUBSCRIPTION_PLANS = ['1 Year Subscription Plan', 'Unlimited Plan']
 
-function Field({ label, required, error, children }) {
+const sectionClass = 'rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 sm:p-7 shadow-xs'
+
+function Field({ label, required, error, helper, children }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-        {label} {required && <span className="text-red-400">*</span>}
-      </label>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600 flex items-center gap-1">
+          {label} {required && <span className="text-red-500 font-bold">*</span>}
+        </label>
+        {helper && !error && (
+          <span className="text-xs text-slate-400 font-medium">{helper}</span>
+        )}
+      </div>
       {children}
       {error && (
-        <span className="flex items-center gap-1 text-red-500 text-xs font-medium">
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+        <span className="flex items-center gap-1.5 text-red-500 text-xs font-semibold mt-1">
+          <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
           {error}
@@ -85,10 +92,10 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
   }, [data.country])
 
   const inputCls = (field) =>
-    `w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 bg-white outline-none transition-all duration-150 focus:ring-2 focus:ring-slate-100 placeholder:text-gray-400 ${
+    `w-full px-3.5 sm:px-4 py-2.5 sm:py-3 border rounded-xl text-sm text-gray-900 bg-white outline-none transition-all duration-150 focus:ring-2 focus:ring-slate-100 placeholder:text-gray-400 ${
       errors[field]
         ? 'border-red-300 focus:border-red-400 bg-red-50/30'
-        : 'border-gray-200 focus:border-slate-800 hover:border-gray-300'
+        : 'border-slate-200 focus:border-slate-800 hover:border-slate-300'
     }`
 
   const holderLabel = data.holderCount
@@ -130,21 +137,24 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-7">
 
       {/* ── 1. Number of FAA Certificate Holders ── */}
-      <div id="al1-field-holderCount">
-        <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-1">
-          Number of FAA Certificate Holders to Register
-        </h3>
-        {errors.holderCount && <p className="text-red-500 text-xs mb-2">{errors.holderCount}</p>}
-        <div className="flex flex-wrap gap-3 mt-3">
+      <section className={sectionClass} id="al1-field-holderCount">
+        <div className="mb-4 sm:mb-5">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Holders Count</p>
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+            Number of FAA Certificate Holders to Register
+          </h3>
+        </div>
+        {errors.holderCount && <p className="text-red-500 text-xs mb-3 font-semibold">{errors.holderCount}</p>}
+        <div className="grid sm:grid-cols-3 gap-3">
           {HOLDER_COUNTS.map(count => {
             const active = data.holderCount === count
             return (
               <label key={count}
-                className={`flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all duration-150 ${active ? 'border-slate-900 bg-slate-50 text-slate-900' : 'border-gray-200 hover:border-slate-400 text-gray-600 bg-white'}`}>
-                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${active ? 'border-slate-900 bg-slate-900' : 'border-gray-300'}`}>
+                className={`flex items-center gap-3 cursor-pointer px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all duration-150 ${active ? 'border-slate-900 bg-white text-slate-900 shadow-xs' : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'}`}>
+                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${active ? 'border-slate-900 bg-slate-900' : 'border-slate-300'}`}>
                   {active && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </span>
                 <input type="radio" name="holderCount" value={count} checked={active}
@@ -160,11 +170,11 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
         </div>
 
         {data.holderCount && (
-          <div className="mt-3" id="al1-field-holderCountValue">
-            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1.5">
-              Exact Number <span className="text-red-400">*</span>
+          <div className="mt-5 pt-4 border-t border-slate-200/80" id="al1-field-holderCountValue">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">
+              Exact Number of Certificate Holders <span className="text-red-500">*</span>
             </label>
-            <div className="w-44">
+            <div className="w-full sm:w-56">
               <CustomSelect
                 value={data.holderCountValue || ''}
                 onChange={val => update({ holderCountValue: val })}
@@ -176,18 +186,24 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
                 ]}
               />
             </div>
-            {errors.holderCountValue && <p className="text-red-500 text-xs mt-1">{errors.holderCountValue}</p>}
+            {errors.holderCountValue && <p className="text-red-500 text-xs mt-1.5 font-semibold">{errors.holderCountValue}</p>}
           </div>
         )}
-      </div>
+      </section>
 
       {/* ── 2. Subscription Plan ── */}
-      <div id="al1-field-subscriptionPlan">
-        <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-1">
-          Subscription Plan <span className="text-red-400">*</span>
-        </h3>
-        {errors.subscriptionPlan && <p className="text-red-500 text-xs mb-2">{errors.subscriptionPlan}</p>}
-        <div className="mt-3">
+      <section className={sectionClass} id="al1-field-subscriptionPlan">
+        <div className="mb-4 sm:mb-5 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Service Plan</p>
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+              Subscription Plan
+            </h3>
+          </div>
+          <span className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 shadow-xs">USD</span>
+        </div>
+        {errors.subscriptionPlan && <p className="text-red-500 text-xs mb-3 font-semibold">{errors.subscriptionPlan}</p>}
+        <div>
           <CustomSelect
             value={data.subscriptionPlan || ''}
             onChange={plan => {
@@ -203,71 +219,80 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
           />
         </div>
         {serviceLabel && (
-          <div className="mt-3 px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-sm font-semibold text-gray-700">{serviceLabel.left}</p>
-              <p className="text-sm font-semibold text-gray-700">{serviceLabel.right}</p>
+          <div className="mt-5 p-4 sm:p-5 rounded-xl border border-slate-200 bg-white shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs sm:text-sm font-bold text-slate-800">{serviceLabel.left}</p>
+              <p className="text-xs sm:text-sm font-semibold text-slate-600">{serviceLabel.right}</p>
             </div>
-            <p className="text-sm font-bold text-gray-900">
+            <p className="text-sm font-bold text-slate-900">
               Price:{' '}
-              <span className="text-[#34E06E] font-extrabold text-base">
+              <span className="text-[#34E06E] font-black text-base">
                 {data.holderCount && data.subscriptionPlan ? priceLabel(data.subscriptionPlan, data.holderCount) : '—'}
               </span>
-              {data.subscriptionPlan === '1 Year Subscription Plan' && <span className="text-xs text-gray-400 font-normal ml-1.5">per certificate / year</span>}
-              {data.subscriptionPlan === 'Unlimited Plan' && <span className="text-xs text-gray-400 font-normal ml-1.5">per certificate / unlimited</span>}
+              {data.subscriptionPlan === '1 Year Subscription Plan' && <span className="text-xs text-slate-400 font-normal ml-1.5">per certificate / year</span>}
+              {data.subscriptionPlan === 'Unlimited Plan' && <span className="text-xs text-slate-400 font-normal ml-1.5">per certificate / unlimited</span>}
             </p>
             {payableTotal > 0 && (
-              <p className="text-sm font-black text-slate-900 mt-1.5">
-                Payable Total: <span className="text-[#34E06E] font-black">${payableTotal} USD</span>
-                {selectedCount > 0 ? ` (${selectedCount} holder${selectedCount !== 1 ? 's' : ''})` : ''}
-              </p>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Payable Total</span>
+                <span className="text-lg sm:text-xl font-black text-slate-900">
+                  ${payableTotal} USD
+                  {selectedCount > 0 ? <span className="text-xs font-semibold text-slate-500 ml-1.5">({selectedCount} holder{selectedCount !== 1 ? 's' : ''})</span> : ''}
+                </span>
+              </div>
             )}
           </div>
         )}
-      </div>
+      </section>
 
       {/* ── 3. Company ── */}
-      <div id="al1-field-airlineName">
-        <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Company</h3>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-            Company / Airline Name <span className="text-red-400">*</span>
+      <section className={sectionClass} id="al1-field-airlineName">
+        <div className="mb-4 sm:mb-5">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Entity</p>
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900">Company Information</h3>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600 flex items-center gap-1">
+            Company / Airline Name <span className="text-red-500 font-bold">*</span>
           </label>
-          <div className={`flex items-center justify-between gap-3 px-3.5 py-2.5 border rounded-xl text-sm bg-gray-50 border-gray-200 ${errors.airlineName ? 'border-red-300 bg-red-50/30' : ''}`}>
-            <span className={`font-medium ${data.airlineName ? 'text-gray-900' : 'text-gray-400'}`}>
+          <div className={`flex items-center justify-between gap-3 px-4 py-3 border rounded-xl text-sm bg-white border-slate-200 shadow-xs ${errors.airlineName ? 'border-red-300 bg-red-50/30' : ''}`}>
+            <span className={`font-semibold ${data.airlineName ? 'text-slate-900' : 'text-slate-400'}`}>
               {data.airlineName || 'Not set, update in your profile'}
             </span>
-            <Link to="/dashboard/profile" className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-800 hover:text-black transition-colors whitespace-nowrap">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
+            <Link to="/dashboard/profile" className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-black transition-colors whitespace-nowrap">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" /></svg>
               Edit in Profile
             </Link>
           </div>
-          <p className="text-[10px] text-gray-400 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5">
             This is set from your account. To change it, visit your{' '}
             <Link to="/dashboard/profile" className="text-slate-800 hover:underline font-semibold">Profile page</Link>.
           </p>
           {errors.airlineName && (
-            <span className="flex items-center gap-1 text-red-500 text-xs font-medium">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            <span className="flex items-center gap-1 text-red-500 text-xs font-semibold mt-1">
+              <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
               {errors.airlineName}
             </span>
           )}
         </div>
-      </div>
+      </section>
 
       {/* ── 4. Address ── */}
-      <div>
-        <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Address <span className="text-red-400">*</span></h3>
-        <div className="space-y-4">
-          <Field label="Address" required error={errors.addressLine1}>
+      <section className={sectionClass}>
+        <div className="mb-4 sm:mb-5">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Mailing</p>
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900">Company Address</h3>
+        </div>
+        <div className="space-y-4.5 sm:space-y-5">
+          <Field label="Address Line 1" required error={errors.addressLine1}>
             <input id="al1-field-addressLine1" type="text" placeholder="Street address" value={data.addressLine1 || ''}
               onChange={e => update({ addressLine1: e.target.value })} className={inputCls('addressLine1')} />
           </Field>
-          <Field label="Address Line 2" error={errors.addressLine2}>
+          <Field label="Address Line 2" helper="Optional" error={errors.addressLine2}>
             <input type="text" placeholder="Apt, suite, floor, building (optional)" value={data.addressLine2 || ''}
               onChange={e => update({ addressLine2: e.target.value })} className={inputCls('addressLine2')} />
           </Field>
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-3 gap-4.5 sm:gap-5">
             <Field label="City">
               <input type="text" placeholder="City" value={data.city || ''}
                 onChange={e => update({ city: e.target.value })} className={inputCls('city')} />
@@ -287,13 +312,16 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
             </Field>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ── 5. Point of Contact ── */}
-      <div>
-        <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Point of Contact Information</h3>
-        <div className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+      <section className={sectionClass}>
+        <div className="mb-4 sm:mb-5">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Contact</p>
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900">Point of Contact Information</h3>
+        </div>
+        <div className="space-y-4.5 sm:space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4.5 sm:gap-5">
             <Field label="First Name" required error={errors.firstName}>
               <input id="al1-field-firstName" type="text" placeholder="First name" value={data.firstName || ''}
                 onChange={e => update({ firstName: e.target.value })} className={inputCls('firstName')} />
@@ -303,20 +331,22 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
                 onChange={e => update({ lastName: e.target.value })} className={inputCls('lastName')} />
             </Field>
           </div>
-          <Field label="Middle Name">
-            <input type="text" placeholder="Middle name (optional)" value={data.middleName || ''}
-              onChange={e => update({ middleName: e.target.value })} className={inputCls('middleName')} />
-          </Field>
-          <Field label="Date of Birth">
-            <input type="date" value={data.dateOfBirth || ''}
-              onChange={e => update({ dateOfBirth: e.target.value })} className={inputCls('dateOfBirth')} />
-          </Field>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Email" required error={errors.email}>
+          <div className="grid sm:grid-cols-2 gap-4.5 sm:gap-5">
+            <Field label="Middle Name" helper="Optional">
+              <input type="text" placeholder="Middle name" value={data.middleName || ''}
+                onChange={e => update({ middleName: e.target.value })} className={inputCls('middleName')} />
+            </Field>
+            <Field label="Date of Birth">
+              <input type="date" value={data.dateOfBirth || ''}
+                onChange={e => update({ dateOfBirth: e.target.value })} className={inputCls('dateOfBirth')} />
+            </Field>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4.5 sm:gap-5">
+            <Field label="Email Address" required error={errors.email}>
               <input id="al1-field-email" type="email" placeholder="ops@airline.com" value={data.email || ''}
                 onChange={e => update({ email: e.target.value })} className={inputCls('email')} />
             </Field>
-            <Field label="Phone" required error={errors.phone}>
+            <Field label="Phone Number" required error={errors.phone}>
               <div id="al1-field-phone">
                 <PhoneInput
                   country={phoneCountry}
@@ -333,33 +363,37 @@ export default function AirlinesStep1PlanAndDetails({ data, update, onNext }) {
             </Field>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ── Legal agreements ── */}
-      <LegalCheckboxes
-        agreedTerms={agreedTerms}
-        agreedPrivacy={agreedPrivacy}
-        onChangeTerms={() => { setAgreedTerms(v => !v); setTermsError(false) }}
-        onChangePrivacy={() => { setAgreedPrivacy(v => !v); setPrivacyError(false) }}
-        termsError={termsError}
-        privacyError={privacyError}
-      />
+      <div className="pt-2">
+        <LegalCheckboxes
+          agreedTerms={agreedTerms}
+          agreedPrivacy={agreedPrivacy}
+          onChangeTerms={() => { setAgreedTerms(v => !v); setTermsError(false) }}
+          onChangePrivacy={() => { setAgreedPrivacy(v => !v); setPrivacyError(false) }}
+          termsError={termsError}
+          privacyError={privacyError}
+        />
+      </div>
 
       {/* ── Next button ── */}
-      <div className="flex justify-end pt-6 border-t border-gray-100">
-        <button onClick={() => {
-          const te = !agreedTerms
-          const pe = !agreedPrivacy
-          setTermsError(te)
-          setPrivacyError(pe)
-          if (te || pe) return
-          if (validate()) onNext()
-        }}
-          className="inline-flex items-center gap-2 px-7 py-3 active:scale-95 text-white font-extrabold text-xs uppercase tracking-widest rounded-full transition-all duration-150 shadow-sm"
+      <div className="flex justify-end pt-6 mt-6 border-t border-slate-200/80">
+        <button
+          type="button"
+          onClick={() => {
+            const te = !agreedTerms
+            const pe = !agreedPrivacy
+            setTermsError(te)
+            setPrivacyError(pe)
+            if (te || pe) return
+            if (validate()) onNext()
+          }}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 active:scale-95 text-white font-extrabold text-xs uppercase tracking-widest rounded-full transition-all duration-150 shadow-md cursor-pointer"
           style={{ background: '#020617' }}
           onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
           onMouseLeave={e => e.currentTarget.style.background = '#020617'}>
-          Next
+          Continue to certificate holders
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>

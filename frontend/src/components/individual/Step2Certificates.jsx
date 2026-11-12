@@ -18,15 +18,21 @@ const SECONDARY_TYPES = [
 function Field({ label, required, error, helper, children }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
-        {label}
-        {required && <span className="ml-1 text-red-500">*</span>}
-      </label>
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600 flex items-center gap-1">
+          {label}
+          {required && <span className="text-red-500 font-bold">*</span>}
+        </label>
+        {helper && !error && (
+          <span className="text-xs text-slate-400 font-medium">{helper}</span>
+        )}
+      </div>
       {children}
-      {helper && !error && <p className="text-xs text-slate-400">{helper}</p>}
       {error && (
-        <p className="flex items-center gap-2 text-xs font-medium text-red-600">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-red-500 mt-1">
+          <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
           {error}
         </p>
       )}
@@ -34,7 +40,7 @@ function Field({ label, required, error, helper, children }) {
   )
 }
 
-const sectionClass = 'rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 sm:p-6'
+const sectionClass = 'rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 sm:p-7 shadow-xs'
 
 export default function Step2Certificates({ data, update, onNext, onBack }) {
   const [errors, setErrors] = useState({})
@@ -63,19 +69,21 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
   }
 
   const inputCls = (field) =>
-    `w-full rounded-2xl border px-4 py-3 text-sm text-slate-900 outline-none transition-all duration-150 placeholder:text-slate-400 ${
+    `w-full rounded-xl border px-3.5 py-2.5 sm:py-3 text-sm text-slate-900 outline-none transition-all duration-150 placeholder:text-slate-400 hover:border-slate-300 ${
       errors[field]
         ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-2 focus:ring-red-100'
         : 'border-slate-200 bg-white focus:border-slate-800 focus:ring-2 focus:ring-slate-100'
     }`
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-7">
       <section className={sectionClass}>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">Primary Certificate</p>
-        <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-slate-950">Enter the primary FAA certificate details.</h3>
+        <div className="mb-5 sm:mb-6">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Primary Certificate</p>
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900">Enter the primary FAA certificate details.</h3>
+        </div>
 
-        <div className="mt-5 space-y-5">
+        <div className="space-y-5">
           <Field label="Certificate Type" required error={errors.primaryCertificate}>
             <CustomSelect
               id="field-primaryCertificate"
@@ -91,19 +99,18 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
             label="Certificate Status"
             required
             error={errors.primaryAirmanCertificate}
-            helper="Choose NEW if you are still applying. Choose EXISTING if you already hold the certificate."
           >
-            <div id="field-primaryAirmanCertificate" className="grid gap-3 sm:grid-cols-2">
+            <div id="field-primaryAirmanCertificate" className="grid gap-3.5 sm:grid-cols-2 mt-1">
               {['EXISTING', 'NEW'].map((value) => {
                 const selected = data.primaryAirmanCertificate === value
 
                 return (
                   <label
                     key={value}
-                    className={`cursor-pointer rounded-3xl border p-5 transition-all ${
+                    className={`cursor-pointer rounded-2xl border p-4 sm:p-5 transition-all ${
                       selected
-                        ? 'border-slate-900 bg-slate-900'
-                        : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50'
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 text-slate-900'
                     }`}
                   >
                     <input
@@ -114,21 +121,23 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
                       onChange={() => update({ primaryAirmanCertificate: value })}
                       className="sr-only"
                     />
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className={`text-sm font-bold ${selected ? 'text-white' : 'text-slate-900'}`}>{value === 'EXISTING' ? 'Existing Certificate' : 'New Certificate'}</p>
-                        <p className={`mt-1 text-sm leading-6 ${selected ? 'text-slate-300' : 'text-slate-600'}`}>
+                        <p className={`text-sm font-bold ${selected ? 'text-white' : 'text-slate-900'}`}>
+                          {value === 'EXISTING' ? 'Existing Certificate' : 'New Certificate'}
+                        </p>
+                        <p className={`mt-1 text-xs leading-relaxed ${selected ? 'text-slate-300' : 'text-slate-500'}`}>
                           {value === 'EXISTING'
-                            ? 'Use this if you already have an FAA certificate number.'
-                            : 'Use this if you are still in the application process.'}
+                            ? 'You already have an FAA certificate number.'
+                            : 'You are currently in the application process.'}
                         </p>
                       </div>
                       <span
-                        className={`flex h-8 w-8 items-center justify-center rounded-full border ${
-                          selected ? 'border-white bg-white text-slate-900' : 'border-slate-200 bg-slate-50 text-transparent'
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border flex-shrink-0 mt-0.5 ${
+                          selected ? 'border-white bg-white text-slate-900' : 'border-slate-300 bg-slate-100 text-transparent'
                         }`}
                       >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       </span>
@@ -139,8 +148,8 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
             </div>
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="FAA Certificate Number" helper="Your FAA-issued certificate number.">
+          <div className="grid gap-4.5 sm:gap-5 sm:grid-cols-2 pt-1">
+            <Field label="FAA Certificate Number">
               <input
                 type="text"
                 placeholder="e.g. 2443157"
@@ -149,10 +158,7 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
                 className={inputCls('faaCertificateNumber')}
               />
             </Field>
-            <Field
-              label="IACRA / FTN Tracking Number"
-              helper="Optional, for matching with FAA portal records."
-            >
+            <Field label="IACRA / FTN Tracking Number" helper="Optional">
               <input
                 type="text"
                 placeholder="Enter your IACRA or FTN number"
@@ -166,26 +172,28 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
       </section>
 
       <section className={sectionClass}>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-800">Additional Certificate</p>
-        <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-slate-950">Add a secondary FAA certificate if you hold one.</h3>
+        <div className="mb-5 sm:mb-6">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Additional Certificate</p>
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900">Add a secondary FAA certificate if you hold one.</h3>
+        </div>
 
-        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-3xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-400 hover:bg-slate-50">
+        <label className="flex cursor-pointer items-start gap-3.5 rounded-2xl border border-slate-200 bg-white p-4.5 sm:p-5 transition-colors hover:border-slate-300 hover:bg-slate-50 shadow-xs">
           <input
             type="checkbox"
             checked={data.hasSecondaryCertificate}
             onChange={(e) => update({ hasSecondaryCertificate: e.target.checked })}
-            className="mt-1 h-4 w-4 accent-slate-700"
+            className="mt-1 h-4 w-4 accent-slate-800 rounded"
           />
           <div>
-            <p className="text-sm font-semibold text-slate-900">I hold an additional FAA certificate.</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
+            <p className="text-sm font-bold text-slate-900">I hold an additional FAA certificate.</p>
+            <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">
               Enable this only if you need the registration to include another certificate profile.
             </p>
           </div>
         </label>
 
         {data.hasSecondaryCertificate && (
-          <div className="mt-5 space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
+          <div className="mt-5 space-y-4.5 rounded-2xl border border-slate-200 bg-white p-4.5 sm:p-6 shadow-xs">
             <Field label="Secondary Certificate Type" required error={errors.secondaryCertificate}>
               <CustomSelect
                 id="field-secondaryCertificate"
@@ -197,7 +205,7 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
               />
             </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4.5 sm:gap-5 sm:grid-cols-2">
               <Field label="Secondary FAA Certificate Number">
                 <input
                   type="text"
@@ -222,14 +230,15 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
         )}
       </section>
 
-      <div className="rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 text-sm leading-6 text-slate-700">
-        If you already have an FAA certificate number, you can usually confirm it on your existing certificate documents or FAA records before proceeding.
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4.5 sm:p-5 text-xs sm:text-sm leading-relaxed text-slate-600">
+        💡 If you already have an FAA certificate number, you can confirm it on your certificate documents or IACRA records before proceeding.
       </div>
 
-      <div className="flex flex-col justify-between gap-3 border-t border-slate-100 pt-2 sm:flex-row">
+      <div className="flex flex-col sm:flex-row justify-between gap-3 border-t border-slate-200/80 pt-6 mt-6">
         <button
+          type="button"
           onClick={onBack}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-xs uppercase tracking-wider font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3.5 text-xs uppercase tracking-wider font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0 5-5m-5 5h12" />
@@ -238,16 +247,17 @@ export default function Step2Certificates({ data, update, onNext, onBack }) {
         </button>
 
         <button
+          type="button"
           onClick={() => {
             if (validate()) onNext()
           }}
-          className="inline-flex items-center justify-center gap-2 rounded-full px-7 py-3 text-xs uppercase tracking-widest font-extrabold transition-all duration-150 shadow-sm active:scale-95"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full px-8 py-3.5 text-xs uppercase tracking-widest font-extrabold transition-all duration-150 shadow-md active:scale-95 cursor-pointer"
           style={{ background: '#020617', color: '#ffffff' }}
           onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
           onMouseLeave={e => e.currentTarget.style.background = '#020617'}
         >
           Continue to review
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0-5 5m5-5H6" />
           </svg>
         </button>

@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Home from './pages/Home'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import RegisterPage from './pages/RegisterPage'
 
 // Admin pages, eagerly loaded to avoid React 19 lazyInitializer crash
 // with ES module namespace objects on Vite 8 dev server
@@ -30,8 +31,7 @@ import SettingsPage    from './pages/dashboard/SettingsPage'
 import UserSupportPage from './pages/dashboard/UserSupportPage'
 import FaqPage         from './pages/dashboard/FaqPage'
 
-// Lazy-loaded public/onboarding pages
-const RegisterPage        = lazy(() => import('./pages/RegisterPage'))
+// Lazy-loaded standalone admin seed pages
 const SeedAdminSignupPage = lazy(() => import('./pages/SeedAdminSignupPage'))
 const SeedAdminLoginPage  = lazy(() => import('./pages/SeedAdminLoginPage'))
 

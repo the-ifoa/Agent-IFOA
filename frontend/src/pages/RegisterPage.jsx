@@ -507,11 +507,13 @@ export default function RegisterPage() {
     }
   }, [user])
 
-  // Lock document scroll while RegisterPage is mounted, prevents the right sidebar
-  // from scrolling with the page when the two-column layout fills the full viewport.
+  // Pre-fill email from user account so link-registration ownership check always passes
   useEffect(() => {
     const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // Only lock body scroll on desktop viewports where split-screen takes full height
+    if (window.innerWidth >= 1024) {
+      document.body.style.overflow = 'hidden'
+    }
     return () => { document.body.style.overflow = prev }
   }, [])
 
@@ -690,7 +692,6 @@ export default function RegisterPage() {
   const scrollToTop = () => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' })
-      return
     }
     window.scrollTo({ top: 0, behavior: 'instant' })
   }
@@ -885,34 +886,34 @@ export default function RegisterPage() {
 
       {/* ── Main Layout: Split screen on Desktop, Regular flow on Mobile ── */}
       <div
-        className="flex flex-col lg:flex-row lg:h-dvh lg:overflow-hidden bg-white"
+        className="min-h-screen flex flex-col lg:flex-row lg:h-dvh lg:overflow-hidden bg-white"
       >
         {/* ── LEFT: Scrollable form column ──────────────────────────────────── */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 min-w-0 flex flex-col h-auto lg:h-dvh overflow-y-auto overflow-x-hidden"
+          className="flex-1 min-w-0 flex flex-col min-h-screen lg:min-h-0 lg:h-dvh lg:overflow-y-auto overflow-x-hidden"
         >
           {/* Top nav bar */}
           <div
-            className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between"
-            style={{ boxShadow: '0 1px 6px rgba(15,23,42,0.06)', backdropFilter: 'blur(10px)', flexShrink: 0 }}
+            className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 px-3.5 sm:px-6 py-2.5 sm:py-4 flex items-center justify-between"
+            style={{ boxShadow: '0 1px 6px rgba(15,23,42,0.06)', flexShrink: 0 }}
           >
-            <Link to="/">
-              <img src={logo} alt="IFOA USA" className="h-8 sm:h-10 w-auto" />
+            <Link to="/" className="flex-shrink-0">
+              <img src={logo} alt="IFOA USA" className="h-7 sm:h-9 md:h-10 w-auto" />
             </Link>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               {user ? (
                 <Link to="/dashboard"
-                  className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors truncate max-w-[120px] sm:max-w-none flex items-center gap-1.5">
+                  className="text-xs sm:text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors truncate max-w-[130px] sm:max-w-none flex items-center gap-1.5">
                   <span className="animate-waving-hand">👋</span> {user.firstName || user.email}
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+                  <Link to="/login" className="text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors px-2 py-1">
                     Sign In
                   </Link>
                   <Link to="/signup"
-                    className="text-xs sm:text-sm font-extrabold uppercase tracking-wider px-4 sm:px-5 py-2 rounded-full text-white bg-[#020617] hover:bg-slate-800 transition-all shadow-sm">
+                    className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-white bg-[#020617] hover:bg-slate-800 transition-all shadow-sm">
                     Create Account
                   </Link>
                 </>
@@ -923,29 +924,30 @@ export default function RegisterPage() {
           {/* Form content, natural height, no flex-1 stretch */}
           <div
             ref={formRef}
-            className="px-4 sm:px-6 lg:px-10 pt-6 pb-4 sm:pt-8 sm:pb-6 max-w-2xl mx-auto w-full"
+            className="px-3.5 sm:px-6 lg:px-10 pt-5 pb-6 sm:pt-8 sm:pb-8 max-w-2xl mx-auto w-full"
           >
             {/* Page heading */}
             <div className="mb-5">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight mb-1.5" style={{ color: DARK }}>
                 FAA Compliance, Register Now
               </h1>
-              <p className="text-sm leading-relaxed" style={{ color: '#64748b' }}>
+              <p className="text-xs sm:text-sm leading-relaxed" style={{ color: '#64748b' }}>
                 IFOA USA's trusted U.S. Agent for Service.
               </p>
             </div>
 
             {/* Step indicator */}
-            <div className="mb-6">
+            <div className="mb-7 sm:mb-8">
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#94a3b8' }}>
                 Step {step}/{STEPS.length}
               </p>
 
               {/* Type toggle, Company / Individual */}
-              <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-5 sm:mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5 mb-6 sm:mb-7">
                 <button
+                  type="button"
                   onClick={() => { setTransitionMode('type'); setSwitchDirection(1); setRegType('airline'); setAirStep(1); scrollToTop() }}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all duration-200 text-left"
+                  className="flex items-center gap-3 px-3.5 sm:px-4 py-3 sm:py-3.5 rounded-xl border-2 transition-all duration-200 text-left cursor-pointer"
                   style={{ borderColor: regType === 'airline' ? '#020617' : '#e5e7eb', background: regType === 'airline' ? '#f8fafc' : '#fff' }}>
                   <div className="flex items-center justify-between w-full">
                     <div>
@@ -958,7 +960,7 @@ export default function RegisterPage() {
                       </div>
                       <p className="text-[11px] mt-0.5 ml-6" style={{ color: '#9ca3af' }}>Aircraft and Carrier Registration Only</p>
                     </div>
-                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-2"
                       style={{ borderColor: regType === 'airline' ? '#020617' : '#d1d5db', background: regType === 'airline' ? '#020617' : 'transparent' }}>
                       {regType === 'airline' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
@@ -966,8 +968,9 @@ export default function RegisterPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => { setTransitionMode('type'); setSwitchDirection(-1); setRegType('individual'); setIndStep(1); scrollToTop() }}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all duration-200 text-left"
+                  className="flex items-center gap-3 px-3.5 sm:px-4 py-3 sm:py-3.5 rounded-xl border-2 transition-all duration-200 text-left cursor-pointer"
                   style={{ borderColor: regType === 'individual' ? '#020617' : '#e5e7eb', background: regType === 'individual' ? '#f8fafc' : '#fff' }}>
                   <div className="flex items-center justify-between w-full">
                     <div>
@@ -980,7 +983,7 @@ export default function RegisterPage() {
                       </div>
                       <p className="text-[11px] mt-0.5 ml-6" style={{ color: '#9ca3af' }}>Pilots, dispatchers & certificate holders</p>
                     </div>
-                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-2"
                       style={{ borderColor: regType === 'individual' ? '#020617' : '#d1d5db', background: regType === 'individual' ? '#020617' : 'transparent' }}>
                       {regType === 'individual' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
@@ -989,7 +992,7 @@ export default function RegisterPage() {
               </div>
 
               {/* Progress bar */}
-              <div className="h-1.5 rounded-full overflow-hidden mb-1" style={{ background: '#e5e7eb' }}>
+              <div className="h-2 rounded-full overflow-hidden mb-2.5" style={{ background: '#e5e7eb' }}>
                 <Motion.div
                   className="h-full rounded-full"
                   animate={{ width: `${progress}%` }}
@@ -997,9 +1000,9 @@ export default function RegisterPage() {
                   style={{ background: '#34E06E' }}
                 />
               </div>
-              <div className="flex justify-between">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                 {STEPS.map((s, i) => (
-                  <p key={s.label} className="text-[10px] font-bold" style={{ color: i + 1 <= step ? '#020617' : '#cbd5e1' }}>
+                  <p key={s.label} className={`text-[10px] sm:text-xs font-bold leading-tight ${i === 0 ? 'text-left' : i === STEPS.length - 1 ? 'text-right' : 'text-center'}`} style={{ color: i + 1 <= step ? '#020617' : '#94a3b8' }}>
                     {s.label}
                   </p>
                 ))}
@@ -1011,8 +1014,8 @@ export default function RegisterPage() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="rounded-3xl bg-white mb-4"
-              style={{ border: '1.5px solid #e5e7eb', boxShadow: '0 8px 40px -12px rgba(15,23,42,0.10)', overflow: 'visible' }}>
+              className="rounded-3xl bg-white mb-8 shadow-sm"
+              style={{ border: '1.5px solid #e2e8f0', boxShadow: '0 8px 40px -12px rgba(15,23,42,0.10)', overflow: 'visible' }}>
               {(regType === 'individual' ? isIndBlocked : isAirBlocked) && (
                 <div className="rounded-t-3xl overflow-hidden">
                   <WrongRoleBanner type={regType} />
@@ -1020,25 +1023,25 @@ export default function RegisterPage() {
               )}
 
               {/* Card header */}
-              <div className="px-5 pt-5 pb-4 border-b rounded-t-3xl" style={{ borderColor: '#f3f4f6' }}>
-                <div className="flex items-start justify-between">
+              <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b rounded-t-3xl" style={{ borderColor: '#f1f5f9' }}>
+                <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1 text-slate-800">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 text-slate-500">
                       {regType === 'individual' ? 'Individual' : 'Company / Airline'}
                     </p>
-                    <h2 className="text-xl font-black" style={{ color: DARK }}>{activeStep.label}</h2>
-                    <p className="text-sm mt-1 max-w-xs" style={{ color: '#6b7280' }}>{activeStep.detail}</p>
+                    <h2 className="text-xl sm:text-2xl font-black" style={{ color: DARK }}>{activeStep.label}</h2>
+                    <p className="text-xs sm:text-sm mt-1 max-w-xs leading-relaxed" style={{ color: '#64748b' }}>{activeStep.detail}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="text-xl font-black tabular-nums" style={{ color: '#020617' }}>
-                      {step}<span className="text-sm font-bold text-gray-400">/{STEPS.length}</span>
+                    <span className="text-xl sm:text-2xl font-black tabular-nums" style={{ color: '#020617' }}>
+                      {step}<span className="text-xs sm:text-sm font-bold text-gray-400">/{STEPS.length}</span>
                     </span>
                   </div>
                 </div>
                 {!user && (
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
+                  <div className="mt-3.5 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold"
                     style={{ background: BM, border: `1px solid ${BXL}`, color: '#020617' }}>
-                    <svg className="w-3 h-3 text-[#020617]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                    <svg className="w-3.5 h-3.5 text-[#020617]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                     Sign in required to proceed past Step 2
@@ -1047,7 +1050,7 @@ export default function RegisterPage() {
               </div>
 
               {/* Form body */}
-              <div className="px-6 py-6 rounded-b-3xl">
+              <div className="px-4 sm:px-7 py-5 sm:py-7 rounded-b-3xl">
                 {showExistingSummaryOnly ? (
                   <div className="space-y-4">
                     <ExistingFormBanner regType={regType} data={existingSummaryData} />
