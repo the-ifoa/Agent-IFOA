@@ -91,7 +91,7 @@ const inputCls = (hasError) =>
   }`
 
 export default function SettingsPage() {
-  const { user, updateCredentials, addSecondaryEmail, removeSecondaryEmail, sendSecondaryEmailOtp, verifyOtpAndAddSecondary, sendCredentialChangeOtp, verifyOtpAndUpdateCredentials } = useAuth()
+  const { user, updateCredentials, addSecondaryEmail, removeSecondaryEmail, sendSecondaryEmailOtp, verifyOtpAndAddSecondary } = useAuth()
 
   // Secondary email state (airline only)
   const [secEmail, setSecEmail]           = useState('')
@@ -113,14 +113,6 @@ export default function SettingsPage() {
   const [showNewPwd, setShowNewPwd]       = useState(false)
   const [showConfirmPwd, setShowConfirmPwd] = useState(false)
 
-  // OTP step for credential change
-  const [credOtpVisible, setCredOtpVisible] = useState(false)
-  const [credOtpDigits, setCredOtpDigits]   = useState(['', '', '', '', '', ''])
-  const [credOtpError, setCredOtpError]     = useState('')
-  const [credOtpSaving, setCredOtpSaving]   = useState(false)
-  const [credOtpResent, setCredOtpResent]   = useState(false)
-  const [credOtpTimerKey, setCredOtpTimerKey] = useState(0)
-  const credOtpRefs = useRef([])
 
   const initials = [user?.firstName?.[0], user?.lastName?.[0]].filter(Boolean).join('').toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
@@ -163,67 +155,14 @@ export default function SettingsPage() {
     setSuccess('')
     setErrors({})
     try {
-      await sendCredentialChangeOtp(currentPwd)
-      setCredOtpDigits(['', '', '', '', '', ''])
-      setCredOtpError('')
-      setCredOtpTimerKey(0)
-      setCredOtpVisible(true)
-    } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to send verification code.'
-      setErrors({ general: msg })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCredOtpDigit = (i, val) => {
-    if (!/^\d?$/.test(val)) return
-    const next = [...credOtpDigits]; next[i] = val; setCredOtpDigits(next)
-    if (val && i < 5) credOtpRefs.current[i + 1]?.focus()
-  }
-
-  const handleCredOtpKeyDown = (i, e) => {
-    if (e.key === 'Backspace' && !credOtpDigits[i] && i > 0) credOtpRefs.current[i - 1]?.focus()
-    if (e.key === 'ArrowLeft' && i > 0) credOtpRefs.current[i - 1]?.focus()
-    if (e.key === 'ArrowRight' && i < 5) credOtpRefs.current[i + 1]?.focus()
-  }
-
-  const handleCredOtpPaste = (e) => {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (!pasted) return; e.preventDefault()
-    setCredOtpDigits(pasted.split('').concat(Array(6).fill('')).slice(0, 6))
-    credOtpRefs.current[Math.min(pasted.length, 5)]?.focus()
-  }
-
-  const handleCredOtpSubmit = async () => {
-    const code = credOtpDigits.join('')
-    if (code.length < 6) { setCredOtpError('Enter the full 6-digit code.'); return }
-    setCredOtpSaving(true); setCredOtpError('')
-    try {
-      await verifyOtpAndUpdateCredentials(currentPwd, code, newEmail || undefined, newPwd || undefined)
-      setCredOtpVisible(false)
+      await updateCredentials(currentPwd, newEmail.trim() || undefined, newPwd || undefined)
       setSuccess('Your credentials have been updated successfully.')
       setCurrentPwd(''); setNewEmail(''); setNewPwd(''); setConfirmPwd('')
     } catch (err) {
-      setCredOtpError(err?.response?.data?.message || 'Invalid or expired code.')
-      setCredOtpDigits(['', '', '', '', '', ''])
-      credOtpRefs.current[0]?.focus()
+      const msg = err?.response?.data?.message || 'Failed to update credentials.'
+      setErrors({ general: msg })
     } finally {
-      setCredOtpSaving(false)
-    }
-  }
-
-  const handleCredOtpResend = async () => {
-    setCredOtpError(''); setCredOtpResent(false)
-    try {
-      await sendCredentialChangeOtp(currentPwd)
-      setCredOtpDigits(['', '', '', '', '', ''])
-      setCredOtpTimerKey(k => k + 1)
-      setCredOtpResent(true)
-      credOtpRefs.current[0]?.focus()
-      setTimeout(() => setCredOtpResent(false), 4000)
-    } catch (err) {
-      setCredOtpError(err?.response?.data?.message || 'Failed to resend.')
+      setSaving(false)
     }
   }
 
@@ -410,89 +349,6 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
-
-        {/* OTP verification panel for credential change */}
-        {credOtpVisible && (
-          <div className="rounded-3xl border border-slate-200/90 bg-white shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Security Verification</p>
-                <h4 className="text-sm font-black text-slate-900">Enter Verification Code</h4>
-              </div>
-              <OtpTimer resetKey={credOtpTimerKey} />
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-600">
-                A 6-digit confirmation code was sent to <strong className="text-slate-900">{user?.email}</strong>.
-              </p>
-
-              {credOtpError && (
-                <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  {credOtpError}
-                </div>
-              )}
-              {credOtpResent && (
-                <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                  New code sent to your email.
-                </div>
-              )}
-
-              <div className="flex gap-2 justify-center py-2" onPaste={handleCredOtpPaste}>
-                {credOtpDigits.map((d, i) => (
-                  <input
-                    key={i}
-                    ref={el => credOtpRefs.current[i] = el}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={d}
-                    onChange={e => handleCredOtpDigit(i, e.target.value)}
-                    onKeyDown={e => handleCredOtpKeyDown(i, e)}
-                    className="w-11 h-12 text-center text-lg font-black rounded-xl border-2 outline-none transition"
-                    style={{
-                      borderColor: d ? '#020617' : '#e2e8f0',
-                      background: d ? '#f8fafc' : '#ffffff',
-                      color: '#020617',
-                    }}
-                    onFocus={e => { e.target.style.borderColor = '#020617'; e.target.style.boxShadow = '0 0 0 3px rgba(2,6,23,0.08)' }}
-                    onBlur={e => { if (!d) { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none' } }}
-                  />
-                ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCredOtpResend}
-                  disabled={credOtpSaving}
-                  className="text-xs text-slate-500 hover:text-black font-semibold transition-colors disabled:opacity-50"
-                >
-                  Didn't receive it? Resend code
-                </button>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => setCredOtpVisible(false)}
-                    disabled={credOtpSaving}
-                    className="flex-1 sm:flex-initial rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCredOtpSubmit}
-                    disabled={credOtpSaving || credOtpDigits.join('').length < 6}
-                    className="flex-1 sm:flex-initial rounded-xl bg-slate-950 hover:bg-slate-800 px-5 py-2 text-xs font-bold text-white transition disabled:opacity-50 shadow-sm"
-                  >
-                    {credOtpSaving ? 'Verifying…' : 'Confirm Changes'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── Secondary Emails (Airline accounts) ── */}
         {user?.role === 'airline' && (

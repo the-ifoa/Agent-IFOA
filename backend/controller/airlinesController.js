@@ -576,6 +576,24 @@ exports.getAllAirlinesSubscriptions = async (req, res) => {
       ...dedupedLegacy,
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+    // Attach the airline's login account (may differ from the contact email
+    // on the registration). Linked via User.registrationId / subscriptionIds.
+    const docIds = allDocs.map(d => d._id);
+    const owners = await User.find({
+      $or: [{ registrationId: { $in: docIds } }, { subscriptionIds: { $in: docIds } }],
+    }).select('email secondaryEmails registrationId subscriptionIds').lean();
+    const ownerByDoc = new Map();
+    for (const u of owners) {
+      for (const id of [u.registrationId, ...(u.subscriptionIds || [])]) {
+        if (id && !ownerByDoc.has(String(id))) ownerByDoc.set(String(id), u);
+      }
+    }
+    for (const d of allDocs) {
+      const u = ownerByDoc.get(String(d._id));
+      d.loginEmail = u?.email || null;
+      d.loginSecondaryEmails = u?.secondaryEmails || [];
+    }
+
     res.json({ success: true, data: allDocs });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

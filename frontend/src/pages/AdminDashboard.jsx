@@ -3542,6 +3542,18 @@ function AirlineViewModal({ record, onClose, onEdit, onManagePlan, onRecordUpdat
                 <ViewField label="Base Total Fees" value={fmtAirlineTotal(record)} />
               </div>
             </div>
+            <div className="border-t border-slate-100 pt-5"><SectionHead label="Login Account" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="col-span-2 sm:col-span-3">
+                  <ViewField label="Registered Login Email" value={record.loginEmail || 'No login account linked'} />
+                </div>
+                {record.loginSecondaryEmails?.length > 0 && (
+                  <div className="col-span-2 sm:col-span-3">
+                    <ViewField label="Secondary Login Emails" value={record.loginSecondaryEmails.join(', ')} />
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="border-t border-slate-100 pt-5"><SectionHead label="Airline / Operator" />
               {record.logoUrl && (
                 <div className="mb-4 flex items-center gap-3">

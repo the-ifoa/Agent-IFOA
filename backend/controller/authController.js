@@ -190,10 +190,18 @@ exports.updateCredentials = async (req, res) => {
 
     const updateFields = {};
 
-    if (newEmail && newEmail.toLowerCase() !== user.email) {
-      const exists = await User.findOne({ email: newEmail.toLowerCase() });
+    let pullSecondary = null;
+    if (newEmail && newEmail.toLowerCase().trim() !== user.email) {
+      const normalNew = newEmail.toLowerCase().trim();
+      // Must not collide with another account's primary OR secondary login.
+      const exists = await User.findOne({
+        _id: { $ne: user._id },
+        $or: [{ email: normalNew }, { secondaryEmails: normalNew }],
+      });
       if (exists) return res.status(409).json({ message: 'This email is already in use.' });
-      updateFields.email = newEmail.toLowerCase();
+      updateFields.email = normalNew;
+      // Promoting one of this account's own secondary emails to primary.
+      if ((user.secondaryEmails || []).includes(normalNew)) pullSecondary = normalNew;
     }
 
     if (newPassword) {
@@ -207,7 +215,7 @@ exports.updateCredentials = async (req, res) => {
     // avoids triggering enum errors on unrelated null fields (e.g. registrationModel).
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
-      { $set: updateFields },
+      { $set: updateFields, ...(pullSecondary ? { $pull: { secondaryEmails: pullSecondary } } : {}) },
       { new: true, runValidators: false },
     );
 
@@ -656,10 +664,18 @@ exports.verifyOtpAndUpdateCredentials = async (req, res) => {
 
     const updateFields = {};
 
-    if (newEmail && newEmail.toLowerCase() !== user.email) {
-      const exists = await User.findOne({ email: newEmail.toLowerCase() });
+    let pullSecondary = null;
+    if (newEmail && newEmail.toLowerCase().trim() !== user.email) {
+      const normalNew = newEmail.toLowerCase().trim();
+      // Must not collide with another account's primary OR secondary login.
+      const exists = await User.findOne({
+        _id: { $ne: user._id },
+        $or: [{ email: normalNew }, { secondaryEmails: normalNew }],
+      });
       if (exists) return res.status(409).json({ message: 'This email is already in use.' });
-      updateFields.email = newEmail.toLowerCase();
+      updateFields.email = normalNew;
+      // Promoting one of this account's own secondary emails to primary.
+      if ((user.secondaryEmails || []).includes(normalNew)) pullSecondary = normalNew;
     }
 
     if (newPassword) {
@@ -673,7 +689,7 @@ exports.verifyOtpAndUpdateCredentials = async (req, res) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
-      { $set: updateFields },
+      { $set: updateFields, ...(pullSecondary ? { $pull: { secondaryEmails: pullSecondary } } : {}) },
       { new: true, runValidators: false },
     );
 
