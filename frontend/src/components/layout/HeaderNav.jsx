@@ -17,15 +17,16 @@ const adminNav = [
 
 const userNav = [
   { to: '/dashboard', label: 'Dashboard', exact: true },
-  { to: '/dashboard/profile', label: 'Profile' },
+  { to: '/dashboard/profile', label: 'Profile', also: ['/dashboard/settings'] },
   { to: '/dashboard/subscription', label: 'Subscription' },
-  { to: '/dashboard/settings', label: 'Settings' },
   { to: '/dashboard/support', label: 'Contact Agent', exact: true },
 ]
 
 function NavLink({ item }) {
   const { pathname } = useLocation()
-  const active = item.exact ? pathname === item.to : pathname.startsWith(item.to)
+  const active = item.exact
+    ? pathname === item.to
+    : [item.to, ...(item.also || [])].some(p => pathname.startsWith(p))
   return (
     <Link
       to={item.to}
@@ -536,7 +537,7 @@ export default function HeaderNav() {
               <nav className="p-3 space-y-0.5">
                 {nav.map(item => {
                   const { pathname } = window.location
-                  const active = item.exact ? pathname === item.to : pathname.startsWith(item.to)
+                  const active = item.exact ? pathname === item.to : [item.to, ...(item.also || [])].some(p => pathname.startsWith(p))
                   return (
                     <Link
                       key={item.to}

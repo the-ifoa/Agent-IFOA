@@ -239,7 +239,7 @@ const AirlinesSchema = new mongoose.Schema({
 // Auto-compute totalAmount before save.
 // For Multiple Years plans: pricePerCert × count × years.
 // For all other plans (1 Year, Unlimited): pricePerCert × count.
-AirlinesSchema.pre('save', function (next) {
+AirlinesSchema.pre('save', function () {
   const count = this.committedCount || this.certificateHolders?.length || 1;
   if (
     this.subscriptionPlan === 'Multiple Years Subscription Plan' &&
@@ -249,7 +249,6 @@ AirlinesSchema.pre('save', function (next) {
   } else {
     this.totalAmount = this.pricePerCertificate * count;
   }
-  next();
 });
 
 module.exports = mongoose.model('Airlines', AirlinesSchema);

@@ -29,7 +29,7 @@ function EditProfileModal({ user, isAirline, onClose, onSaveName, onSaveAirlineN
     setErr('')
     try {
       if (firstName.trim() !== (user?.firstName || '') || lastName.trim() !== (user?.lastName || '')) {
-        await onSaveName({ firstName: firstName.trim(), lastName: lastName.trim() })
+        await onSaveName(firstName.trim(), lastName.trim())
       }
       if (isAirline && airlineName.trim() !== (user?.airlineName || '')) {
         await onSaveAirlineName(airlineName.trim())
@@ -247,7 +247,7 @@ export default function ProfilePage() {
         />
       )}
 
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6">
 
         {/* ── Page Header ── */}
         <div>

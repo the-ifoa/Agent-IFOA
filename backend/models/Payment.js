@@ -120,6 +120,12 @@ const PaymentSchema = new mongoose.Schema({
     default: 'frontend',
   },
 
+  // Set atomically by whichever path (confirm endpoint or webhook) sends the
+  // customer confirmation / internal alert, so a confirm-vs-webhook race can
+  // never send them twice.
+  customerNotifiedAt: { type: Date, default: null },
+  adminNotifiedAt:    { type: Date, default: null },
+
 }, { timestamps: true });
 
 PaymentSchema.virtual('formattedAmount').get(function () {

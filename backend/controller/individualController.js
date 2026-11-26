@@ -365,7 +365,9 @@ exports.createIndividual = async (req, res) => {
         return res.status(409).json({
           success: false,
           message: 'You have already submitted this form. Please edit your submitted form from the Subscription dashboard.',
-          data: existing,
+          // Unauthenticated endpoint: only the id (the client resumes payment with it),
+          // never the stored record — that would leak PII to anyone who knows an email.
+          data: { _id: existing._id },
         });
       }
     }
@@ -731,7 +733,7 @@ exports.updateIndividual = async (req, res) => {
     const individual = await Individual.findByIdAndUpdate(
       req.params.id,
       payload,
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
     if (!individual)
       return res.status(404).json({ success: false, message: 'Not found' });
@@ -919,7 +921,7 @@ async function renameQueuedRenewalInvoice({ Model, registrationId, oldNumber, ne
   const doc = await Model.findByIdAndUpdate(
     registrationId,
     { $set: { 'nextRenewal.invoiceNumber': newNumber } },
-    { new: true },
+    { returnDocument: 'after' },
   );
 
   if (renewalId) {
@@ -1066,7 +1068,7 @@ exports.updateRenewalDetails = async (req, res) => {
     const doc = await Individual.findByIdAndUpdate(
       req.params.id,
       { $set: set },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     if (current.nextRenewalId && Object.keys(renewalSet).length > 0) {
@@ -1131,7 +1133,7 @@ exports.markIndividualPaid = async (req, res) => {
     const updated = await Individual.findByIdAndUpdate(
       req.params.id,
       { $set: update },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     // Create canonical Invoice document for wire/manual payments so the user's
@@ -1264,7 +1266,7 @@ exports.exportToExcel = async (req, res) => {
         city:                          d.city       || '',
         postalCode:                    d.postalCode  || '',
         country:                       d.country    || '',
-        phone:                         d.phone ? `+${d.phone}` : '',
+        phone:                         d.phone ? `+${String(d.phone).replace(/^\+/, '')}` : '',
         email:                         d.email      || '',
         primaryAirmanCertificate:      d.primaryAirmanCertificate || '',
         hasSecondary:                  d.hasSecondaryCertificate ? 'Yes' : 'No',
@@ -1306,7 +1308,7 @@ exports.markInvoiceGenerated = async (req, res) => {
     const doc = await Individual.findByIdAndUpdate(
       req.params.id,
       { $set: { invoiceGenerated: true } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!doc) return res.status(404).json({ success: false, message: 'Individual not found.' });
     res.json({ success: true, data: doc });

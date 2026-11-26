@@ -453,7 +453,7 @@ async function applyRenewalToRegistration(registrationId, registrationModel, pay
         } : {}),
       };
 
-  return Model.findByIdAndUpdate(registrationId, mongoOp, { new: true });
+  return Model.findByIdAndUpdate(registrationId, mongoOp, { returnDocument: 'after' });
 }
 
 /**
@@ -587,7 +587,7 @@ async function applyPaymentToRegistration(registrationId, registrationModel, pay
     update.wirePaymentRequestedAt = null;
   }
 
-  return Model.findByIdAndUpdate(registrationId, { $set: update }, { new: true });
+  return Model.findByIdAndUpdate(registrationId, { $set: update }, { returnDocument: 'after' });
 }
 
 /**
@@ -632,7 +632,7 @@ async function applyHolderUpgrade(registrationId, registrationModel, paymentDoc,
     // Grow base capacity; merged holders fill base slots → inherit base plan/expiry.
     const set = { committedCount: newCount, holderCountValue: String(newCount) };
     if (batchPlan === doc.subscriptionPlan) set.pricePerCertificate = newPpc;
-    updatedReg = await Model.findByIdAndUpdate(registrationId, { $set: set }, { new: true });
+    updatedReg = await Model.findByIdAndUpdate(registrationId, { $set: set }, { returnDocument: 'after' });
   } else if (mergeTarget) {
     // Grow the target group's capacity; merged holders inherit that group's dates.
     const grp = doc.holderGroups?.id ? doc.holderGroups.id(mergeTarget) : null;
@@ -668,7 +668,7 @@ async function applyHolderUpgrade(registrationId, registrationModel, paymentDoc,
         },
       };
     }
-    updatedReg = await Model.findByIdAndUpdate(registrationId, op, { new: true });
+    updatedReg = await Model.findByIdAndUpdate(registrationId, op, { returnDocument: 'after' });
   }
 
   await Payment.findByIdAndUpdate(paymentDoc._id, { $set: { appliedToRegistration: true } });
@@ -956,7 +956,7 @@ async function applyConversionToUnlimited(registrationId, registrationModel, pay
       'nextRenewal.price':          null,
     },
     $unset: { nextRenewalId: 1 },
-  }, { new: true });
+  }, { returnDocument: 'after' });
 }
 
 /**
@@ -1348,7 +1348,7 @@ exports.createPaymentIntent = async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount:               amountCents,
       currency:             'usd',
-      payment_method_types: ['card', 'us_bank_account'],
+      allowed_payment_method_types: ['card', 'us_bank_account'],
       description:          `Subscription — ${registrationModel} ${registrationId}`,
       metadata,
     });
@@ -1368,6 +1368,25 @@ exports.createPaymentIntent = async (req, res) => {
 
 
 // ─── POST /api/payments/confirm ───────────────────────────────────────────────
+// Atomically claim the right to send a one-off notification for a payment.
+// Only the first caller (confirm endpoint or webhook) gets true.
+async function claimNotification(paymentId, field) {
+  if (!paymentId) return false;
+  const r = await Payment.updateOne({ _id: paymentId, [field]: null }, { $set: { [field]: new Date() } });
+  return r.modifiedCount === 1;
+}
+
+// Non-admin ownership: the token's registration/subscriptions, or matching email.
+function userOwnsRegistration(user, doc, registrationId) {
+  const userSubIds = (user.subscriptionIds || []).map(String);
+  const userRegId  = user.registrationId ? String(user.registrationId) : null;
+  const userEmail  = (user.email || '').toLowerCase();
+  const docEmail   = (doc.email || doc.pointOfContactEmail || '').toLowerCase();
+  return userRegId === String(registrationId)
+    || userSubIds.includes(String(registrationId))
+    || Boolean(userEmail && docEmail && userEmail === docEmail);
+}
+
 exports.confirmPayment = async (req, res) => {
   // Declared outside the try so the catch below can hand back an invoice number
   // that was claimed but never attached to a record (see releaseIfUnattached).
@@ -1389,6 +1408,15 @@ exports.confirmPayment = async (req, res) => {
 
     const existing = await Payment.findOne({ stripePaymentIntentId: paymentIntentId });
     if (existing && existing.isPaid) {
+      // The replay returns the stored Payment (customer invoice snapshot), so it
+      // must never answer a non-owner or a mismatched registration.
+      if (String(existing.registrationId) !== String(registrationId))
+        return res.status(400).json({ success: false, message: 'Payment intent does not match the provided registration.' });
+      if (req.user.role !== 'admin') {
+        const { doc: ownDoc } = await findRegistration(registrationId, registrationModel);
+        if (!ownDoc || !userOwnsRegistration(req.user, ownDoc, registrationId))
+          return res.status(403).json({ success: false, message: 'Access denied.' });
+      }
       return res.json({ success: true, payment: existing, alreadyRecorded: true });
     }
 
@@ -1422,17 +1450,8 @@ exports.confirmPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Registration record not found.' });
 
     // ── Ownership check ───────────────────────────────────────────────────────
-    if (req.user.role !== 'admin') {
-      const userSubIds = (req.user.subscriptionIds || []).map(String);
-      const userRegId  = req.user.registrationId ? String(req.user.registrationId) : null;
-      const userEmail  = (req.user.email || '').toLowerCase();
-      const docEmail   = (doc.email || doc.pointOfContactEmail || '').toLowerCase();
-      const owns = userRegId === String(registrationId)
-        || userSubIds.includes(String(registrationId))
-        || (userEmail && docEmail && userEmail === docEmail);
-      if (!owns)
-        return res.status(403).json({ success: false, message: 'Access denied.' });
-    }
+    if (req.user.role !== 'admin' && !userOwnsRegistration(req.user, doc, registrationId))
+      return res.status(403).json({ success: false, message: 'Access denied.' });
 
     const now              = new Date();
     const amountCents      = pi.amount_received || pi.amount;
@@ -1642,7 +1661,7 @@ exports.confirmPayment = async (req, res) => {
       paymentDoc = await Payment.findOneAndUpdate(
         { stripePaymentIntentId: paymentIntentId },
         { $setOnInsert: paymentData },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
       );
     } catch (dupErr) {
       if (dupErr.code === 11000) {
@@ -1756,8 +1775,9 @@ exports.confirmPayment = async (req, res) => {
       registration: updatedReg,
     });
 
-    // Send confirmation email (non-blocking).
-    if (updatedReg) {
+    // Send confirmation email (non-blocking). Each notification is claimed
+    // atomically on the Payment so the racing webhook cannot send it again.
+    if (updatedReg && await claimNotification(paymentDoc?._id, 'customerNotifiedAt')) {
       if (isPurposeHolderUpgrade) {
         sendAirlineHolderUpgradeConfirmation(
           updatedReg,
@@ -1774,8 +1794,10 @@ exports.confirmPayment = async (req, res) => {
           console.warn('[confirmPayment] Email failed:', e.message)
         );
       }
+    }
 
-      // Internal alert to the IFOA team — who paid, how much, which invoice.
+    // Internal alert to the IFOA team — who paid, how much, which invoice.
+    if (updatedReg && await claimNotification(paymentDoc?._id, 'adminNotifiedAt')) {
       sendAdminPaymentNotification(updatedReg, {
         registrationModel,
         purpose:               paymentDoc.purpose || (isPurposeRenewal ? 'renewal' : 'payment'),
@@ -2138,8 +2160,8 @@ exports.stripeWebhook = async (req, res) => {
         console.warn('[stripeWebhook] Invoice doc creation failed:', invoiceErr.message);
       }
 
-      // Send confirmation email — skip if frontend confirmPayment already sent it.
-      if (updatedRegWebhook && !alreadyConfirmedByFrontend) {
+      // Send confirmation email — only if confirmPayment has not already claimed it.
+      if (updatedRegWebhook && !alreadyConfirmedByFrontend && await claimNotification(paymentDoc?._id, 'customerNotifiedAt')) {
         if (isPurposeHolderUpgradeWebhook) {
           sendAirlineHolderUpgradeConfirmation(
             updatedRegWebhook,
@@ -2159,7 +2181,7 @@ exports.stripeWebhook = async (req, res) => {
 
       // Internal alert to the IFOA team. Sent whenever the webhook is the path
       // that recorded the payment; skipped when confirmPayment already alerted.
-      if (updatedRegWebhook && !alreadyConfirmedByFrontend) {
+      if (updatedRegWebhook && !alreadyConfirmedByFrontend && await claimNotification(paymentDoc?._id, 'adminNotifiedAt')) {
         sendAdminPaymentNotification(updatedRegWebhook, {
           registrationModel,
           purpose:               paymentDoc.purpose || (isPurposeRenewal ? 'renewal' : 'payment'),
@@ -2438,7 +2460,7 @@ async function performQueuedRenewalActivation(doc, Model, registrationModel, byA
     } : {}),
   };
 
-  const updatedDoc = await Model.findByIdAndUpdate(doc._id, mongoUpdateOp, { new: true });
+  const updatedDoc = await Model.findByIdAndUpdate(doc._id, mongoUpdateOp, { returnDocument: 'after' });
 
   // ── Send renewal activation email ─────────────────────────────────────────
   // The `lastRenewal` snapshot on the doc holds the renewal details for the email template.
@@ -3248,7 +3270,7 @@ exports.cancelQueuedRenewal = async (req, res) => {
     // marked void, and both the admin and the customer should be able to see that
     // it was cancelled rather than have it silently vanish.
 
-    const updated = await Model.findByIdAndUpdate(registrationId, update, { new: true });
+    const updated = await Model.findByIdAndUpdate(registrationId, update, { returnDocument: 'after' });
     return res.json({ success: true, data: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

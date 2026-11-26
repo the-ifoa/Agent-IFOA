@@ -3132,7 +3132,10 @@ function RenewModal({ sub, role, group = null, onClose, onSaved }) {
   const [exactCount, setExactCount] = useState(
     isGroup
       ? Number(group.count || unitHolders.length || 1)
-      : Number(sub.committedCount || sub.holderCountValue || sub.certificateHolders?.length || 1)
+      // Base renewal renews the BASE slots only — add-on groups renew on their own.
+      // Defaulting to committedCount (base + all groups) silently over-bought the
+      // group slots a second time.
+      : Math.max(countMin, Number(baseOwnCount || sub.certificateHolders?.filter(h => !h.holderGroupId).length || 1))
   )
   const [showPayment, setShowPayment] = useState(false)
   const [showEditDetails, setShowEditDetails] = useState(false)

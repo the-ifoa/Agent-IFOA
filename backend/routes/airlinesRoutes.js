@@ -120,7 +120,7 @@ router.patch('/:id/logo', authMiddleware, requireOwnership, imageUpload.single('
     const updated = await Airlines.findByIdAndUpdate(
       req.params.id,
       { logoUrl: result.secure_url },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!updated) return res.status(404).json({ message: 'Airline record not found.' });
     res.json({ url: result.secure_url });

@@ -15,6 +15,7 @@ const { Server } = require('socket.io');
 dotenv.config({
   path: path.resolve(__dirname, process.env.NODE_ENV === 'production' ? '.env.production' : '.env'),
   override: true,
+  quiet: true,
 });
 
 // ── Fail fast if required env vars are missing ────────────────────────────────
@@ -81,6 +82,10 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 
 // ── JSON body parser ──────────────────────────────────────────────────────────
 app.use(express.json({ limit: '2mb' }));
+// Express 5 leaves req.body undefined when a request has no parsable body
+// (Express 4 gave {}). Many handlers destructure req.body on body-less
+// PATCH/POST/DELETE calls, so restore the old default.
+app.use((req, _res, next) => { if (req.body === undefined) req.body = {}; next(); });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/pricing',       require('./routes/pricingRoutes'));

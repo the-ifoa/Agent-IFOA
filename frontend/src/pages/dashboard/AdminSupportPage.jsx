@@ -35,6 +35,7 @@ const DEFAULT_EMAIL_SUBJECT = 'New message from IFOA USA Support'
 const DEFAULT_EMAIL_BODY    = 'You have a new message from the IFOA USA support team. Please log in to your dashboard to view it.'
 
 const fmtTime = (d) => {
+  if (!d) return '' // new Date(null) is the 1970 epoch, not NaN — showed "Jan 1"
   const dt = new Date(d)
   if (Number.isNaN(dt.getTime())) return ''
   const now = new Date()

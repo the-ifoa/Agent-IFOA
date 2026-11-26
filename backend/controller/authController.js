@@ -33,6 +33,17 @@ const signToken = (user) =>
     { expiresIn: JWT_EXPIRES, algorithm: 'HS256' },
   );
 
+// ── Input guards ──────────────────────────────────────────────────────────────
+// Request bodies are untrusted JSON: a field may arrive as an object/array/number.
+// Calling string methods on those throws and turns into a 500, so every
+// controller checks types up front and answers 400 instead.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NAME_MAX = 100;
+const isStr = (v) => typeof v === 'string';
+// Optional field: absent (undefined/null/'') or a string.
+const optStr = (v) => v === undefined || v === null || isStr(v);
+const isEmail = (v) => isStr(v) && EMAIL_RE.test(v.trim());
+
 // Helper: build the public user object returned in every auth response
 function publicUser(user) {
   return {
@@ -81,7 +92,9 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: 'Email and password are required.' });
-    const normalEmail = email.toLowerCase();
+    if (!isStr(email) || !isStr(password))
+      return res.status(400).json({ message: 'Email and password must be text.' });
+    const normalEmail = email.toLowerCase().trim();
     let user = await User.findOne({ email: normalEmail });
     // If not found as primary email, check secondary emails (airline login aliases)
     if (!user) user = await User.findOne({ secondaryEmails: normalEmail });
@@ -115,13 +128,25 @@ exports.getMe = async (req, res) => {
 // (the URL is not linked from the login page). No seed secret, no one-admin cap.
 exports.seedAdminSignup = async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, seedSecret } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: 'Email and password are required.' });
+    if (!isStr(email) || !isStr(password))
+      return res.status(400).json({ message: 'Email and password must be text.' });
     if (password.length < 8)
       return res.status(400).json({ message: 'Password must be at least 8 characters.' });
 
-    const normalEmail = email.toLowerCase();
+    // This route is public. Without a gate, anyone could mint an admin account and
+    // read/delete every customer record. Allow it only to bootstrap the FIRST admin,
+    // or with the server-side ADMIN_SEED_SECRET. Further admins: scripts/createAdmin.js.
+    const adminExists = await User.exists({ role: 'admin' });
+    const configured = process.env.ADMIN_SEED_SECRET;
+    const secretOk = Boolean(configured) && isStr(seedSecret) && seedSecret.length === configured.length
+      && crypto.timingSafeEqual(Buffer.from(seedSecret), Buffer.from(configured));
+    if (adminExists && !secretOk)
+      return res.status(403).json({ message: 'Admin self-signup is disabled. Ask an existing admin to create your account.' });
+
+    const normalEmail = email.toLowerCase().trim();
     const existing = await User.findOne({ $or: [{ email: normalEmail }, { secondaryEmails: normalEmail }] });
     if (existing)
       return res.status(409).json({ message: 'This email is already associated with an account.' });
@@ -178,6 +203,10 @@ exports.updateCredentials = async (req, res) => {
     const { currentPassword, newEmail, newPassword } = req.body;
     if (!currentPassword)
       return res.status(400).json({ message: 'Current password is required to make changes.' });
+    if (!isStr(currentPassword) || !optStr(newEmail) || !optStr(newPassword))
+      return res.status(400).json({ message: 'Invalid input: fields must be text.' });
+    if (newEmail && !isEmail(newEmail))
+      return res.status(400).json({ message: 'Enter a valid email address.' });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -216,7 +245,7 @@ exports.updateCredentials = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $set: updateFields, ...(pullSecondary ? { $pull: { secondaryEmails: pullSecondary } } : {}) },
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
 
     const token = signToken(updatedUser);
@@ -232,8 +261,13 @@ exports.updateCredentials = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName } = req.body;
-    if (!firstName && !lastName)
+    if ((firstName !== undefined && typeof firstName !== 'string') ||
+        (lastName  !== undefined && typeof lastName  !== 'string'))
+      return res.status(400).json({ message: 'First name and last name must be text.' });
+    if (!firstName?.trim() && !lastName?.trim())
       return res.status(400).json({ message: 'Provide at least a first name or last name to update.' });
+    if ((firstName?.trim().length || 0) > NAME_MAX || (lastName?.trim().length || 0) > NAME_MAX)
+      return res.status(400).json({ message: `Names must be at most ${NAME_MAX} characters.` });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -245,7 +279,7 @@ exports.updateProfile = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $set: profileFields },
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
 
     const token = signToken(updatedUser);
@@ -260,8 +294,10 @@ exports.updateProfile = async (req, res) => {
 exports.updateAirlineName = async (req, res) => {
   try {
     const { airlineName } = req.body;
-    if (!airlineName?.trim())
+    if (typeof airlineName !== 'string' || !airlineName.trim())
       return res.status(400).json({ message: 'Airline name is required.' });
+    if (airlineName.trim().length > 200)
+      return res.status(400).json({ message: 'Airline name must be at most 200 characters.' });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -271,7 +307,7 @@ exports.updateAirlineName = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $set: { airlineName: airlineName.trim() } },
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
 
     const token = signToken(updatedUser);
@@ -320,7 +356,7 @@ exports.linkRegistration = async (req, res) => {
         // Also push to subscriptionIds if not already present
         $addToSet: { subscriptionIds: oid },
       },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-password');
 
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -338,7 +374,8 @@ exports.addSecondaryEmail = async (req, res) => {
   try {
     const { currentPassword, secondaryEmail } = req.body;
     if (!currentPassword) return res.status(400).json({ message: 'Current password is required.' });
-    if (!secondaryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secondaryEmail))
+    if (!isStr(currentPassword)) return res.status(400).json({ message: 'Invalid input: fields must be text.' });
+    if (!isEmail(secondaryEmail))
       return res.status(400).json({ message: 'Enter a valid email address.' });
 
     const user = await User.findById(req.user.id);
@@ -364,7 +401,7 @@ exports.addSecondaryEmail = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $addToSet: { secondaryEmails: normalEmail } },
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
 
     const token = signToken(updatedUser);
@@ -381,6 +418,8 @@ exports.removeSecondaryEmail = async (req, res) => {
     const { currentPassword, secondaryEmail } = req.body;
     if (!currentPassword) return res.status(400).json({ message: 'Current password is required.' });
     if (!secondaryEmail) return res.status(400).json({ message: 'secondaryEmail is required.' });
+    if (!isStr(currentPassword) || !isStr(secondaryEmail))
+      return res.status(400).json({ message: 'Invalid input: fields must be text.' });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -396,7 +435,7 @@ exports.removeSecondaryEmail = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $pull: { secondaryEmails: normalEmail } },
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
 
     const token = signToken(updatedUser);
@@ -554,7 +593,7 @@ exports.resetPasswordWithOtp = async (req, res) => {
 exports.sendSecondaryEmailOtp = async (req, res) => {
   try {
     const { secondaryEmail } = req.body;
-    if (!secondaryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secondaryEmail))
+    if (!isEmail(secondaryEmail))
       return res.status(400).json({ message: 'Enter a valid email address.' });
 
     const user = await User.findById(req.user.id);
@@ -585,6 +624,8 @@ exports.verifyOtpAndAddSecondary = async (req, res) => {
     const { secondaryEmail, code, currentPassword } = req.body;
     if (!secondaryEmail || !code || !currentPassword)
       return res.status(400).json({ message: 'secondaryEmail, code and currentPassword are required.' });
+    if (!isEmail(secondaryEmail) || !isStr(currentPassword) || !(isStr(code) || typeof code === 'number'))
+      return res.status(400).json({ message: 'Invalid input.' });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -611,7 +652,7 @@ exports.verifyOtpAndAddSecondary = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $addToSet: { secondaryEmails: normalEmail } },
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
 
     const token = signToken(updatedUser);
@@ -629,6 +670,7 @@ exports.sendCredentialChangeOtp = async (req, res) => {
   try {
     const { currentPassword } = req.body;
     if (!currentPassword) return res.status(400).json({ message: 'Current password is required.' });
+    if (!isStr(currentPassword)) return res.status(400).json({ message: 'Invalid input: fields must be text.' });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -652,6 +694,10 @@ exports.verifyOtpAndUpdateCredentials = async (req, res) => {
     const { currentPassword, otp, newEmail, newPassword } = req.body;
     if (!currentPassword || !otp) return res.status(400).json({ message: 'currentPassword and otp are required.' });
     if (!newEmail && !newPassword) return res.status(400).json({ message: 'Provide a new email or new password.' });
+    if (!isStr(currentPassword) || !(isStr(otp) || typeof otp === 'number') || !optStr(newEmail) || !optStr(newPassword))
+      return res.status(400).json({ message: 'Invalid input: fields must be text.' });
+    if (newEmail && !isEmail(newEmail))
+      return res.status(400).json({ message: 'Enter a valid email address.' });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -690,7 +736,7 @@ exports.verifyOtpAndUpdateCredentials = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       { $set: updateFields, ...(pullSecondary ? { $pull: { secondaryEmails: pullSecondary } } : {}) },
-      { new: true, runValidators: false },
+      { returnDocument: 'after', runValidators: false },
     );
 
     const token = signToken(updatedUser);
@@ -743,7 +789,7 @@ exports.addSubscription = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $addToSet: { subscriptionIds: oid } },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-password');
 
     if (!user) return res.status(404).json({ message: 'User not found.' });

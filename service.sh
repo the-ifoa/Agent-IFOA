@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Manage backend (port 5000) + frontend (port 5173) as systemd *user* services.
-# No sudo needed. Services auto-restart on crash; logs go to journald.
+# No sudo needed. Services auto-restart on crash.
+# Logs: each run writes logs/<backend|frontend>/<name>_<timestamp>.log
+#       (logs/<name>/latest.log points at the current run) and also journald.
 #
 # Usage: ./service.sh <command> [backend|frontend|all]   (target defaults to all)
 #
@@ -10,7 +12,7 @@
 #   stop        stop service(s)
 #   restart     same as start (stop, free ports, start)
 #   status      show status of service(s)
-#   logs        follow logs (Ctrl+C to exit); add -n for last 200 lines, no follow
+#   logs        follow backend + frontend logs (Ctrl+C to exit); -n = last 200 lines, no follow
 #   enable      start automatically when you log in
 #   disable     stop starting automatically on login
 #
@@ -24,6 +26,8 @@ UNIT_DIR="$HOME/.config/systemd/user"
 PREFIX="agent-service"
 BACKEND_PORT="${BACKEND_PORT:-5000}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+LOG_DIR="$ROOT/logs"
+KEEP_LOGS="${KEEP_LOGS:-20}"   # log files kept per service
 
 unit() { echo "$PREFIX-$1.service"; }
 
@@ -57,9 +61,9 @@ Type=simple
 WorkingDirectory=$dir
 Environment=PATH=$node_bin:/usr/local/bin:/usr/bin:/bin
 Environment=FORCE_COLOR=0
-# Free the port if a stray process (e.g. from start.sh) still holds it
+# Free the port if a stray process still holds it
 ExecStartPre=-/usr/bin/fuser -k $port/tcp
-ExecStart=$node_bin/npm $args
+ExecStart=/bin/bash $ROOT/service.sh _run $name $args
 Restart=on-failure
 RestartSec=3
 KillMode=control-group
@@ -109,20 +113,14 @@ free_ports() {
   for name in "$@"; do
     [ "$name" = backend ] && port=$BACKEND_PORT || port=$FRONTEND_PORT
 
-    # 1. old start.sh runs
-    if [ -f "$ROOT/logs/.pids/$name.pid" ]; then
-      kill_group "$(cat "$ROOT/logs/.pids/$name.pid")"
-      rm -f "$ROOT/logs/.pids/$name.pid"
-    fi
-
-    # 2. stray nodemon/vite started from this repo outside systemd
+    # 1. stray nodemon/vite started from this repo outside systemd
     for pid in $(pgrep -f "$ROOT/$name/node_modules/.bin/" || true); do
       in_our_unit "$pid" && continue
       echo "Killing stray $name process $pid"
       kill_group "$pid"
     done
 
-    # 3. anything still listening on the port
+    # 2. anything still listening on the port
     pids=$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)
     if [ -n "$pids" ]; then
       echo "Port $port in use (PID $(echo $pids | tr '\n' ' ')) - killing..."
@@ -143,11 +141,35 @@ names() {
 
 do_start() {
   local tgt=${1:-all}
-  ensure_installed
+  install_units >/dev/null   # always refresh units so script changes apply
   systemctl --user stop $(targets "$tgt") 2>/dev/null || true
   free_ports $(names "$tgt")
   systemctl --user start $(targets "$tgt")
   urls
+  sleep 2
+  local n
+  for n in $(names "$tgt"); do
+    echo ""
+    echo "== $n log: $LOG_DIR/$n/latest.log =="
+    tail -n 15 "$LOG_DIR/$n/latest.log" 2>/dev/null || echo "(no output yet)"
+  done
+  echo ""
+  echo "Follow logs: ./service.sh logs [backend|frontend]"
+}
+
+# Called by the systemd unit: run npm, writing output to a per-run log file
+# (and stdout, which goes to journald).
+run_service() {
+  local name=$1; shift
+  local dir="$LOG_DIR/$name" ts file
+  mkdir -p "$dir"
+  ts=$(date +%Y-%m-%d_%H-%M-%S)
+  file="$dir/${name}_$ts.log"
+  ln -sfn "$file" "$dir/latest.log"
+  # prune old runs
+  ls -1t "$dir"/"${name}"_*.log 2>/dev/null | tail -n +"$((KEEP_LOGS + 1))" | xargs -r rm -f || true
+  cd "$ROOT/$name"
+  npm "$@" 2>&1 | tee -a "$file"
 }
 
 urls() {
@@ -165,15 +187,20 @@ case "$cmd" in
   status)    systemctl --user --no-pager status $(targets "${1:-all}") || true ;;
   enable)    ensure_installed; systemctl --user enable $(targets "${1:-all}") ;;
   disable)   systemctl --user disable $(targets "${1:-all}") ;;
+  _run)      run_service "$@" ;;
   logs)
-    follow="-f"; tgt="all"
-    for a in "$@"; do [ "$a" = "-n" ] && follow="-n 200 --no-pager" || tgt="$a"; done
-    args=(); for u in $(targets "$tgt"); do args+=(-u "$u"); done
-    # shellcheck disable=SC2086
-    journalctl --user "${args[@]}" -o with-unit $follow
+    follow=1; tgt="all"
+    for a in "$@"; do [ "$a" = "-n" ] && follow=0 || tgt="$a"; done
+    targets "$tgt" >/dev/null
+    files=(); for n in $(names "$tgt"); do files+=("$LOG_DIR/$n/latest.log"); done
+    if [ "$follow" = 1 ]; then
+      tail -n 50 -F "${files[@]}"
+    else
+      tail -n 200 "${files[@]}"
+    fi
     ;;
   *)
-    sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
     ;;
 esac

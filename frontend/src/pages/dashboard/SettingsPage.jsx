@@ -178,7 +178,7 @@ export default function SettingsPage() {
           }}
         />
       )}
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl space-y-6">
 
         {/* ── Page Header ── */}
         <div>
@@ -418,7 +418,7 @@ export default function SettingsPage() {
                     value={secEmail}
                     onChange={e => { setSecEmail(e.target.value); setSecError('') }}
                     placeholder="teammate@company.com"
-                    className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 hover:border-slate-300"
+                    className="flex-1 min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/5 hover:border-slate-300"
                   />
                   <button
                     type="button"

@@ -60,6 +60,9 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const res = await API.post('/auth/login', { email, password })
     setToken(res.data.token)
+    // Persist now, not only in the [token] effect: callers navigate straight
+    // away, and a reload before that effect runs would lose the session.
+    localStorage.setItem('ifoa_token', res.data.token)
     setUser(res.data.user)
     setMustChangePassword(res.data.user?.mustChangePassword || false)
     return res.data.user
@@ -68,6 +71,9 @@ export function AuthProvider({ children }) {
   const signup = async (email, password, role, firstName, lastName, airlineName) => {
     const res = await API.post('/auth/signup', { email, password, role, firstName, lastName, airlineName })
     setToken(res.data.token)
+    // Persist now, not only in the [token] effect: callers navigate straight
+    // away, and a reload before that effect runs would lose the session.
+    localStorage.setItem('ifoa_token', res.data.token)
     setUser(res.data.user)
     setMustChangePassword(res.data.user?.mustChangePassword || false)
     return res.data.user
@@ -152,6 +158,9 @@ export function AuthProvider({ children }) {
   const verifyOtpAndSignup = async (email, code, userData) => {
     const res = await API.post('/auth/verify-otp-signup', { email, code, ...userData })
     setToken(res.data.token)
+    // Persist now, not only in the [token] effect: callers navigate straight
+    // away, and a reload before that effect runs would lose the session.
+    localStorage.setItem('ifoa_token', res.data.token)
     setUser(res.data.user)
     setMustChangePassword(res.data.user?.mustChangePassword || false)
     return res.data.user

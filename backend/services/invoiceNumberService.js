@@ -95,7 +95,7 @@ async function allocateInvoiceNumber(yearOverride) {
     const popped = await InvoiceCounter.findOneAndUpdate(
       { year, 'released.0': { $exists: true } },
       { $pop: { released: -1 } },
-      { new: false },
+      { returnDocument: 'before' },
     ).lean();
 
     if (!popped || !Array.isArray(popped.released) || !popped.released.length) break;
@@ -116,7 +116,7 @@ async function allocateInvoiceNumber(yearOverride) {
     const doc = await InvoiceCounter.findOneAndUpdate(
       { year },
       { $inc: { sequence: 1 } },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true },
     ).lean();
     const candidate = formatInvoiceNumber(doc.sequence, year);
     // eslint-disable-next-line no-await-in-loop

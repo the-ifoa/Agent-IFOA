@@ -25,9 +25,8 @@ import AdminSupportPage from './pages/dashboard/AdminSupportPage'
 
 // User dashboard pages, eagerly loaded to eliminate tab-switching lag and suspense flash
 import UserDashboard   from './pages/dashboard/UserDashboard'
-import ProfilePage     from './pages/dashboard/ProfilePage'
 import SubscriptionPage from './pages/dashboard/SubscriptionPage'
-import SettingsPage    from './pages/dashboard/SettingsPage'
+import AccountPage     from './pages/dashboard/AccountPage'
 import UserSupportPage from './pages/dashboard/UserSupportPage'
 import FaqPage         from './pages/dashboard/FaqPage'
 
@@ -255,10 +254,10 @@ function App() {
             <Route element={<RequireAuth roles={['individual', 'airline']} />}>
               <Route element={<DashboardShell />}>
                 <Route path="/dashboard" element={<UserDashboard />} />
-                <Route path="/dashboard/profile" element={<ProfilePage />} />
+                <Route path="/dashboard/profile" element={<AccountPage />} />
                 <Route path="/dashboard/subscription" element={<SubscriptionPage />} />
                 <Route path="/dashboard/support" element={<UserSupportPage />} />
-                <Route path="/dashboard/settings" element={<SettingsPage />} />
+                <Route path="/dashboard/settings" element={<AccountPage />} />
                 <Route path="/dashboard/faq" element={<FaqPage />} />
               </Route>
             </Route>

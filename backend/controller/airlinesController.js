@@ -399,7 +399,9 @@ exports.createAirlinesSubscription = async (req, res) => {
         return res.status(409).json({
           success: false,
           message: 'You have already submitted this form. Please edit your submitted form from the Subscription dashboard.',
-          data: existing,
+          // Unauthenticated endpoint: only the id (the client resumes payment with it),
+          // never the stored record — that would leak PII to anyone who knows an email.
+          data: { _id: existing._id },
         });
       }
     }
@@ -411,6 +413,21 @@ exports.createAirlinesSubscription = async (req, res) => {
     body.committedCount = body.holderCountValue
       ? parseInt(body.holderCountValue, 10)
       : holdersFilled;
+
+    // The UI only offers ranges starting at the minimum; enforce it here too so a
+    // crafted request cannot buy a sub-minimum (and therefore mispriced) plan.
+    if (!Number.isFinite(body.committedCount) || body.committedCount < pricing.AIRLINE_MIN_HOLDERS) {
+      return res.status(400).json({
+        success: false,
+        message: `Airline plans require at least ${pricing.AIRLINE_MIN_HOLDERS} certificate holders.`,
+      });
+    }
+    if (holdersFilled > body.committedCount) {
+      return res.status(400).json({
+        success: false,
+        message: 'More certificate holders were provided than the selected holder count.',
+      });
+    }
 
     // Tier range derived from the actual count — a client-supplied range that
     // disagrees with the count could buy a cheaper volume tier.
@@ -892,11 +909,11 @@ exports.updateAirlinesSubscription = async (req, res) => {
     }
 
     let doc = await Airlines.findByIdAndUpdate(
-      req.params.id, payload, { new: true, runValidators: false },
+      req.params.id, payload, { returnDocument: 'after', runValidators: false },
     );
     if (!doc) {
       doc = await AirlinesSubscription.findByIdAndUpdate(
-        req.params.id, payload, { new: true, runValidators: false },
+        req.params.id, payload, { returnDocument: 'after', runValidators: false },
       );
     }
     if (!doc)
@@ -1295,7 +1312,7 @@ async function renameQueuedRenewalInvoice({ Model, registrationId, oldNumber, ne
   const doc = await Model.findByIdAndUpdate(
     registrationId,
     { $set: { 'nextRenewal.invoiceNumber': newNumber } },
-    { new: true },
+    { returnDocument: 'after' },
   );
 
   if (renewalId) {
@@ -1451,7 +1468,7 @@ exports.updateRenewalDetails = async (req, res) => {
     const doc = await Airlines.findByIdAndUpdate(
       req.params.id,
       { $set: set },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     if (current.nextRenewalId && Object.keys(renewalSet).length > 0) {
@@ -1573,7 +1590,7 @@ exports.markAirlinesPaid = async (req, res) => {
     const updated = await Model.findByIdAndUpdate(
       req.params.id,
       { $set: update },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     // Create canonical Invoice document so admin and user see the same invoice.
@@ -1732,7 +1749,7 @@ exports.requestAirlineInvoice = async (req, res) => {
     const updated = await Airlines.findByIdAndUpdate(
       id,
       { $set: update },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     if (!updated) {
@@ -1884,7 +1901,7 @@ exports.exportAirlinesExcel = async (req, res) => {
             d.postalCode   || '',
             d.country      || '',
             contactName,
-            d.phone ? `+${d.phone}` : '',
+            d.phone ? `+${String(d.phone).replace(/^\+/, '')}` : '',
             d.email || '',
           ];
           compData.forEach((val, i) => {
@@ -2269,7 +2286,7 @@ exports.markAirlinesInvoiceGenerated = async (req, res) => {
     const doc = await Airlines.findByIdAndUpdate(
       req.params.id,
       { $set: { invoiceGenerated: true } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!doc) return res.status(404).json({ success: false, message: 'Airline not found.' });
     res.json({ success: true, data: doc });
@@ -2351,7 +2368,7 @@ exports.activateWirePayment = async (req, res) => {
             wireRequestAdditionalCount: null, wireRequestDetails: null,
             paymentStatus: 'paid', invoiceStatus: 'Paid',
           },
-        }, { new: true });
+        }, { returnDocument: 'after' });
 
         try {
           const meta = {
@@ -2456,7 +2473,7 @@ exports.activateWirePayment = async (req, res) => {
           wireRequestAdditionalCount: null, wireRequestDetails: null,
           paymentStatus: 'paid', invoiceStatus: 'Paid',
         },
-      }, { new: true });
+      }, { returnDocument: 'after' });
 
       // Canonical invoice for the approved request.
       try {
@@ -2572,7 +2589,7 @@ exports.activateWirePayment = async (req, res) => {
           ...(expiresAt ? { expirationDate: expiresAt } : {}),
         };
         const updated = await Airlines.findByIdAndUpdate(
-          req.params.id, { $set: immediateUpdate }, { new: true }
+          req.params.id, { $set: immediateUpdate }, { returnDocument: 'after' }
         );
         try { await createOrUpdateInvoice(renewalInvoiceBase); } catch (e) {
           console.warn('[activateWirePayment] Renewal invoice failed:', e.message);
@@ -2592,7 +2609,7 @@ exports.activateWirePayment = async (req, res) => {
         const updated = await Airlines.findByIdAndUpdate(
           req.params.id,
           { $set: { nextRenewal, wirePaymentRequested: false, wireRequestPurpose: null, wireRequestRenewalPlan: null } },
-          { new: true }
+          { returnDocument: 'after' }
         );
         try { await createOrUpdateInvoice(renewalInvoiceBase); } catch (e) {
           console.warn('[activateWirePayment] Queued renewal invoice failed:', e.message);
@@ -2631,7 +2648,7 @@ exports.activateWirePayment = async (req, res) => {
         wireRequestAdditionalCount: null,
       };
       const updated = await Airlines.findByIdAndUpdate(
-        req.params.id, { $set: upgradeUpdate }, { new: true }
+        req.params.id, { $set: upgradeUpdate }, { returnDocument: 'after' }
       );
 
       // Create invoice scoped to the additional holders so user sees upgrade charge.
@@ -2705,7 +2722,7 @@ exports.activateWirePayment = async (req, res) => {
       const updated = await Airlines.findByIdAndUpdate(
         req.params.id,
         { $set: initialUpdate },
-        { new: true }
+        { returnDocument: 'after' }
       );
 
       // Create the canonical subscription Invoice so it persists independently
@@ -2810,7 +2827,7 @@ exports.declineWirePayment = async (req, res) => {
         paymentStatus: wasPaid ? 'paid' : 'pending',
         invoiceStatus: wasPaid ? 'Paid' : 'Pending',
       },
-    }, { new: true });
+    }, { returnDocument: 'after' });
 
     return res.json({ success: true, data: updated });
   } catch (err) {

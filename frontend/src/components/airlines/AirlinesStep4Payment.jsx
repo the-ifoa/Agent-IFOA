@@ -244,7 +244,7 @@ export default function AirlinesStep4Payment({ data, update, onBack, onSubmit, o
             </p>
             <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden divide-y divide-slate-100 mb-4">
               {holders.map((h, i) => {
-                const holderName = [h.firstName, h.lastName].filter(Boolean).join(' ') || h.name || `Holder ${i + 1}`
+                const holderName = h.fullName?.trim() || [h.firstName, h.lastName].filter(Boolean).join(' ') || h.name || `Holder ${i + 1}`
                 const faaNum     = h.faaCertificateNumber || h.faaNumber || ''
                 const iacraFtn   = h.iacraTrackingNumber  || h.iacraFtn  || ''
                 const certType   = h.certificateType      || h.primaryCertificate || ''

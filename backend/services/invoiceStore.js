@@ -381,7 +381,7 @@ async function issueInvoice(opts) {
         const res = await Invoice.findOneAndUpdate(
           { paymentId },
           { $setOnInsert: docPayload },
-          { upsert: true, new: true, setDefaultsOnInsert: true, includeResultMetadata: true },
+          { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, includeResultMetadata: true },
         );
         const doc = res.value;
         saved = res.lastErrorObject?.updatedExisting ? await applyTo(doc) : doc;
@@ -792,12 +792,26 @@ async function deleteByNumber(invoiceNumber, opts = {}) {
   await Promise.all([
     Individual.updateMany(mirrorMatch, clearMirror),
     Individual.updateMany({ 'nextRenewal.invoiceNumber': num }, { $set: { 'nextRenewal.invoiceNumber': '' } }),
+    // lastRenewal is one of the pointers isInvoiceNumberTaken() checks — leaving it
+    // set kept a deleted number "taken" forever, so it never returned to the pool.
+    Individual.updateMany({ 'lastRenewal.invoiceNumber': num }, { $set: { 'lastRenewal.invoiceNumber': '' } }),
     Airlines.updateMany(mirrorMatch, clearMirror),
     Airlines.updateMany({ 'nextRenewal.invoiceNumber': num }, { $set: { 'nextRenewal.invoiceNumber': '' } }),
+    Airlines.updateMany({ 'lastRenewal.invoiceNumber': num }, { $set: { 'lastRenewal.invoiceNumber': '' } }),
     Airlines.updateMany(
       { 'holderGroups.invoiceNumber': num },
       { $set: { 'holderGroups.$[g].invoiceNumber': '' } },
       { arrayFilters: [{ 'g.invoiceNumber': num }] },
+    ),
+    Airlines.updateMany(
+      { 'holderGroups.nextRenewal.invoiceNumber': num },
+      { $set: { 'holderGroups.$[g].nextRenewal.invoiceNumber': '' } },
+      { arrayFilters: [{ 'g.nextRenewal.invoiceNumber': num }] },
+    ),
+    Airlines.updateMany(
+      { 'holderGroups.lastRenewal.invoiceNumber': num },
+      { $set: { 'holderGroups.$[g].lastRenewal.invoiceNumber': '' } },
+      { arrayFilters: [{ 'g.lastRenewal.invoiceNumber': num }] },
     ),
     AirlinesSubscription.updateMany({ invoiceNumber: num }, { $set: { invoiceNumber: '' } }),
     AirlinesSubscription.updateMany({ 'nextRenewal.invoiceNumber': num }, { $set: { 'nextRenewal.invoiceNumber': '' } }),

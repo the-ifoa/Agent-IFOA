@@ -67,13 +67,12 @@ const AirlinesSubscriptionSchema = new mongoose.Schema({
 // Auto-compute totalAmount before save.
 // Unlimited Plan is a flat annual fee — total = pricePerCert (not multiplied by holder count).
 // All other plans charge per certificate — total = pricePerCert × holderCount.
-AirlinesSubscriptionSchema.pre('save', function (next) {
+AirlinesSubscriptionSchema.pre('save', function () {
   if (this.subscriptionPlan === 'Unlimited Plan') {
     this.totalAmount = this.pricePerCert || 0;
   } else {
     this.totalAmount = (this.pricePerCert || 0) * (this.certificateHolders?.length || 0);
   }
-  next();
 });
 
 module.exports = mongoose.model('AirlinesSubscription', AirlinesSubscriptionSchema);
